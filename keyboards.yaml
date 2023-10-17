@@ -1,0 +1,646 @@
+keyboards:
+  - name: "数字"
+    rows:
+    - rowHeight: 5e+1
+      keys:
+      - action: character(1)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(2)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(3)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(4)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(5)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(6)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(7)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(8)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(9)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(0)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []    
+
+    - rowHeight: 5e+1
+      keys:
+      - action: character(-)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(/)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(：)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(～)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(（）)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '()'
+        swipe: []
+      - action: character([])
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(+)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(@)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(“”)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(#)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      
+    - rowHeight: 5e+1
+      keys:
+      - action: keyboardType(classifySymbolic)
+        width:
+          portrait: inputPercentage(1.5)
+          landscape: inputPercentage(1.5)
+        label:
+          loadingText: ''
+          text: '更多'
+        swipe:
+        - direction: up
+          action: ""
+          processByRIME: false
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: symbol(。)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: symbol(，)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: symbol(！)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: symbol(*)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: symbol(？)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: symbol(.)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(=)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: backspace
+        width:
+          portrait: inputPercentage(1.5)
+          landscape: inputPercentage(1.5)
+        label:
+          loadingText: ''
+          text: ''
+        swipe:
+        - direction: left
+          action: "shortCommand(#重输)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''      
+      
+    - rowHeight: 5e+1
+      keys:
+      - action: keyboardType(custom(天行键))
+        width:
+          portrait: inputPercentage(2.5)
+          landscape: inputPercentage(2.5)
+        label:
+          loadingText: ''
+          text: '天行键'
+      - action: space
+        width:
+          portrait: inputPercentage(5.0)
+          landscape: inputPercentage(5.0)
+        label:
+          loadingText: ""
+          text: ""
+        swipe:
+        - direction: up
+          action: "shortCommand(#次选上屏)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+        - direction: right
+          action: "shortCommand(#三选上屏)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: enter
+        width:
+          portrait: inputPercentage(2.5)
+          landscape: inputPercentage(2.5)
+        label:
+          loadingText: ''
+          text: "Send"
+        swipe:
+        - direction: up
+          action: "shortCommand(#换行)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+    buttonInsets: left(2.0),right(2.0),top(5.0),bottom(5.0)
+
+  - name: "天行键"
+    rows:
+    - rowHeight: 5e+1
+      keys:
+      - action: character(q)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+      - action: character(w)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(e)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(r)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(t)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(y)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(u)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '撇'
+        swipe: []
+      - action: character(i)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '竖'
+        swipe: []
+      - action: character(o)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '点'
+        swipe: []
+      - action: character(p)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+    
+    - rowHeight: 5e+1
+      keys:
+      - action: none
+        width:
+          portrait: available
+          landscape: available
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(a)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '折'
+        swipe: []
+      - action: character(s)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(d)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(f)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(g)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(h)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(j)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(k)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(l)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: none
+        width:
+          portrait: available
+          landscape: available
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+    
+    - rowHeight: 5e+1
+      keys:
+      - action: shift
+        width: 
+          portrait: inputPercentage(1.5)
+          landscape: inputPercentage(1.5)
+        label:
+          loadingText: '英'
+          text: '中'
+        swipe:
+        - direction: up
+          action: "shortCommand(#中英切换)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: character(z)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe:         
+        - direction: up
+          action: character(`)
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: character(x)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(c)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(v)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: '横'
+        swipe: []
+      - action: character(b)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(n)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe: []
+      - action: character(m)
+        width:
+          portrait: input
+          landscape: input
+        label:
+          loadingText: ''
+          text: ''
+        swipe:
+        - direction: up
+          action: "shortCommand(#行首)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+        - direction: down
+          action: "shortCommand(#行尾)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: backspace
+        width:
+          portrait: inputPercentage(1.5)
+          landscape: inputPercentage(1.5)
+        label:
+          loadingText: ''
+          text: ''
+        swipe:
+        - direction: left
+          action: "shortCommand(#重输)"
+          processByRIME: false
+          display: false
+          label:
+            loadingText: ''
+            text: ''  
+    
+    - rowHeight: 5e+1
+      keys:
+      - action: keyboardType(custom(数字))
+        width:
+          portrait: inputPercentage(2.5)
+          landscape: inputPercentage(2.5)
+        label:
+          loadingText: ''
+          text: '123'
+        swipe:
+          - direction: up
+            action: "shortCommand(#繁简切换)"
+            processByRIME: true
+            display: true
+            label:
+              loadingText: ''
+              text: '繁'
+      - action: space
+        width:
+          portrait: inputPercentage(5.0)
+          landscape: inputPercentage(5.0)
+        label:
+          loadingText: ""
+          text: ""
+        swipe:
+        - direction: up
+          action: "shortCommand(#次选上屏)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+        - direction: right
+          action: "shortCommand(#三选上屏)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+      - action: enter
+        width:
+          portrait: inputPercentage(2.5)
+          landscape: inputPercentage(2.5)
+        label:
+          loadingText: ''
+          text: "发送"
+        swipe:
+        - direction: up
+          action: "shortCommand(#换行)"
+          processByRIME: true
+          display: false
+          label:
+            loadingText: ''
+            text: ''
+    buttonInsets: left(2.0),right(2.0),top(5.0),bottom(5.0)

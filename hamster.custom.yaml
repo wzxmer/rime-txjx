@@ -1,0 +1,183 @@
+patch:
+  general:
+    enableAppleCloud: true
+    regexOnCopyFile:
+    - ^.*[.]userdb.*$
+    - ^.*build.*$
+    - ^.*SharedSupport.*$
+  toolbar:
+    enableToolbar: true
+    heightOfToolbar: 32
+    displayKeyboardDismissButton: true
+    heightOfCodingArea: 15
+    codingAreaFontSize: 10
+    candidateWordFontSize: 16
+    candidateCommentFontSize: 12
+    displayIndexOfCandidateWord: false
+    displayCommentOfCandidateWord: true
+  Keyboard:
+    useKeyboardType: "custom(天行键)"
+    upSwipeOnLeft: true
+    displayButtonBubbles: false
+    enableKeySounds: false
+    enableHapticFeedback: false
+    hapticFeedbackIntensity: 3
+    displaySemicolonButton: false
+    displayClassifySymbolButton: true
+    displaySpaceLeftButton: true
+    keyValueOfSpaceLeftButton: ','
+    displaySpaceRightButton: false
+    keyValueOfSpaceRightButton: .
+    displayChineseEnglishSwitchButton: true
+    chineseEnglishSwitchButtonIsOnLeftOfSpaceButton: true
+    enableNineGridOfNumericKeyboard: true
+    enterDirectlyOnScreenByNineGridOfNumericKeyboard: true
+    symbolsOfGridOfNumericKeyboard:
+    - +
+    - '-'
+    - '*'
+    - /
+    lockShiftState: false
+    enableEmbeddedInputMode: true
+    enableSymbolKeyboard: false
+    lockForSymbolKeyboard: false
+
+    #光标居中
+    symbolsOfCursorBack:
+    - '""'
+    - "“”"
+    - '[]'
+    - '（）'
+    #返回主键盘
+    symbolsOfReturnToMainKeyboard:
+    - '。'
+    - '，'
+    - '！'
+    - '？'
+    - '、'
+    - ','
+    - '!'
+    #成对上屏
+    pairsOfSymbols:
+    - '[]'
+    - ()
+    - "“”"
+    useColorSchema: "PornHub"       # 启用的颜色主题
+    # 配色方案
+    # 来源: https://github.com/rime/squirrel/blob/master/data/squirrel.yaml  
+    colorSchemas:
+    - schemaName: PornHub
+      name: PornHub
+      author: 周庸生
+      back_color: '0x55010101'                    # 底色
+      label_color: '0x49F56B'                     # 预选栏编号颜色
+      hilited_text_color: '0x49F56B'              # 选中拼音颜色 （inline_preedit: false）
+      hilited_back_color: '0x009bff'              # 选中底色
+      candidate_text_color: '0xffffff'            # 文字颜色。键盘字符颜色
+      hilited_candidate_text_color: '0x000000'    # 选中文字颜色，即000为黑。FFF为白
+      hilited_candidate_back_color: '0x009bff'    # 选中底色
+      hilited_candidate_label_color: '0x49F56B'   # 第一候选项编号颜色 ➡高亮（選中）候選詞序號字色
+      comment_text_color: '0x000000'              # 注颜色
+      hilited_lable_color: '0x000000'
+      hilited_comment_text_color: '0x000000'      # 选中注颜色
+      text_color: '0x000000'                      # 拼音颜色 （inline_preedit: false）
+
+    - schemaName: golden
+      name: "黄金九／golden nine"
+      author: "YG777"                             # 作者
+      back_color: '0x55010101'                    # 底色，键盘整个底色。黑灰。RGB
+      candidate_text_color: '0xEEEEEE'            # 文字颜色。键盘字符颜色
+      label_color: '0x88BFD0'                     # 序号颜色
+      text_color: '0x52A3FF'                      # 拼音颜色 （inline_preedit: false） 
+      hilited_text_color: '0x49F56B'              # 选中拼音颜色 （inline_preedit: false）
+      hilited_candidate_text_color: '0x000000'    # 选中文字颜色
+      hilited_candidate_back_color: '0x038EE0'    # 选中底色
+      comment_text_color: '0x000000'              # 注颜色
+
+    - schemaName: Wechat
+      name: 微信_黑／Wechat
+      author: yg777
+      back_color: '0x55010101'                    # 底色，键盘整个底色。黑灰。RGB
+      label_color: '0xBBBBBB'                     # 序号颜色
+      hilited_text_color: '0xEEEEEE'              # 选中拼音颜色 （inline_preedit: false）
+      hilited_back_color: '0x009bff' 
+      candidate_text_color: '0xEEEEEE'            # 文字颜色
+      hilited_candidate_text_color: '0x000000'    # 选中文字颜色
+      hilited_candidate_back_color: '0x77B107'    # 选中底色
+      comment_text_color: '0x808080'              # 注颜色
+      hilited_comment_text_color: '0x808080'      # 选中注颜色
+      text_color: '0x808080'                      # 拼音颜色 （inline_preedit: false）
+
+    - schemaName: trendy
+      name: 潮男桔／trendy man orange
+      author: yg777
+      back_color: '0x55010101'                     # 底色，键盘整个底色。黑灰。RGB
+      candidate_text_color: '0x52A3FF'             # 文字颜色，键盘字符颜色，此为桔色
+      hilited_candidate_back_color: '0x77B107'     # 选中底色 ➡高亮（選中）候選詞底色
+      hilited_candidate_text_color: '0x000000'     # 选中文字颜色，第一侯选字➡高亮（選中）候選字字体
+    #  label_color: '0x88BFD0'                      # 序号颜色
+    #  border_color: '0x88BFD0'                     # 边框色      
+    #  hilited_candidate_back_color: '0xEEEEEE'    # 选中底色
+    #  comment_text_color: '0xEEEEEE'              # 注颜色
+    #  hilited_comment_text_color: '0xEEEEEE'      # 选中注颜色
+    #  text_color: '0x77B107'                      # 拼音颜色 （inline_preedit: false）
+    #  hilited_text_color: '0x000000'              # 选中拼音颜色 （inline_preedit: false）
+    #  hilited_back_color: '0x000000'              # 第一候选项背景背景色            
+
+    - schemaName: orange
+      name: 橙心／orange
+      author: yg777
+      back_color: '0x6d000000'                     # 底色，键盘整个底色。黑灰。RGB
+      candidate_text_color: '0xD68381'             # 文字颜色，键盘字符颜色，此为墨绿
+      hilited_candidate_text_color: '0x000000'     # 选中文字颜色，第一侯选字➡高亮（選中）候選字字体
+      hilited_candidate_back_color: '0x52A3FF'     # 选中底色 ➡高亮（選中）候選詞底色
+
+    - schemaName: StarCraftX
+      name: "星際我爭霸X／StarCraftX"
+      author: 仓自带
+      back_color: '0x6d000000'                     # 底色，键盘整个底色。RGB
+      hilited_candidate_text_color: '0x70ffaf'     # 选中文字颜色，第一侯选字➡高亮（選中）候選字字体
+      hilited_candidate_back_color: '0x1130bb55'   # 选中底色 ➡高亮（選中）候選詞底色
+      border_color: '0x30bb55'
+      text_color: '0xccaa88'
+      hilited_text_color: '0xfecb96'
+      hilited_back_color: '0x00ffffff'
+      hilited_comment_text_color: '0x1010f0'
+      candidate_text_color: '0x30bb55'
+      comment_text_color: '0x1010d0' 
+
+    - schemaName: StarCraft
+      name: "星際／StarCraft"
+      author: 仓自带
+      back_color: '0x6d000000'                     # 底色，键盘整个底色。黑灰。RGB
+      border_color: '0x30bb55'
+      text_color: '0xccaa88'
+      hilited_text_color: '0xfecb96'
+      hilited_back_color: '0x00ffffff'
+      #hilited_candidate_text_color: '0x70ffaf'
+      # hilited_candidate_back_color: '0x1130bb55'
+      hilited_candidate_back_color: '0x52A3FF'     # 选中底色 ➡高亮（選中）候選詞底色
+      hilited_candidate_text_color: '0x000000'     # 选中文字颜色，第一侯选字➡高亮（選中）候選字字体
+      hilited_comment_text_color: '0x1010f0'
+      candidate_text_color: '0x30bb55'
+      comment_text_color: '0x1010d0'           
+
+# 微信绿 0x78AF22，魅蓝紫 0xC73262，活力橙 0x2283D9
+ 
+  rime:
+    maximumNumberOfCandidateWords: 50
+    keyValueOfSwitchSimplifiedAndTraditional: jffh
+    overrideDictFiles: true
+    regexOnOverrideDictFiles:
+    - ^.*[.]userdb.*$
+    - ^.*[.]txt$
+    regexOnCopyAppGroupDictFile:
+    - ^.*[.]userdb.*$
+    - ^.*[.]txt$
+  swipe:
+    xAxleSwipeSensitivity: 10
+    yAxleSwipeSensitivity: 10
+    spaceSwipeSensitivity: 17
+    longPressDelay: 0.2
+
+

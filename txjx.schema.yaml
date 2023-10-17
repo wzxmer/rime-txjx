@@ -1,0 +1,240 @@
+﻿# Rime schema settings
+# encoding: utf-8
+schema:
+  schema_id: txjx
+  name: 天行键
+  version: "1"
+  dependencies:
+    - txjx.cx
+    - pinyin_simp
+    - liangfen
+    - txjx.en
+
+# Layout config
+layout:
+  topup:
+    topup_this: "bcdefghjklmnpqrstwxyz"
+    topup_with: "avuio;"
+  algebra:
+    - derive/^[bcdefghjklmnpqrstwxyz;]([bcdefghjklmnpqrstwxyz;][avuio].*)$/`$1/
+    - derive/^([bcdefghjklmnpqrstwxyz;])[bcdefghjklmnpqrstwxyz;]([avuio].*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2})[avuio](.*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]).(.*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]{2}).(.*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]{3}).(.*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]{4}).(.*)$/$1`$2/
+    - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]{5}).$/$1`/
+    - derive/^[bcdefghjklmnpqrstwxyz;]{2}([avuio`]*)$/``$1/
+
+  patterns:
+    special: "^(?:;?[avuio])[a-z]{0,}"
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, 西文 ]
+  - name: ascii_punct
+    reset: 0
+    states: [ 全角, 半角 ]
+  - name: jffh
+    reset: 0
+    states: [ 简体, 繁體 ]
+  - name: emoji_cn   #Emoji开关
+    reset: 1              
+    states: [ 关闭表情, 开启表情  ]
+  - name: embeded_cands
+    reset: 0
+    states: [普通, 嵌入候选]
+  - name: sbb_hint
+    reset: 0
+    states: [ 关闭630提示, 开启630提示 ]
+    
+  # - name: full_shape
+  #   states: [ 半角, 全角 ]
+  #提示词开关在下方，请根据注释查找
+punctuator:
+  import_preset: symbols
+  
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder    
+    - lua_processor@txjx_smartTwo    #这个注释后不会顶功，使用流式请注释这两行
+    - lua_processor@txjx_forTopUp   #这个注释后不会顶功，使用流式请注释这两行
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - affix_segmentor@pinyin_simp
+    - affix_segmentor@txjxen
+    - affix_segmentor@quanpinerfen
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - lua_translator@txjx_calculator
+    - lua_translator@txjx_time
+    - punct_translator
+    - table_translator
+    - reverse_lookup_translator
+    - history_translator@repeat_history
+    - history_translator@repeat_history2
+    - script_translator@quanpinerfen
+    - script_translator@pinyin_simp
+    - table_translator@txjxen
+  filters:
+    - simplifier
+    - reverse_lookup_filter@pinyin_simp_lookup
+    - reverse_lookup_filter@quanpinerfen_lookup
+    - simplifier@emoji_cn
+    - simplifier@jffh
+    - simplifier@ascii_punct
+    - lua_filter@txjx_filter
+    - lua_filter@embeded_cands  #内嵌
+    - uniquifier
+
+speller:
+  algebra: 
+  auto_select: false
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
+  initials: "abcdefghijklmnopqrstuvwxyz;'"
+  delimiter: " '"
+  algebra: 
+    - derive/[0-9]$//  #无数字
+    - derive|^;|/|
+
+translator:
+  dictionary: txjx.extended
+  enable_charset_filter: false
+  enable_completion: true   #提示码开关，不需要候选词提示请改false
+  enable_encoder: true
+  enable_sentence: false    #要想使用流式请改为true
+  enable_user_dict: false   #要想使用流式请改为true
+  encode_commit_history: true
+  max_phrase_length: 6
+  initial_quality: 0
+  comment_format:
+#    - xform|~||
+    - xform/[0-9]//  #无数字
+
+repeat_history:
+  input: i #重复上次上屏内容
+  size: 1
+  initial_quality: 10000
+
+repeat_history2:
+  input: ;f #重复上次上屏内容
+  size: 1
+  initial_quality: 10000
+
+emoji_cn:
+  opencc_config: txjx.emoji.json
+  option_name: emoji_cn
+  comment_format:
+    - xform/.*/ /
+  tips: all
+
+jffh:
+  opencc_config: s2g.json
+  option_name: jffh
+
+ascii_punct:
+  option_name: ascii_punct
+
+pinyin_simp_lookup:
+  tags: [pinyin_simp]
+  dictionary: txjx.cx #反查其码
+  overwrite_comment: true
+
+pinyin_simp:
+  tag: pinyin_simp
+  dictionary: pinyin_simp
+  enable_sentence: true
+  enable_completion: true
+  enable_user_dict: false  
+  preedit_format:
+    - xform/^u(.+)/$1/
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+  prefix: "u"
+  tips: "〔全拼〕"
+
+  
+txjxen:
+  tag: txjxen
+  dictionary: txjx.en
+  enable_sentence: true
+  enable_completion: true
+  enable_user_dict: false
+  comment_format:
+    - xform/.*//
+  prefix: "i"
+  tips: "〔单词〕"
+
+#↓二分反查方案
+quanpinerfen_lookup:
+  tags: [quanpinerfen]
+  dictionary: txjx.cx #反查其码
+  overwrite_comment: true
+
+quanpinerfen:
+  tag: quanpinerfen
+  dictionary: liangfen
+  enable_sentence: true
+  enable_completion: true
+  enable_user_dict: false
+  prefix: "v"
+  tips: "〔二分〕"
+
+reverse_lookup:
+  dictionary: txjx.cx
+  enable_completion: true # 逐鍵顯示
+  comment_format:
+    - xform/^/〔/
+    - xform/$/〕/
+    - xform/ /, /
+
+# 嵌入候選的顯示配置
+# 默認顯示效果爲:
+# 宇[浩¹]iwl ~淍² ~泃³
+embeded_cands:
+  option_name: embeded_cands                               # 嵌入候選開關
+  index_indicators: [ ¹, ², ³, ⁴, ⁵, ⁶, ⁷, ⁸, ⁹, ⁰ ]       # 嵌入候選的序號顯示格式
+  first_format: "${Stash}[${候選}${Seq}]${Code}${Comment}" # 首選的渲染格式
+  next_format: "${Stash}${候選}${Seq}${Comment}"           # 非首選的渲染格式
+  separator: " "                                           # 候選之間的分隔符
+  stash_placeholder: "~"  
+
+
+key_binder:
+#  import_preset: default
+  bindings:
+    - { when: always, accept: "Control+period", toggle: ascii_punct }
+    - { accept: minus, send: Page_Up, when: has_menu}
+    - { accept: equal, send: Page_Down, when: has_menu}
+    - { when: always, accept: F7, toggle: jffh }
+      
+recognizer:
+  import_preset: default
+  patterns:
+    reverse_lookup: "[a-z`]*`+[a-z`]*"
+    punct: "^/([0-9]0?|[a-z]+)$"
+    pinyin_simp: "^u[a-z']*'?$"
+    quanpinerfen: "^v[a-z']*'?$"
+    txjxen: "^i[a-z]*?$"
+    jsq: "^=[^;']+$"
+#        xmjdWXYZ: "^'['/a-z][a-z0-9,./:?!']*'?$"
+
+topup:
+  __include: "layout/topup"
+  min_length: 4
+  max_length: 6
+  auto_clear: true
+  min_length_danzi: 2
+  topup_command: true

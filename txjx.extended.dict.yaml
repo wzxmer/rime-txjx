@@ -1,0 +1,40 @@
+# Rime dictionary
+# encoding: utf-8
+#
+# 天行键 扩展词库控制
+---
+name: txjx.extended
+version: "Q1"
+sort: original 
+use_preset_vocabulary: false
+columns:
+  - text
+  - code
+  - stem
+  - weight
+encoder:
+  rules:
+    - length_equal: 2
+      formula: "AaAbBaBb"
+    - length_equal: 3
+      formula: "AaBaCaAc"
+    - length_in_range: [4, 99]
+      formula: "AaBaCaZa"
+import_tables:
+# ---------------------------------------
+# 下列为扩展 可选码表内容：
+# 说明：内置词库在当前目录下
+# =======================================
+### 内置词库@吅吅大山
+# ---------------------------------------
+# 扩展：词组
+  - txjx
+# ---------------------------------------
+## 扩展：用户词库
+  - txjx.user
+# =======================================
+
+## 自定义词库：自己做的词库，自己维护
+## 扩展：附加词语
+  #- txjx.fjcy
+  - txjx.fjcy
