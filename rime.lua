@@ -13,3 +13,5 @@ txjx_calculator = require("txjx_calculator")
 txjx_time = require("txjx_time")
 --内嵌脚本
 embeded_cands = require("embeded_cands")
+--字母
+txjx_zimu= require("txjx_zimu")

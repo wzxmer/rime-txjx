@@ -79,6 +79,7 @@ engine:
   translators:
     - lua_translator@txjx_calculator
     - lua_translator@txjx_time
+    - lua_translator@txjx_zimu
     - punct_translator
     - table_translator
     - reverse_lookup_translator
@@ -156,7 +157,7 @@ pinyin_simp:
   dictionary: pinyin_simp
   enable_sentence: true
   enable_completion: true
-  enable_user_dict: false  
+  enable_user_dict: false
   preedit_format:
     - xform/^u(.+)/$1/
     - xform/([nl])v/$1ü/
@@ -196,9 +197,9 @@ reverse_lookup:
   dictionary: txjx.cx
   enable_completion: true # 逐鍵顯示
   comment_format:
+    - xform/ /, /
     - xform/^/〔/
     - xform/$/〕/
-    - xform/ /, /
 
 # 嵌入候選的顯示配置
 # 默認顯示效果爲:
@@ -229,6 +230,7 @@ recognizer:
     quanpinerfen: "^v[a-z']*'?$"
     txjxen: "^i[a-z]*?$"
     jsq: "^=[^;']+$"
+    zhuan: "^-.*$"
 #        xmjdWXYZ: "^'['/a-z][a-z0-9,./:?!']*'?$"
 
 topup:
