@@ -27,15 +27,14 @@ patch:
     name: 白色/white
     #悬浮窗口
     border_color: 0x40444444                   #候选区边框色
-    # label_color: 0x676767                    #第二个序号字色
+    label_color: 0x444444                    #其余序号字色
     # text_color: 0xFFFFFF                      #输入编码字色
     # text_back_color: 0xFFFFFF                #编码区背景（仅当  layout/background 设置失效时才会起作用）
     # hilited_back_color: 0xFFFFFF              #高亮输入编码背景色
     # preedit_back_color: 0xFFFFFF              #鍵入碼區底色
     #候选项
     back_color: 0xededed                      #候选区背景
-    #hilited有关代码都是第二个候选项相关设置
-    hilited_label_color: 0x676767     #首选序号的颜色
+    hilited_label_color: 0xededed     #首选序号的颜色
     hilited_candidate_back_color: 0x444444    #首选背景色
     hilited_candidate_text_color: 0xededed      #首选文本字色
     hilited_text_color: 0x000000              #首选编码字色
@@ -73,13 +72,13 @@ patch:
 
   style/color_scheme: white               #配色方案 FZHKXT  HwxxkXT
   style/font_point: 13                        #候选字号 hua wen hang kai
-  style/label_font_point: 13                  #控制序號 , Noto Color Emoji
+  style/label_font_point: 10                  #控制序號 , Noto Color Emoji
   style/comment_font_point: 13                #控制注释ITC Bodoni 12 Com BoldItalic ,
   style/font_face: "HYZhengYuan" #"HYZhengYuan,Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
   style/label_font_face: "HYZhengYuan" #"Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
   style/comment_font_face: "HYZhengYuan" #"Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
   style/display_tray_icon: false               #win右下角中英图标
-  style/layout/align_type: center           #"top" | "center" | "bottom"
+  style/layout/align_type: top           #"top" | "center" | "bottom"
   #"  vertical_text": false                 #文字垂直
   style/layout/border_width: 1                #边框宽度
   style/layout/candidate_spacing: 10          #候选间距
@@ -103,7 +102,7 @@ patch:
   #  mark_text: "🤍"
   style/blur_window: false
   style/preedit_type: composition  #composition 编码 / input 输入码 / preview 首选 / preview_all 内嵌
-  style/label_format: ""                   #编号规则 %s.
+  style/label_format: "%s."                   #编号规则 %s.
 #    capture_type: none                    #提交前截图类型，none, highlighted, candidates
   #   vertical_text: true   #文字垂直
   #   vertical_text_left_to_right: true
