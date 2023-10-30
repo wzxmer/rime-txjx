@@ -100,7 +100,8 @@ engine:
     - uniquifier
 
 speller:
-  algebra: 
+  #algebra: 
+    #__include: "layout/algebra"
   auto_select: false
   alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
@@ -201,7 +202,7 @@ reverse_lookup:
     - xform/^/〔/
     - xform/$/〕/
 
-# 嵌入候選的顯示配置
+# 内嵌配置
 # 默認顯示效果爲:
 # 宇[浩¹]iwl ~淍² ~泃³
 embeded_cands:
@@ -231,7 +232,7 @@ recognizer:
     txjxen: "^i[a-z]*?$"
     jsq: "^=[^;']+$"
     zhuan: "^-.*$"
-#        xmjdWXYZ: "^'['/a-z][a-z0-9,./:?!']*'?$"
+    zhuanxiao: "^\\+.*$" # 不加这句后面不能跟数字
 
 topup:
   __include: "layout/topup"
