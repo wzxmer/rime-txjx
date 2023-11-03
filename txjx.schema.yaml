@@ -33,9 +33,9 @@ switches:
   - name: ascii_mode
     reset: 0
     states: [ 中文, 西文 ]
-  - name: ascii_punct
+  - name: full_shape
     reset: 0
-    states: [ 全角, 半角 ]
+    states: [ 半角, 全角 ]
   - name: jffh
     reset: 0
     states: [ 简体, 繁體 ]
@@ -52,8 +52,8 @@ switches:
   # - name: full_shape
   #   states: [ 半角, 全角 ]
   #提示词开关在下方，请根据注释查找
-punctuator:
-  import_preset: symbols
+# punctuator:
+#   import_preset: symbols
   
 engine:
   processors:
@@ -100,8 +100,6 @@ engine:
     - uniquifier
 
 speller:
-  #algebra: 
-    #__include: "layout/algebra"
   auto_select: false
   alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
@@ -109,6 +107,8 @@ speller:
   algebra: 
     - derive/[0-9]$//  #无数字
     - derive|^;|/|
+  #algebra: 
+    #__include: "layout/algebra"
 
 translator:
   dictionary: txjx.extended
@@ -125,7 +125,7 @@ translator:
     - xform/[0-9]//  #无数字
 
 repeat_history:
-  input: i #重复上次上屏内容
+  input: ;i #重复上次上屏内容
   size: 1
   initial_quality: 10000
 
@@ -137,9 +137,8 @@ repeat_history2:
 emoji_cn:
   opencc_config: txjx.emoji.json
   option_name: emoji_cn
-  comment_format:
-    - xform/.*/ /
-  tips: all
+  #不显示表情备注
+  #tips: all  
 
 jffh:
   opencc_config: s2g.json
@@ -177,7 +176,7 @@ txjxen:
   comment_format:
     - xform/.*//
   prefix: "i"
-  tips: "〔单词〕"
+  #tips: "〔单词〕"
 
 #↓二分反查方案
 quanpinerfen_lookup:

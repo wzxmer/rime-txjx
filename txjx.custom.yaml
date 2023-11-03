@@ -7,7 +7,7 @@ patch:
   menu/page_size: 5 
   #                         0选择第一个,1选择第二个
   switches/@0/reset: 0     #[ 中文, 西文 ]
-  switches/@1/reset: 0     #[ 全角, 半角 ]
+  switches/@1/reset: 0     #[ 半角, 全角 ]
   switches/@2/reset: 0     #[ 简体, 繁體 ]
   switches/@3/reset: 1     #[ 关闭表情, 开启表情 ]
   switches/@4/reset: 0     #[ 正常候选, 内嵌候选  ]
