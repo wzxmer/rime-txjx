@@ -52,8 +52,8 @@ switches:
   # - name: full_shape
   #   states: [ 半角, 全角 ]
   #提示词开关在下方，请根据注释查找
-# punctuator:
-#   import_preset: symbols
+punctuator:
+  import_preset: symbols
   
 engine:
   processors:
