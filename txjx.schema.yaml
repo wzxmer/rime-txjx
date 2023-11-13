@@ -52,16 +52,14 @@ switches:
   # - name: full_shape
   #   states: [ 半角, 全角 ]
   #提示词开关在下方，请根据注释查找
-punctuator:
-  import_preset: symbols
-  
+
 engine:
   processors:
     - ascii_composer
     - recognizer
     - key_binder    
-    - lua_processor@txjx_smartTwo    #这个注释后不会顶功，使用流式请注释这两行
-    - lua_processor@txjx_forTopUp   #这个注释后不会顶功，使用流式请注释这两行
+    - lua_processor@*txjx_smartTwo    #这个注释后不会顶功，使用流式请注释这两行
+    - lua_processor@*txjx_forTopUp   #这个注释后不会顶功，使用流式请注释这两行
     - speller
     - punctuator
     - selector
@@ -77,14 +75,13 @@ engine:
     - punct_segmentor
     - fallback_segmentor
   translators:
-    - lua_translator@txjx_calculator
-    - lua_translator@txjx_time
-    - lua_translator@txjx_zimu
+    - lua_translator@*txjx_calculator
+    - lua_translator@*txjx_time
+    - lua_translator@*txjx_zimu
     - punct_translator
     - table_translator
     - reverse_lookup_translator
     - history_translator@repeat_history
-    - history_translator@repeat_history2
     - script_translator@quanpinerfen
     - script_translator@pinyin_simp
     - table_translator@txjxen
@@ -95,20 +92,25 @@ engine:
     - simplifier@emoji_cn
     - simplifier@jffh
     - simplifier@ascii_punct
-    - lua_filter@txjx_filter
-    - lua_filter@embeded_cands  #内嵌
+    - lua_filter@*txjx_filter
+    - lua_filter@*txjx_embeded_cands@embeded_cands  #内嵌
     - uniquifier
 
+#导入符号
+punctuator:
+  import_preset: txjx.symbols
+  
 speller:
   auto_select: false
-  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
-  initials: "abcdefghijklmnopqrstuvwxyz;'"
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;‘"
+  initials: "abcdefghijklmnopqrstuvwxyz;‘"
   delimiter: " '"
   algebra: 
     - derive/[0-9]$//  #无数字
     - derive|^;|/|
   #algebra: 
     #__include: "layout/algebra"
+
 
 translator:
   dictionary: txjx.extended
@@ -125,11 +127,6 @@ translator:
     - xform/[0-9]//  #无数字
 
 repeat_history:
-  input: ;i #重复上次上屏内容
-  size: 1
-  initial_quality: 10000
-
-repeat_history2:
   input: ;f #重复上次上屏内容
   size: 1
   initial_quality: 10000
@@ -220,6 +217,7 @@ key_binder:
     - { accept: minus, send: Page_Up, when: has_menu}
     - { accept: equal, send: Page_Down, when: has_menu}
     - { when: always, accept: F7, toggle: jffh }
+    - { when: always, accept: "Control+Shift+asciitilde", toggle: full_shape }
       
 recognizer:
   import_preset: default
