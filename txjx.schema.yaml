@@ -220,8 +220,11 @@ key_binder:
     - { when: always, accept: "Control+Shift+asciitilde", toggle: full_shape }
       
 recognizer:
-  import_preset: default
   patterns:
+    email: "^[A-Za-z][-_.0-9A-Za-z]*@.*$"
+    uppercase: "[A-Z][-_+.'0-9A-Za-z]*$"
+    url: "^(www[.]|https?:|ftp[.:]|mailto:|file:).*$|^[a-z]+[.].+$"
+
     reverse_lookup: "[a-z`]*`+[a-z`]*"
     punct: "^/([0-9]0?|[a-z]+)$"
     pinyin_simp: "^u[a-z']*'?$"
