@@ -26,8 +26,6 @@ layout:
     - derive/^([bcdefghjklmnpqrstwxyz;`]{2}[avuio`]{5}).$/$1`/
     - derive/^[bcdefghjklmnpqrstwxyz;]{2}([avuio`]*)$/``$1/
 
-  patterns:
-    special: "^(?:;?[avuio])[a-z]{0,}"
 
 switches:
   - name: ascii_mode
@@ -48,6 +46,9 @@ switches:
   - name: sbb_hint
     reset: 0
     states: [ 关闭630提示, 开启630提示 ]
+  - name: completion
+    reset: 1
+    states: [简洁，补全]
     
   # - name: full_shape
   #   states: [ 半角, 全角 ]
@@ -60,6 +61,7 @@ engine:
     - key_binder    
     - lua_processor@*txjx_smartTwo    #这个注释后不会顶功，使用流式请注释这两行
     - lua_processor@*txjx_forTopUp   #这个注释后不会顶功，使用流式请注释这两行
+    - lua_processor@*txjx_select_character  #以词定字
     - speller
     - punctuator
     - selector
@@ -87,6 +89,7 @@ engine:
     - table_translator@txjxen
   filters:
     - simplifier
+    - lua_filter@*txjx_completion   #候选辅助码
     - reverse_lookup_filter@pinyin_simp_lookup
     - reverse_lookup_filter@quanpinerfen_lookup
     - simplifier@emoji_cn
@@ -212,11 +215,18 @@ embeded_cands:
 
 key_binder:
 #  import_preset: default
+
+  #以词定字
+  select_first_character: "bracketleft"  # 左中括号 [
+  select_last_character: "bracketright"  # 右中括号 ]
+
   bindings:
     - { when: always, accept: "Control+period", toggle: ascii_punct }
+    - { when: always, accept: "Control+Shift+2", toggle: ascii_mode }
     - { accept: minus, send: Page_Up, when: has_menu}
     - { accept: equal, send: Page_Down, when: has_menu}
     - { when: always, accept: F7, toggle: jffh }
+    - { when: always, accept: "Control+Shift+e", toggle: emoji_cn }
     - { when: always, accept: "Control+Shift+asciitilde", toggle: full_shape }
       
 recognizer:

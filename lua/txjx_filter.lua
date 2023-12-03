@@ -9,7 +9,9 @@ local function hint(cand, context, reverse)
     
     local lookup = " " .. reverse:lookup(cand.text) .. " "
     local short = string.match(lookup, " ([bcdefghjklmnpqrstwxyz][auiov]+) ") or 
-                  string.match(lookup, " ([bcdefghjklmnpqrstwxyz][bcdefghjklmnpqrstwxyz]) ")
+                  string.match(lookup, " ([bcdefghjklmnpqrstwxyz][bcdefghjklmnpqrstwxyz]) ") or
+                  string.match(lookup, " ([bcdefghjklmnpqrstwxyz][bcdefghjklmnpqrstwxyz][auiov]) ") or
+                  string.match(lookup, " ([auiov][auiov][auiov]) ")
     local input = context.input 
     if short and utf8.len(input) > utf8.len(short) and not startswith(short, input) then
         -- cand:get_genuine().comment = cand.comment .. "〔" .. short .. "〕"
@@ -32,6 +34,8 @@ local function commit_hint(cand, hint_text)
     -- cand:get_genuine().comment = cand.comment
 end
 
+
+
 local function filter(input, env)
     local is_danzi = env.engine.context:get_option('danzi_mode')
     local is_on = env.engine.context:get_option('sbb_hint')
@@ -52,6 +56,7 @@ local function filter(input, env)
             end
             yield(cand)
         end
+        
     end
 end
 
