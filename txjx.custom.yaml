@@ -1,6 +1,6 @@
 #功能开关一键配置
 patch:
-  schema/name: 天行键     #修改方案名称，显示在空格上的名字
+  schema/name: '天行键'    #修改方案名称，显示在空格上的名字
   speller/auto_select: false    #自动上屏开关，默认关
   hint_text: ''    #顶功提示符
   menu/page_size: 5 
@@ -10,12 +10,11 @@ patch:
   switches/@2/reset: 0     #[ 简体, 繁體 ]
   switches/@3/reset: 1     #[ 关闭表情, 开启表情 ]
   switches/@4/reset: 0     #[ 正常候选, 内嵌候选  ]
-  switches/@5/reset: 1     #[ 关闭630提示, 开启630提示 ]  
+  switches/@5/reset: 1     #[ 关闭630提示, 开启630提示 ]
   switches/@6/reset: 0     #[ 关闭候选提示，开启候选提示]
 
   #以词定字开关，注释这行代码表示打开
   # engine/processors/@5: null
-
 
   #流式功能配置，想使用流式请取消以下注释，取消注释删掉 # 即可
   
