@@ -153,7 +153,9 @@ function embeded_cands_filter.func(input, env)
         -- 頁索引自增, 滿足 1 <= index <= page_size
         index = index + 1
         -- 當前遍歷候選項
-        local cand = next
+        local cand = Candidate(next.type, next.start, next._end, next.text, next.comment) -- next
+        cand.quality = next.quality
+        cand.preedit = next.preedit
 
         if index == 1 then
             -- 把首選捉出來
