@@ -4,7 +4,9 @@
 schema:
   schema_id: txjx.cx
   name: 天行键反查
-  version: "1"
+  author:
+    - ProudCat
+  version: "1.0"
 
 switches:
   - name: ascii_mode
