@@ -19872,6 +19872,7 @@ sort: original
 底料	dklc
 低劣	dkld
 滴漏	dklda
+低楼	dkldi
 底楼	dkldo
 敌楼	dkldu
 地漏	dkldv
@@ -29260,7 +29261,9 @@ sort: original
 生活费	ehf
 水浒传	ehfa
 社会制度	ehfd
-生活方式	ehfe
+晒着	ehfe
+生活方式	ehfea
+疏忽职守	ehfeau
 晒饭	ehff
 社会分工	ehfg
 社会福利	ehfl
@@ -36078,9 +36081,9 @@ sort: original
 沙娃	eswsaa
 莎娃	eswsi
 傻娃	eswsia
-砂川	eswt
+杀穿	eswt
+砂川	eswtv
 沙船	eswta
-杀穿	eswtu
 啥味	esww
 煞尾	eswwu
 杀威	eswwuv
@@ -45470,6 +45473,8 @@ sort: original
 抓碎	fqsb
 发展速度	fqsd
 赵钱孙李	fqsl
+抓死	fqsk
+置之死地而后快	ffski
 抓头	fqtd
 抓图	fqtj
 抓他	fqts
@@ -46189,7 +46194,8 @@ sort: original
 丰韵	frywv
 蜂拥	fryy
 蜂蛹	fryyi
-蜂腰	fryz
+疯咬	fryz
+蜂腰	fryzi
 风谣	fryzu
 封嘴	frzb
 风嘴	frzbu
@@ -51590,6 +51596,7 @@ sort: original
 工时费	gef
 各州	gefd
 隔着	gefe
+搁这	gefei
 歌者	gefev
 个饭	geff
 戈饭	geffv
@@ -60841,6 +60848,7 @@ sort: original
 吼滴	hddko
 厚底	hddkv
 后点	hddm
+厚点	hddmv
 后殿	hddmu
 后灯	hddr
 厚达	hdds
@@ -62489,6 +62497,7 @@ sort: original
 含换	hfht
 黄飞鸿	hfhv
 含混	hfhw
+旱的旱死，涝的涝死	hfhs
 韩红	hfhy
 呼风唤雨	hfhyo
 韩浩	hfhz
@@ -93084,8 +93093,8 @@ sort: original
 辽中	lcfy
 料中	lcfyo
 冷藏柜	lcg
-鹩哥	lcge
-聊个	lcgev
+聊个	lcge
+鹩哥	lcgev
 聊过	lcgl
 辽国	lcgla
 料管	lcgt
@@ -98211,11 +98220,11 @@ sort: original
 莲都	lmddi
 连豆	lmddv
 连跌	lmddvo
-连的	lmde
-练得	lmdea
-练的	lmdeau
+连的	lmdev
+练得	lmde
+练的	lmdea
 脸的	lmdeu
-连得	lmdev
+连得	lmdevu
 脸蛋	lmdf
 练胆	lmdfa
 炼丹	lmdfo
@@ -102953,6 +102962,7 @@ sort: original
 老来	lzlhu
 老路	lzlj
 劳碌	lzlji
+老撸	lzlju
 老卢	lzljui
 老鹿	lzljuo
 劳力	lzlk
@@ -102968,7 +102978,6 @@ sort: original
 老脸	lzlmu
 老狼	lzlp
 老六	lzlq
-老撸	lzlqu
 老刘	lzlqu
 老柳	lzlquv
 老辣	lzls
@@ -108520,6 +108529,7 @@ sort: original
 马报	msbzai
 麻包	msbzo
 码报	msbzv
+骂惨	mscf
 马刺	msck
 马村	mscw
 马槽	mscz
@@ -112428,9 +112438,9 @@ sort: original
 你带	nkdh
 匿带	nkdhv
 你读	nkdj
-泥地	nkdk
-你弟	nkdki
-你滴	nkdkia
+泥地	nkdka
+你弟	nkdk
+你滴	nkdki
 你多	nkdl
 你点	nkdm
 泥点	nkdma
@@ -114862,6 +114872,7 @@ sort: original
 那要	nsyz
 那药	nsyza
 拿药	nsyzi
+哪要	nsyzo
 您所在	nsz
 那最	nszb
 拿走	nszd
@@ -120201,6 +120212,7 @@ sort: original
 跑啥	pzes
 炮闩	pzet
 跑着	pzfe
+跑这	pzfeo
 泡着	pzfea
 泡饭	pzff
 跑反	pzffo
@@ -128126,7 +128138,8 @@ sort: original
 振邦	qnbpi
 真把	qnbs
 镇巴	qnbsi
-真北	qnbw
+真被	qnbw
+真北	qnbwu
 珍贝	qnbwv
 珍宝	qnbz
 侦测	qnce
@@ -144736,9 +144749,9 @@ sort: original
 太息	thxkv
 泰西	thxkvv
 太虚	thxl
-太咸	thxm
+太闲	thxm
+太咸	thxmv
 苔藓	thxmi
-太闲	thxmv
 泰县	thxmvi
 太显	thxmvo
 太秀	thxq
@@ -151405,8 +151418,8 @@ sort: original
 晚了	wfle
 完了	wfleo
 弯了	wfleoa
-玩乐	wflev
-玩了	wfleva
+玩了	wflev
+玩乐	wflevu
 玩烂	wflf
 万灵	wflg
 晚来	wflh
@@ -160632,6 +160645,7 @@ sort: original
 超创	wzwx
 超虫	wzwy
 吵吵	wzwz
+潮潮	wzwza
 抄抄	wzwzi
 朝朝	wzwzu
 创造性	wzx
@@ -169804,9 +169818,9 @@ sort: original
 先着	xmfzu
 先兆	xmfzuo
 小蘑菇	xmg
-显贵	xmgb
-嫌贵	xmgba
-线规	xmgbav
+显贵	xmgbo
+嫌贵	xmgb
+线规	xmgba
 限购	xmgd
 献歌	xmge
 弦歌	xmgea
@@ -177353,8 +177367,11 @@ sort: original
 油茶	ydws
 有哇	ydwsv
 有娃	ydwsva
-游船	ydwt
-又传	ydwta
+又传	ydwt
+有传	ydwtvi
+有穿	ydwtv
+有船	ydwtvu
+游船	ydwta
 油船	ydwtau
 邮船	ydwti
 有点问题	ydwtv
@@ -191547,7 +191564,8 @@ sort: original
 组歌	zjgeav
 足盖	zjgh
 足骨	zjgj
-祖国	zjgl
+租过	zjgl
+祖国	zjglo
 足跟	zjgn
 祖庚	zjgr
 阻梗	zjgra
