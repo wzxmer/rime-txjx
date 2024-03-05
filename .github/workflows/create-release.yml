@@ -1,0 +1,45 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+    - name: Set up environment variables
+      run: |
+        echo "CURRENT_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
+        echo "RELEASE_TITLE=$(date +'%Y.%m.%d') 词库更新" >> $GITHUB_ENV
+
+    - name: Checkout main branch
+      uses: actions/checkout@v4
+      with:
+        ref: 'main'
+
+    - name: Zip main branch files excluding .git and .github
+      run: zip -r txjx.zip . -x "*.git*" -x "*.github*"
+        
+    - name: Create Release
+      id: create_release
+      uses: shogo82148/actions-create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.CURRENT_DATE }}
+        release_name: ${{ env.RELEASE_TITLE }}
+        body: |
+          Release
+        draft: false
+        prerelease: false
+        
+    - name: Upload txjx.zip to Release
+      uses: shogo82148/actions-upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./txjx.zip
+        asset_name: txjx.zip
+        asset_content_type: application/zip
