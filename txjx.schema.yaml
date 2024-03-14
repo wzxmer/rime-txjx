@@ -3,6 +3,7 @@
 schema:
   schema_id: txjx
   name: 天行键
+  icon: "tian.ico"
   version: "1.0"
   author:
     - 大牛（吅吅大山）
@@ -224,8 +225,8 @@ recognizer:
     url: "^(www[.]|https?:|ftp[.:]|mailto:|file:).*$|^[a-z]+[.].+$"
 
     reverse_lookup: "[a-z`]*`+[a-z`]*"
-    #punct: "^/([0-9]0?|[a-z]+)$"
-    punct: "^;([a-z]+)$"
+    punct: "^/([0-9]0?|[a-z]+)$"
+    punct2: "^;([a-z]+)$"
     quanpinerfen: "^v[a-z']*'?$"
     txjxgbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
