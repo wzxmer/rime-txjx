@@ -217,6 +217,7 @@ key_binder:
     - { when: always, accept: F7, toggle: jffh }
     - { when: always, accept: "Control+Shift+e", toggle: emoji_cn }
     - { when: always, accept: "Control+Shift+asciitilde", toggle: full_shape }
+    - { when: has_menu, accept: Tab, send: 2 } # tab 次选
       
 recognizer:
   patterns:
