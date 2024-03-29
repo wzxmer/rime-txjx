@@ -180,7 +180,7 @@ txjxgbk:
   # comment_format:
   #   - xform/.*//
   prefix: "o"
-  tips: "〔GBK字集〕"
+  # tips: "〔GBK字集〕"
 
 reverse_lookup:
   dictionary: txjx.cx
