@@ -33,6 +33,7 @@ import_tables:
 # 扩展：词组
   - txjx.core
   - txjx.danzi
+  - txjx.cx
   - txjx
 # ---------------------------------------
 

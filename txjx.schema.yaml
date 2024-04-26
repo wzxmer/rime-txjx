@@ -75,7 +75,7 @@ engine:
   segmentors:
     - ascii_segmentor
     - matcher
-    - affix_segmentor@quanpinerfen
+    - affix_segmentor@jderfen
     - affix_segmentor@txjxgbk
     - abc_segmentor
     - punct_segmentor
@@ -88,11 +88,11 @@ engine:
     - table_translator
     - reverse_lookup_translator
     - history_translator@repeat_history
-    - script_translator@quanpinerfen
+    - script_translator@jderfen
     - script_translator@txjxgbk
   filters:
     - simplifier
-    - reverse_lookup_filter@quanpinerfen_lookup
+    - reverse_lookup_filter@jderfen_lookup
     - reverse_lookup_filter@gbk_lookup
     - lua_filter@*txjx_single_char #候选辅助码单字优先
     - simplifier@emoji_cn
@@ -151,13 +151,15 @@ ascii_punct:
   option_name: ascii_punct
   
 #↓二分反查方案
-quanpinerfen_lookup:
-  tags: [quanpinerfen]
+jderfen_lookup:
+  tags: [jderfen]
   dictionary: txjx.cx #反查其码
   overwrite_comment: true
+  comment_format:
+    - xform/ /，/
 
-quanpinerfen:
-  tag: quanpinerfen
+jderfen:
+  tag: jderfen
   dictionary: liangfen
   enable_sentence: true
   enable_completion: true
@@ -170,6 +172,8 @@ gbk_lookup:
   tags: [txjxgbk]
   dictionary: txjx.cx #反查其码
   overwrite_comment: true
+  comment_format:
+    - xform/ /，/
 
 txjxgbk:
   tag: txjxgbk
@@ -187,8 +191,9 @@ reverse_lookup:
   enable_completion: true # 逐鍵顯示
   comment_format:
     - xform/ /, /
-    - xform/^/〔/
-    - xform/$/〕/
+    # - xform/^/〔/
+    # - xform/$/〕/
+
 
 # 内嵌配置
 # 默認顯示效果爲:
@@ -228,7 +233,7 @@ recognizer:
     reverse_lookup: "[a-z`]*`+[a-z`]*"
     punct: "^/([0-9]0?|[a-z]+)$"
     punct2: "^;([a-z]+)$"
-    quanpinerfen: "^v[a-z']*'?$"
+    jderfen: "^v[a-z']*'?$"
     txjxgbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
     zhuan: "^-.*$"
