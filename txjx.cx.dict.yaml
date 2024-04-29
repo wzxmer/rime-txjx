@@ -1,5 +1,6 @@
 # Rime dictionary
 # encoding: utf-8
+# 单字读音来源：https://yuhao.forfudan.com/ 宇浩输入法
 ---
 name: txjx.cx
 version: "1.0"
@@ -41886,28 +41887,6 @@ import_tables:
 
 
 #region <GBK部分>
-
-#region 部首补充
-冖	a
-讠	a
-礻	aio
-衤	aiuo
-辶	ao
-冘	aua
-日	i
-宀	oa
-忄	oi
-灬	ooo
-氵	ov
-丷	u
-肙	uu
-屰	uvaiu
-亠	v
-冫	v
-丬	vi
-啇	vouia
-疒	vuov
-#endregion 
 
 〇	olga
 的	odeuiavvu
