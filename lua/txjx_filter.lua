@@ -56,7 +56,7 @@ local function filter(input, env)
         first = false
         if not is_danzi or danzi(cand) then
             if is_on then
-            hint(cand, env)
+                hint(cand, env)
             end
             yield(cand)
         end
@@ -70,7 +70,7 @@ local function init(env)
 
     env.b = config:get_string("topup/topup_with")
     env.s = config:get_string("topup/topup_this")
-    env.reverse = ReverseDb("build/".. dict_name .. ".reverse.bin")
+    env.reverse = ReverseLookup(dict_name)
 end
 
 return { init = init, func = filter }
