@@ -94,13 +94,13 @@ engine:
     - simplifier
     - reverse_lookup_filter@jderfen_lookup
     - reverse_lookup_filter@gbk_lookup
+    - lua_filter@*txjx_embeded_cands@embeded_cands  #内嵌
+    - lua_filter@*txjx_completion   #辅助码提示
     - lua_filter@*txjx_single_char #候选辅助码单字优先
     - simplifier@emoji_cn
     - simplifier@jffh
     - simplifier@ascii_punct
     - lua_filter@*txjx_filter
-    - lua_filter@*txjx_completion   #辅助码提示
-    - lua_filter@*txjx_embeded_cands@embeded_cands  #内嵌
     - uniquifier
 
 #导入符号
