@@ -1,3 +1,5 @@
+# Rime dictionary
+# encoding: utf-8
 ---
 name: txjx.danzi
 version: "1.0"
@@ -10901,7 +10903,7 @@ sort: original
 螀	jxovi
 螀	jxovia
 将	jxovua
-桨	jxovv
+酱	jxovv
 酱	jxovvi
 醤	jxovvi
 奨	jxovvu
@@ -17287,7 +17289,7 @@ sort: original
 匤	qlvvv
 匤	qlvvvi
 前	qm
-潜	qma
+浅	qma
 纤	qmaa
 缱	qmaai
 缱	qmaaia
@@ -17301,7 +17303,7 @@ sort: original
 媊	qmauo
 媊	qmauou
 奷	qmauuv
-浅	qmav
+潜	qmav
 灊	qmava
 潛	qmavau
 灊	qmavau
