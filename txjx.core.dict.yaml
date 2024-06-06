@@ -14,6 +14,7 @@ sort: original
 又是	aoi
 那有	avu
 又下	avi
+又用	au
 #为了使用时提高输入体验，增加630衔接
 #yo 因为 ao 那是，yoao 因为那是
 因为那是	yoao
@@ -111,7 +112,7 @@ sort: original
 不少	biu
 不会	biv
 不是	bo
-不必	boa
+不试	boa
 不足	boi
 不懂	boo
 不断	bou
@@ -146,7 +147,7 @@ sort: original
 从容	coo
 此前	cou
 次次	cov
-采用	cu
+才用	cu
 此外	cua
 摧毁	cui
 参考	cuo
@@ -154,7 +155,7 @@ sort: original
 侧重	cuv
 存在	cv
 才到	cva
-从事	cvi
+才要	cvi
 从来	cvo
 才有	cvu
 从未	cvv
@@ -424,7 +425,7 @@ sort: original
 没得	muu
 每年	muv
 没有	mv
-密切	mva
+没到	mva
 没事	mvi
 描述	mvo
 明确	mvu
@@ -518,7 +519,7 @@ sort: original
 主要	qvi
 起来	qvo
 前面	qvu
-正事	qvv
+整天	qvv
 人民	ra
 热线	raa
 日子	rai
@@ -709,7 +710,7 @@ sort: original
 再见	zia
 作业	zii
 咱们	zio
-在搞	ziu
+再像	ziu
 早上	ziv
 总是	zo
 再说	zoa
