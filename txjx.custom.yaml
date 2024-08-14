@@ -17,6 +17,9 @@ patch:
   # engine/processors/@5: null
 
   #流式功能配置，想使用流式请取消以下注释，取消注释删掉 # 即可
+  # 开启流式需要将文件：txjx.schema.yaml 中 filters 下的这行注释
+  # - lua_filter@*txjx_single_char #候选辅助码单字优先
+  # 否则上面这行会导致流式的连句出现在候选末尾影响使用
   
   # engine/processors/@3: null
   # engine/processors/@4: null
