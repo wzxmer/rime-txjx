@@ -232,7 +232,7 @@ recognizer:
 
     reverse_lookup: "[a-z`]*`+[a-z`]*"
     punct: "^/([0-9]0?|[a-z]+)$"
-    punct2: "^;([a-z]+)$"
+    #punct2: "^;([a-z]+)$"
     jderfen: "^v[a-z']*'?$"
     txjxgbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
