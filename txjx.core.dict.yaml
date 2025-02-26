@@ -21,7 +21,6 @@ sort: original
 
 #二简+声声笔
 表示	be
-不实	beo
 并且	bq
 不同	bt
 不行	bx
@@ -32,19 +31,12 @@ sort: original
 操心	cx
 电脑	dn
 都行	dx
-大笑	dxu
 上次	ec
-伤心	exo
-说明	emo
-生命	emi
-说过	egv
 使用	ey
 中国	fg
 符合	fh
-智慧	fhv
 刚才	gc
 赶快	gk
-更像	gxi
 花草	hc
 很快	hk
 快餐	kc
@@ -84,11 +76,6 @@ sort: original
 要求	yq
 有人	yr
 有些	yx
-因而	yxv
-那他	nti
-那她	nta
-那它	nto
-想法	xfa
 字词	zc
 做饭	zf
 字根	zg
@@ -96,6 +83,20 @@ sort: original
 组长	zq
 昨天	zt
 仔细	zx
+#声声笔
+不实	beo
+大笑	dxu
+伤心	exo
+说明	emo
+生命	emi
+说过	egv
+智慧	fhv
+更像	gxi
+因而	yxv
+那他	nti
+那她	nta
+那它	nto
+想法	xfa
 #endregion <二简+新630 声声笔>
 
 #region <630 声笔笔>
