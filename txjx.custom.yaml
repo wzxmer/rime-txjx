@@ -13,14 +13,6 @@ patch:
   switches/@5/reset: 1     #[ 关闭630提示, 开启630提示 ]
   switches/@6/reset: 0     #[ 关闭候选提示，开启候选提示]
   
-  #电脑配置请注释下行代码，手机请取消注释
-  #punctuator/digit_separators: ""      #保证.符号能即时上屏
-  #手机配置请注释下面两行代码，电脑请取消注释
-  punctuator/half_shape:
-    "." : { commit: 。 }
-    
-
-
   #以词定字开关，注释这行代码表示打开
   # engine/processors/@5: null
 

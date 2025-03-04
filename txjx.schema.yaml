@@ -104,6 +104,7 @@ engine:
 
 #导入符号
 punctuator:
+  digit_separator_action: commit
   import_preset: txjx.symbols
   
 speller:
