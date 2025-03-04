@@ -83,7 +83,6 @@ engine:
   translators:
     - lua_translator@*txjx_jisuanqi
     - lua_translator@*txjx_time
-    - lua_translator@*txjx_zimu
     - punct_translator
     - table_translator
     - reverse_lookup_translator

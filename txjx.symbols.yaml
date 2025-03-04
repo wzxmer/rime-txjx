@@ -40,7 +40,6 @@ punctuator:
     '}' : [ 』, 〗, ｝ ]
   half_shape:
     ',' : { commit: ， }
-    '.' : { commit: 。 }
     '<' : [ 《, 〈, «, ‹ ]
     '>' : [ 》, 〉, », › ]
     '?' : { commit: ？ }
