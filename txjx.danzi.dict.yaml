@@ -675,7 +675,7 @@ sort: original
 𫖒	bkvvv
 𫖒	bkvvva
 碧	bkvvvu
-拨	bl
+播	bl
 波	bla
 驳	blaa
 剝	blaai
@@ -705,7 +705,7 @@ sort: original
 艴	blavua
 檗	blavv
 檗	blavvv
-播	bli
+拨	bli
 嶓	blia
 嶓	bliauo
 髆	bliav
@@ -1027,7 +1027,7 @@ sort: original
 艕	bpuuov
 稖	bpuv
 稖	bpuvov
-邦	bpv
+棒	bpv
 榜	bpvo
 幇	bpvoi
 幇	bpvoia
@@ -1042,7 +1042,7 @@ sort: original
 埲	bpvovv
 磅	bpvu
 磅	bpvuov
-棒	bpvv
+邦	bpvv
 邦	bpvvai
 帮	bpvvia
 幚	bpvvu
@@ -2717,6 +2717,8 @@ sort: original
 瀻	dhauov
 逮	dhavoa
 袋	dhi
+獃	dhia	#繁体 ⿰岂犬
+獃	dhiavu	#繁体 ⿰岂犬
 𢯊	dhiu
 𢯊	dhiuui
 贷	dhiv
@@ -7195,6 +7197,8 @@ sort: original
 姽	gbauu
 姽	gbauua
 溎	gbav
+䢜	gbavo
+䢜	gbavoa
 溎	gbavvo
 归	gbi
 贵	gbia
@@ -7219,6 +7223,7 @@ sort: original
 刽	gbiv
 郐	gbiva
 郐	gbivai
+㱕	gbivav
 刽	gbivii
 跪	gbo
 诡	gboa
@@ -7240,6 +7245,7 @@ sort: original
 恑	gbooua
 炔	gbou
 𠱓	gboua
+㷌	gbouav
 炔	gbouav
 𠱓	gbouav
 庋	gbov
@@ -9627,6 +9633,7 @@ sort: original
 朚	hmovoi
 巟	hmovu
 韹	hmovui
+衁	hmovui
 巟	hmovui
 肓	hmovuu
 癀	hmovv
@@ -10155,6 +10162,7 @@ sort: original
 朚	hxovoi
 巟	hxovu
 韹	hxovui
+衁	hxovui
 巟	hxovui
 肓	hxovuu
 癀	hxovv
@@ -13220,6 +13228,7 @@ sort: original
 芚	jwiiv
 萅	jwiiva
 芚	jwiiva
+萶	jwiivv
 钧	jwio
 隽	jwioa
 隽	jwioau
@@ -20906,6 +20915,7 @@ sort: original
 岓	qkiauu
 崎	qkiav
 蜞	qkiavi
+㠌	qkiavi
 帺	qkiavi
 畦	qkiavo
 蛣	qkiavo
@@ -24582,6 +24592,9 @@ sort: original
 胋	tmuiv
 胋	tmuivo
 舔	tmuv
+舑	tmuvi
+䑙	tmuvia
+舑	tmuvia
 甜	tmuvvi
 舔	tmuvvv
 填	tmv
@@ -32564,6 +32577,7 @@ sort: original
 镃	zkioou
 龇	zkiv
 赀	zkiva
+𬗋	zkivaa
 紫	zkivaa
 𡥎	zkivai
 赀	zkivao
