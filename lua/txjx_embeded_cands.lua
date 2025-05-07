@@ -1,4 +1,6 @@
--- txjx_embeded_cands.lua
+-- 内嵌候选通用脚本（2合1优化版）@浮生：https://github.com/wzxmer/rime-txjx/edit/main/lua/txjx_embeded_cands.lua
+-- 原作者 @饼干：https://github.com/lost-melody
+
 local embeded_cands_filter = {}
 
 -- 核心模块
