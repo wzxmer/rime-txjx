@@ -1,3 +1,4 @@
+--原作者：佚名  修复：浮生 https://github.com/wzxmer/rime-txjx/blob/main/lua/txjx_time.lua
 --*******农历节气计算部分
 --========角度变换===============
 local rad = 180 * 3600 / math.pi -- 每弧度的角秒数
