@@ -1,5 +1,8 @@
-# Rime schema settings
+# Rime 天行键输入方案配置
 # encoding: utf-8
+# 版本: 1.0
+# 作者: 大牛（吅吅大山）, 浮生 <wzxmer@outlook.com>
+
 schema:
   schema_id: txjx
   name: 天行键
@@ -8,16 +11,91 @@ schema:
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
-  dependencies:
-    - txjx.cx
-    - liangfen
-    - txjx.gbk
+  dependencies: [txjx.cx, liangfen, txjx.gbk]
 
-# Layout config
+# ==================== 输入法核心配置 ====================
+engine:
+  processors:
+    - ascii_composer       # 英文模式处理
+    - recognizer           # 特殊模式识别
+    - key_binder           # 快捷键绑定
+    - lua_processor@*txjx_smartTwo     # 次选功能
+    - lua_processor@*txjx_forTopUp     # 顶功输入
+    - lua_processor@*txjx_select_character  # 以词定字
+    - speller              # 拼写处理
+    - punctuator           # 标点处理
+    - selector             # 候选选择
+    - navigator            # 导航键
+    - express_editor       # 快速编辑
+
+  segmentors:
+    - ascii_segmentor      # 英文分段
+    - matcher              # 模式匹配
+    - affix_segmentor@jderfen    # 二分前缀
+    - affix_segmentor@txjxgbk    # GBK前缀
+    - abc_segmentor        # 字母分段
+    - punct_segmentor      # 标点分段
+    - fallback_segmentor   # 回退分段
+
+  translators:
+    - lua_translator@*txjx_jisuanqi    # 计算器
+    - lua_translator@*txjx_time        # 时间转换
+    - punct_translator     # 标点翻译
+    - table_translator     # 主词典
+    - reverse_lookup_translator  # 反查
+    - history_translator@repeat_history  # 历史记录
+    - script_translator@jderfen  # 二分翻译
+    - script_translator@txjxgbk  # GBK翻译
+
+  filters:
+    - simplifier           # 简繁转换
+    - reverse_lookup_filter@jderfen_lookup  # 二分反查
+    - reverse_lookup_filter@gbk_lookup      # GBK反查
+    - lua_filter@*txjx_embeded_cands@embeded_cands  # 内嵌候选
+    - lua_filter@*txjx_completion   # 辅助码提示
+    - lua_filter@*txjx_single_char  # 单字优先
+    - simplifier@emoji_cn  # 表情符号
+    - simplifier@jffh      # 简繁转换
+    - simplifier@ascii_punct  # 英文标点
+    - lua_filter@*txjx_filter  # 自定义过滤
+    - uniquifier          # 去重
+
+# ==================== 输入法功能开关 ====================
+switches:
+  - name: ascii_mode      # 中英文切换
+    states: [ 中文, 西文 ]
+    bind: { accept: "Control+Shift+2", toggle: true }
+    
+  - name: full_shape      # 全角半角
+    states: [ 半角, 全角 ]
+    bind: { accept: "Control+Shift+asciitilde", toggle: true }
+    
+  - name: jffh            # 简繁切换
+    states: [ 简体, 繁體 ]
+    bind: { accept: F7, toggle: true }
+    
+  - name: emoji_cn        # 表情开关
+    states: [ 关闭表情, 开启表情 ]
+    bind: { accept: "Control+Shift+e", toggle: true }
+    
+  - name: embeded_cands   # 内嵌候选
+    states: [普通, 嵌入候选]
+    
+  - name: sbb_hint        # 630提示
+    states: [ 关闭630提示, 开启630提示 ]
+    
+  - name: completion      # 补全提示
+    states: [提示关,提示开]
+    
+  # - name: ascii_punct     # 英文标点
+  #   bind: { accept: "Control+period", toggle: true }
+
+# ==================== 键盘布局配置 ====================
 layout:
   topup:
     topup_this: "bcdefghjklmnpqrstwxyz"
     topup_with: "avuio;"
+  
   algebra:
     - derive/^[bcdefghjklmnpqrstwxyz;]([bcdefghjklmnpqrstwxyz;][avuio].*)$/`$1/
     - derive/^([bcdefghjklmnpqrstwxyz;])[bcdefghjklmnpqrstwxyz;]([avuio].*)$/$1`$2/
@@ -32,121 +110,60 @@ layout:
   patterns:
     special: "^(?:;?[avuio])[a-z]{0,}"
 
-switches:
-  - name: ascii_mode
-    states: [ 中文, 西文 ]
-  - name: full_shape
-    states: [ 半角, 全角 ]
-  - name: jffh
-    states: [ 简体, 繁體 ]
-  - name: emoji_cn   #Emoji开关
-    states: [ 关闭表情, 开启表情 ]
-  - name: embeded_cands
-    states: [普通, 嵌入候选]
-  - name: sbb_hint
-    states: [ 关闭630提示, 开启630提示 ]
-  - name: completion
-    states: [提示关,提示开]
-    
-  # - name: full_shape
-  #   states: [ 半角, 全角 ]
-  #提示词开关在下方，请根据注释查找
-
-engine:
-  processors:
-    - ascii_composer
-    - recognizer
-    - key_binder    
-    - lua_processor@*txjx_smartTwo    #次选
-    - lua_processor@*txjx_forTopUp   #这个注释后不会顶功，使用流式请注释这两行
-    - lua_processor@*txjx_select_character  #以词定字
-    - speller
-    - punctuator
-    - selector
-    - navigator
-    - express_editor
-  segmentors:
-    - ascii_segmentor
-    - matcher
-    - affix_segmentor@jderfen
-    - affix_segmentor@txjxgbk
-    - abc_segmentor
-    - punct_segmentor
-    - fallback_segmentor
-  translators:
-    - lua_translator@*txjx_jisuanqi
-    - lua_translator@*txjx_time
-    - punct_translator
-    - table_translator
-    - reverse_lookup_translator
-    - history_translator@repeat_history
-    - script_translator@jderfen
-    - script_translator@txjxgbk
-  filters:
-    - simplifier
-    - reverse_lookup_filter@jderfen_lookup
-    - reverse_lookup_filter@gbk_lookup
-    - lua_filter@*txjx_embeded_cands@embeded_cands  #内嵌
-    - lua_filter@*txjx_completion   #辅助码提示
-    - lua_filter@*txjx_single_char #候选辅助码单字优先
-    - simplifier@emoji_cn
-    - simplifier@jffh
-    - simplifier@ascii_punct
-    - lua_filter@*txjx_filter
-    - uniquifier
-
-#导入符号
+# ==================== 标点符号配置 ====================
 punctuator:
   digit_separator_action: commit
   import_preset: txjx.symbols
-  
+
+# ==================== 拼写处理 ====================
 speller:
-  # algebra: 
-  #   __include: "layout/algebra"
   auto_select: false
   alphabet: "zyxwvutsrqponmlkjihgfedcba;‘"
   initials: "abcdefghijklmnopqrstuvwxyz;‘"
   delimiter: " '"
   algebra: 
-    - derive/[0-9]$//  #无数字
-    - derive|^;|/|
+    - derive/[0-9]$//      # 过滤数字
+    - derive|^;|/|         # 处理分号开头
 
+# ==================== 词典配置 ====================
 translator:
   dictionary: txjx.extended
   enable_charset_filter: false
-  enable_completion: true   #提示码开关，不需要候选词提示请改false
-  enable_encoder: true
-  enable_sentence: false    #要想使用流式请改为true
-  enable_user_dict: false   #要想使用流式请改为true
+  enable_completion: true    # 启用提示
+  enable_sentence: false     # 禁用整句
+  enable_user_dict: false    # 禁用用户词典
   encode_commit_history: true
   max_phrase_length: 6
   initial_quality: 0
   comment_format:
-#    - xform|~||
-    - xform/[0-9]//  #无数字
+    - xform/[0-9]//         # 过滤数字注释
 
+# ==================== 特殊功能配置 ====================
+## 重复历史记录
 repeat_history:
-  input: ;f #重复上次上屏内容
-  size: 1
+  input: ;f       # 触发键
+  size: 1         # 记忆数量
   initial_quality: 10000
 
+## 表情符号
 emoji_cn:
   opencc_config: txjx.emoji.json
   option_name: emoji_cn
-  #不显示表情备注
-  #tips: all  
 
+## 简繁转换
 jffh:
   opencc_config: s2g.json
   option_name: jffh
 
+## 英文标点
 ascii_punct:
   option_name: ascii_punct
-  
-#↓二分反查方案
+
+# ==================== 反查配置 ====================
+## 二分反查
 jderfen_lookup:
   tags: [jderfen]
-  dictionary: txjx.cx #反查其码
+  dictionary: txjx.cx
   overwrite_comment: true
   comment_format:
     - xform/ /，/
@@ -155,15 +172,14 @@ jderfen:
   tag: jderfen
   dictionary: liangfen
   enable_sentence: true
-  enable_completion: true
   enable_user_dict: false
   prefix: "v"
   tips: "〔二分〕"
 
-#↓gbk反查方案
+## GBK反查
 gbk_lookup:
   tags: [txjxgbk]
-  dictionary: txjx.cx #反查其码
+  dictionary: txjx.cx
   overwrite_comment: true
   comment_format:
     - xform/ /，/
@@ -172,69 +188,51 @@ txjxgbk:
   tag: txjxgbk
   dictionary: txjx.gbk
   enable_sentence: true
-  enable_completion: true
   enable_user_dict: false
-  # comment_format:
-  #   - xform/.*//
   prefix: "o"
-  # tips: "〔GBK字集〕"
 
+## 通用反查
 reverse_lookup:
   dictionary: txjx.cx
-  enable_completion: true # 逐鍵顯示
+  enable_completion: true
   comment_format:
     - xform/ /，/
-    # - xform/^/〔/
-    # - xform/$/〕/
 
-
-# 内嵌配置
-# 默認顯示效果爲:
-# 宇[浩¹]iwl ~淍² ~泃³
+# ==================== 内嵌候选配置 ====================
 embeded_cands:
-  option_name: embeded_cands                               # 嵌入候選開關
-  index_indicators: [ ¹, ², ³, ⁴, ⁵, ⁶, ⁷, ⁸, ⁹, ⁰ ]       # 嵌入候選的序號顯示格式
-  first_format: "${Stash}[${Seq}${候選}]${Code}${Comment}"  # 首選的渲染格式
-  next_format: "${Stash}${Seq}${候選}${Comment}"           # 非首選的渲染格式
-  separator: " "                                           # 候選之間的分隔符
-  stash_placeholder: "~"  
+  option_name: embeded_cands
+  index_indicators: [ ¹, ², ³, ⁴, ⁵, ⁶, ⁷, ⁸, ⁹, ⁰ ]
+  first_format: "${Stash}[${Seq}${候選}]${Code}${Comment}"
+  next_format: "${Stash}${Seq}${候選}${Comment}"
+  separator: " "
+  stash_placeholder: "~"
 
-
+# ==================== 快捷键配置 ====================
 key_binder:
-#  import_preset: default
-
-  #以词定字
-  select_first_character: "bracketleft"  # 左中括号 [
-  select_last_character: "bracketright"  # 右中括号 ]
+  # 以词定字
+  select_first_character: "bracketleft"   # [ 选择首字
+  select_last_character: "bracketright"   # ] 选择尾字
 
   bindings:
-    - { when: always, accept: "Control+period", toggle: ascii_punct }
-    - { when: always, accept: "Control+Shift+2", toggle: ascii_mode }
-    - { accept: minus, send: Page_Up, when: has_menu}
-    - { accept: equal, send: Page_Down, when: has_menu}
-    - { when: always, accept: F7, toggle: jffh }
-    - { when: always, accept: "Control+Shift+e", toggle: emoji_cn }
-    - { when: always, accept: "Control+Shift+asciitilde", toggle: full_shape }
-    - { when: has_menu, accept: Tab, send: 2 } # tab 次选
-      
+    - { when: has_menu, accept: minus, send: Page_Up }      # - 上翻页
+    - { when: has_menu, accept: equal, send: Page_Down }   # = 下翻页
+    - { when: has_menu, accept: Tab, send: 2 }             # Tab 选择次选
+
+# ==================== 模式识别 ====================
 recognizer:
   patterns:
     email: "^[A-Za-z][-_.0-9A-Za-z]*@.*$"
     uppercase: "[A-Z][-_+.'0-9A-Za-z]*$"
     url: "^(www[.]|https?:|ftp[.:]|mailto:|file:).*$|^[a-z]+[.].+$"
-
     reverse_lookup: "[a-z`]*`+[a-z`]*"
     punct: "^/([0-9]0?|[a-z]+)$"
-    #punct2: "^;([a-z]+)$"
     jderfen: "^v[a-z']*'?$"
     txjxgbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
     zhuan: "^-.*$"
-    zhuanxiao: "^\\+.*$" # 不加这句后面不能跟数字
+    zhuanxiao: "^\\+.*$"
 
-menu:
-  alternative_select_keys: 1234567890
-  
+# ==================== 顶功配置 ====================
 topup:
   __include: "layout/topup"
   min_length: 4
@@ -242,3 +240,8 @@ topup:
   auto_clear: true
   min_length_danzi: 2
   topup_command: false
+
+# ==================== 菜单配置 ====================
+menu:
+  alternative_select_keys: 1234567890  # 数字选词
+
