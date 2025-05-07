@@ -1,3 +1,4 @@
+-- 优化版completion 来源：@浮生 https://github.com/wzxmer/rime-txjx
 -- 补全过滤器模块
 -- 用于控制是否显示编码补全候选词
 
