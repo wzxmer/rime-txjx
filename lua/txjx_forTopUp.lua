@@ -1,3 +1,4 @@
+-- 优化版forTopUp  来源：@浮生 https://github.com/wzxmer/rime-txjx
 local function string2set(str)
     local t = {}
     if type(str) ~= "string" then return t end
