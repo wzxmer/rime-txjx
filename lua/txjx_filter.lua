@@ -1,3 +1,4 @@
+-- 优化版filter  来源：@浮生 https://github.com/wzxmer/rime-txjx
 local function escape_pattern(s)
     return s and s:gsub("([%-%]%^])", "%%%1") or ""
 end
