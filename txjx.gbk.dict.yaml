@@ -3,7 +3,7 @@
 # 该文件以UTF-8编码保存
 ---
 name: txjx.gbk
-version: "Q1"
+version: "1.0"
 sort: original
 ...
 # 编码各字段以制表符（Tab）分隔
@@ -73,7 +73,7 @@ sort: original
 以	ykaouo
 发	fsauaoo
 说	eboaouiavua
-说	edoaouiavua
+说	eloaouiavua
 说	yhoaouiavua
 时	ekiavvvio
 生	eruvviv
