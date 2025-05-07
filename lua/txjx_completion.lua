@@ -1,37 +1,37 @@
--- 记录开关状态
+-- 补全过滤器模块
+-- 用于控制是否显示编码补全候选词
+
+-- 初始化开关状态为关闭
 local enabled = false
+
 return {
+    -- 初始化函数
     init = function(env)
-        -- 开关名
-        local option_name = "completion"
-        -- 回调函数
+        -- 定义选项更新回调函数
         local handler = function(ctx, opname)
-            if opname == option_name then
-                -- 查询当前 switch 值
-                enabled = ctx:get_option(opname) and true or false
+            -- 当"completion"选项发生变化时更新状态
+            if opname == "completion" then
+                enabled = ctx:get_option(opname)
             end
         end
-        -- 添加通知回调, 当开关变动时, 调用 handler 函数
+        -- 注册选项更新监听器
         env.engine.context.option_update_notifier:connect(handler)
     end,
+    
+    -- 候选词处理函数
     func = function(input, env)
-        if enabled then
-            -- 启用补全时, 直接送出候选
-            for cand in input:iter() do
-                yield(cand)
+        -- 遍历所有候选词
+        for cand in input:iter() do
+            -- 如果补全功能关闭且候选词类型是补全词
+            if not enabled and cand.type == "completion" then
+                -- 终止处理，丢弃后续所有候选词
+                return
             end
-        else
-            -- 禁用补全时, 若遍历到「补全类」候选, 则终止并丢弃后续的候选
-            for cand in input:iter() do
-                -- 候选类型为 completion, 表明其来源于编码补全
-                if cand.type == "completion" then
-                    return
-                else
-                    yield(cand)
-                end
-            end
+            -- 正常返回候选词
+            yield(cand)
         end
     end,
-    fini = function()
-    end,
+    
+    -- 清理函数（空实现）
+    fini = function() end
 }
