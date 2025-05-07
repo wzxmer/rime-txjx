@@ -1,200 +1,235 @@
--- 将要被返回的過濾器對象
+-- txjx_embeded_cands.lua
 local embeded_cands_filter = {}
-local core = require("txjx_embeded_core")
 
---[[
-# xxx.schema.yaml
-switches:
-  - name: embeded_cands
-    states: [ 普通, 嵌入 ]
-    reset: 1
-engine:
-  filters:
-    - lua_filter@*smyh.embeded_cands
-key_binder:
-  bindings:
-    - { when: always, accept: "Control+Shift+E", toggle: embeded_cands }
---]]
+-- 核心模块
+local core = {
+    -- 由translator記録輸入串
+    input_code = '',
+    -- 由translator計算暫存串
+    stashed_text = '',
+    -- 基礎數據
+    base_mem = nil,
+    full_mem = nil,
+    yuhao_mem = nil,
+    -- 同步控制
+    sync_at = 0,
+    sync_bus = { switches = {} },
+    -- 幫助命令
+    helper_code = "zhelp",
+    -- 開關類型
+    switch_types = { switch = 1, radio = 2 },
+    switch_names = {
+        single_char = "single_char",
+        fullcode_char = "fullcode_char",
+        embeded_cands = "embeded_cands",
+    }
+}
 
+-- 工具函數
+function core.parse_conf_str(env, path, default)
+    local str = env.engine.schema.config:get_string(env.name_space.."/"..path)
+    return str or (default and #default ~= 0 and default)
+end
+
+function core.parse_conf_str_list(env, path, default)
+    local list = {}
+    local conf_list = env.engine.schema.config:get_list(env.name_space.."/"..path)
+    if conf_list then
+        for i = 0, conf_list.size-1 do
+            table.insert(list, conf_list:get_value_at(i).value)
+        end
+    elseif default then
+        list = default
+    end
+    return list
+end
+
+function core.single_smyh_seg(input)
+    return string.match(input, "^[a-y][z;]$")       -- 一簡
+        or string.match(input, "^[a-y][z;][z;]$")   -- 一簡詞
+        or string.match(input, "^[a-y][a-y][z;]$")  -- 二簡詞
+        or string.match(input, "^[a-y][a-y][a-y]$") -- 單字全碼
+end
+
+function core.valid_smyh_input(input)
+    return string.match(input, "^[a-z;]*$") and not string.match(input, "^[z;]")
+end
+
+function core.get_switch_handler(env, option_name)
+    local option = env.option or {}
+    env.option = option
+    return function(ctx, name)
+        if name == option_name then
+            option[name] = ctx:get_option(name) or true
+        end
+    end
+end
+
+function core.get_code_segs(input)
+    local code_segs = {}
+    while #input ~= 0 do
+        if string.match(input:sub(1, 2), "[a-y][z;]") then
+            if string.match(input:sub(1, 3), "[a-y][z;][z;]") then
+                table.insert(code_segs, input:sub(1, 3))
+                input = input:sub(4)
+            else
+                table.insert(code_segs, input:sub(1, 2))
+                input = input:sub(3)
+            end
+        elseif string.match(input:sub(1, 3), "[a-y][a-y][a-z;]") then
+            table.insert(code_segs, input:sub(1, 3))
+            input = input:sub(4)
+        else
+            return code_segs, input
+        end
+    end
+    return code_segs, input
+end
+
+function core.dict_lookup(mem, code, count, comp)
+    count = count or 1
+    comp = comp or false
+    local result = {}
+    if mem then
+        code = code:gsub("z", ";")
+        if mem:dict_lookup(code, comp, count) then
+            for entry in mem:iter_dict() do
+                table.insert(result, entry)
+            end
+        end
+    end
+    return result
+end
+
+function core.query_first_cand_list(mem, code_segs)
+    local cand_list = {}
+    for _, code in ipairs(code_segs) do
+        local entries = core.dict_lookup(mem, code)
+        table.insert(cand_list, entries[1] and entries[1].text or "")
+    end
+    return cand_list
+end
+
+function core.query_cand_list(mem, code_segs, skipfull)
+    local index, cand_list = 1, {}
+    while index <= #code_segs do
+        for viewport = #code_segs, index, -1 do
+            if not skipfull or viewport-index+1 < #code_segs then
+                local code = table.concat(code_segs, "", index, viewport)
+                local entries = core.dict_lookup(mem, code)
+                if entries[1] then
+                    table.insert(cand_list, entries[1].text)
+                    index = viewport + 1
+                    break
+                elseif viewport == index then
+                    table.insert(cand_list, "")
+                    index = viewport + 1
+                    break
+                end
+            end
+        end
+    end
+    return cand_list
+end
+
+-- 候选嵌入功能
 local index_indicators = {"¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁰"}
-
--- 首選/非首選格式定義
--- Stash: 延迟候選; Seq: 候選序號; Code: 編碼; 候選: 候選文本; Comment: 候選提示
 local first_format = "${Stash}[${候選}${Seq}]${Code}${Comment}"
 local next_format = "${Stash}${候選}${Seq}${Comment}"
 local separator = " "
 local stash_placeholder = "~"
 
 function embeded_cands_filter.init(env)
-    -- 讀取配置項
-    env.config = {}
-    env.config.index_indicators = core.parse_conf_str_list(env, "index_indicators", index_indicators)
-    env.config.first_format = core.parse_conf_str(env, "first_format", first_format)
-    env.config.next_format = core.parse_conf_str(env, "next_format", next_format)
-    env.config.separator = core.parse_conf_str(env, "separator", separator)
-    env.config.stash_placeholder = core.parse_conf_str(env, "stash_placeholder", stash_placeholder)
-    env.config.option_name = core.parse_conf_str(env, "option_name")
-
-    -- 是否指定開關
-    if env.config.option_name and #env.config.option_name ~= 0 then
-        -- 構造回調函數
-        local handler = core.get_switch_handler(env, env.config.option_name)
-        -- 初始化爲選項實際值, 如果設置了 reset, 則會再次觸發 handler
-        handler(env.engine.context, env.config.option_name)
-        -- 注册通知回調
-        env.engine.context.option_update_notifier:connect(handler)
-    else
-        -- 未指定開關, 默認啓用
-        env.config.option_name = core.switch_names.embeded_cands
-        env.option = {}
-        env.option[env.config.option_name] = true
-    end
+    env.config = {
+        index_indicators = index_indicators,
+        first_format = first_format,
+        next_format = next_format,
+        separator = separator,
+        stash_placeholder = stash_placeholder,
+        option_name = core.switch_names.embeded_cands
+    }
+    env.option = {}
+    env.option[env.config.option_name] = env.engine.context:get_option(env.config.option_name)
+    env.engine.context.option_update_notifier:connect(function(ctx, name)
+        if name == env.config.option_name then
+            env.option[name] = ctx:get_option(name)
+        end
+    end)
 end
 
--- 處理候選文本和延迟串
 local function render_stashcand(env, seq, stash, text, digested)
-    if string.len(stash) ~= 0 and text ~= stash and string.match(text, "^"..stash) then
+    if #stash ~= 0 and text ~= stash and text:match("^"..stash) then
         if seq == 1 then
-            -- 首選含延迟串, 原樣返回
             digested = true
-            stash, text = stash, string.sub(text, string.len(stash)+1)
+            text = text:sub(#stash+1)
         elseif not digested then
-            -- 首選不含延迟串, 其他候選含延迟串, 標記之
             digested = true
-            stash, text = "["..stash.."]", string.sub(text, string.len(stash)+1)
+            stash, text = "["..stash.."]", text:sub(#stash+1)
         else
-            -- 非首個候選, 延迟串標記爲空
-            local placeholder = string.gsub(env.config.stash_placeholder, "%${Stash}", stash)
-            stash, text = "", placeholder..string.sub(text, string.len(stash)+1)
+            local placeholder = env.config.stash_placeholder:gsub("%${Stash}", stash)
+            stash, text = "", placeholder..text:sub(#stash+1)
         end
     else
-        -- 普通候選, 延迟串標記爲空
         stash, text = "", text
     end
     return stash, text, digested
 end
 
--- 渲染提示, 因爲提示經常有可能爲空, 抽取爲函數更昜操作
-local function render_comment(comment)
-    if string.match(comment, "^~") then
-        -- 丟棄以"~"開頭的提示串, 這通常是補全提示
-        comment = ""
-    else
-        -- 自定義提示串格式
-        -- comment = "<"..comment..">"
-    end
-    return comment
-end
-
-local function escape_percent(text)
-    text = string.gsub(text, "%%", "%%%%")
-    return text
-end
-
--- 渲染單個候選項
 local function render_cand(env, seq, code, stashed, text, comment, digested)
-    local cand = ""
-    -- 選擇渲染格式
-    if seq == 1 then
-        cand = env.config.first_format
-    else
-        cand = env.config.next_format
-    end
-    -- 渲染延迟串與候選文字
+    local cand = seq == 1 and env.config.first_format or env.config.next_format
     stashed, text, digested = render_stashcand(env, seq, stashed, text, digested)
-    if seq ~= 1 and text == "" then
-        return "", digested
+    if seq ~= 1 and text == "" then return "", digested end
+    
+    local replacements = {
+        ["%${Seq}"] = env.config.index_indicators[seq],
+        ["%${Code}"] = code:gsub("%%", "%%%%"),
+        ["%${Stash}"] = stashed:gsub("%%", "%%%%"),
+        ["%${候選}"] = text:gsub("%%", "%%%%"),
+        ["%${Comment}"] = comment:gsub("%%", "%%%%")
+    }
+    
+    for pattern, repl in pairs(replacements) do
+        cand = cand:gsub(pattern, repl)
     end
-    -- 渲染提示串
-    comment = render_comment(comment)
-    cand = string.gsub(cand, "%${Seq}", env.config.index_indicators[seq])
-    cand = string.gsub(cand, "%${Code}", escape_percent(code))
-    cand = string.gsub(cand, "%${Stash}", escape_percent(stashed))
-    cand = string.gsub(cand, "%${候選}", escape_percent(text))
-    cand = string.gsub(cand, "%${Comment}", escape_percent(comment))
     return cand, digested
 end
 
--- 過濾器
 function embeded_cands_filter.func(input, env)
-    if not env.option[env.config.option_name] and core.input_code ~= "help " then
-        for cand in input:iter() do
-            yield(cand)
-        end
+    if not env.option[env.config.option_name] then
+        for cand in input:iter() do yield(cand) end
         return
     end
-
-    -- 要顯示的候選數量
+    
     local page_size = env.engine.schema.page_size
-    -- 暫存當前頁候選, 然后批次送出
     local page_cands, page_rendered = {}, {}
-    -- 暫存索引, 首選和預編輯文本
     local index, first_cand, preedit = 0, nil, ""
     local digested = false
-
+    
     local function refresh_preedit()
-        first_cand.preedit = table.concat(page_rendered, env.config.separator)
-        -- 將暫存的一頁候選批次送出
-        for _, c in ipairs(page_cands) do
-            yield(c)
+        if first_cand then
+            first_cand.preedit = table.concat(page_rendered, env.config.separator)
+            for _, c in ipairs(page_cands) do yield(c) end
         end
-        -- 清空暫存
         first_cand, preedit = nil, ""
         page_cands, page_rendered = {}, {}
         digested = false
     end
-
-    -- 迭代器
-    local iter, obj = input:iter()
-    -- 迭代由翻譯器輸入的候選列表
-    local next = iter(obj)
-    -- local first_stash = true
-    while next do
-        -- 頁索引自增, 滿足 1 <= index <= page_size
+    
+    for cand in input:iter() do
         index = index + 1
-        -- 當前遍歷候選項
-        local cand = Candidate(next.type, next.start, next._end, next.text, next.comment) -- next
-        cand.quality = next.quality
-        cand.preedit = next.preedit
-
-        if index == 1 then
-            -- 把首選捉出來
-            first_cand = cand:get_genuine()
-        end
-
-        -- 活動輸入串
-        local input_code = ""
-        if string.len(core.input_code) == 0 then
-            input_code = cand.preedit
-        else
-            input_code = core.input_code
-        end
-
-        -- 帶有暫存串的候選合併同類項
-        preedit, digested = render_cand(env, index, input_code, core.stashed_text, cand.text, cand.comment, digested)
-
-        -- 存入候選
-        table.insert(page_cands, cand)
-        if #preedit ~= 0 then
-            table.insert(page_rendered, preedit)
-        end
-
-        -- 遍歷完一頁候選後, 刷新預編輯文本
-        if index == page_size then
-            refresh_preedit()
-        end
-
-        -- 當前候選處理完畢, 查詢下一個
-        next = iter(obj)
-
-        -- 如果當前暫存候選不足page_size但没有更多候選, 則需要刷新預編輯並送出
-        if not next and index < page_size then
-            refresh_preedit()
-        end
-
-        -- 下一頁, index歸零
-        index = index % page_size
+        local gen_cand = cand:get_genuine()
+        if index == 1 then first_cand = gen_cand end
+        
+        local input_code = cand.preedit or ""
+        local stashed_text = ""
+        preedit, digested = render_cand(env, index, input_code, stashed_text, 
+                                      cand.text, cand.comment or "", digested)
+        
+        table.insert(page_cands, gen_cand)
+        if #preedit ~= 0 then table.insert(page_rendered, preedit) end
+        if index == page_size then refresh_preedit() end
     end
+    refresh_preedit()
 end
 
 function embeded_cands_filter.fini(env)
