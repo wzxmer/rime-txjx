@@ -1,3 +1,4 @@
+-- 优化版select_character  来源：@浮生 https://github.com/wzxmer/rime-txjx
 local function utf8_safe_sub(s, i, j)
     if type(s) ~= "string" or s == "" then return "" end
     
