@@ -51,7 +51,7 @@ engine:
     - simplifier           # 简繁转换
     - reverse_lookup_filter@jderfen_lookup  # 二分反查
     - reverse_lookup_filter@gbk_lookup      # GBK反查
-    - lua_filter@*txjx_embeded_cands@embeded_cands  # 内嵌候选
+    - lua_filter@*txjx_embeded_cands  # 内嵌候选
     - lua_filter@*txjx_completion   # 辅助码提示
     - lua_filter@*txjx_single_char  # 单字优先
     - simplifier@emoji_cn  # 表情符号
@@ -80,7 +80,7 @@ switches:
     
   - name: embeded_cands   # 内嵌候选
     states: [普通, 嵌入候选]
-    
+
   - name: sbb_hint        # 630提示
     states: [ 关闭630提示, 开启630提示 ]
     
@@ -197,15 +197,6 @@ reverse_lookup:
   enable_completion: true
   comment_format:
     - xform/ /，/
-
-# ==================== 内嵌候选配置 ====================
-embeded_cands:
-  option_name: embeded_cands
-  index_indicators: [ ¹, ², ³, ⁴, ⁵, ⁶, ⁷, ⁸, ⁹, ⁰ ]
-  first_format: "${Stash}[${Seq}${候選}]${Code}${Comment}"
-  next_format: "${Stash}${Seq}${候選}${Comment}"
-  separator: " "
-  stash_placeholder: "~"
 
 # ==================== 快捷键配置 ====================
 key_binder:
