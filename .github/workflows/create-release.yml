@@ -11,7 +11,7 @@ jobs:
     - name: Set up environment variables
       run: |
         echo "CURRENT_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
-        echo "RELEASE_TITLE=$(date +'%Y.%m.%d') 词库更新" >> $GITHUB_ENV
+        echo "RELEASE_TITLE=天行键$(date +'%Y.%m.%d') 词库更新" >> $GITHUB_ENV
 
     - name: Checkout main branch
       uses: actions/checkout@v4
