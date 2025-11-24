@@ -48,11 +48,10 @@ engine:
     - script_translator@txjxgbk  # GBK翻译
 
   filters:
-    - simplifier           # 简繁转换
     - reverse_lookup_filter@jderfen_lookup  # 二分反查
     - reverse_lookup_filter@gbk_lookup      # GBK反查
+    - lua_filter@*txjx_completion   # 辅助码提示（必须在 embeded_cands 之前）
     - lua_filter@*txjx_embeded_cands  # 内嵌候选
-    - lua_filter@*txjx_completion   # 辅助码提示
     - lua_filter@*txjx_single_char  # 单字优先
     - simplifier@emoji_cn  # 表情符号
     - simplifier@jffh      # 简繁转换
@@ -86,9 +85,6 @@ switches:
     
   - name: completion      # 补全提示
     states: [提示关,提示开]
-    
-  # - name: ascii_punct     # 英文标点
-  #   bind: { accept: "Control+period", toggle: true }
 
 # ==================== 键盘布局配置 ====================
 layout:
@@ -118,8 +114,8 @@ punctuator:
 # ==================== 拼写处理 ====================
 speller:
   auto_select: false
-  alphabet: "zyxwvutsrqponmlkjihgfedcba;‘"
-  initials: "abcdefghijklmnopqrstuvwxyz;‘"
+  alphabet: "abcdefghijklmnopqrstuvwxyz;'"
+  initials: "abcdefghijklmnopqrstuvwxyz;'"
   delimiter: " '"
   algebra: 
     - derive/[0-9]$//      # 过滤数字
@@ -208,6 +204,8 @@ key_binder:
     - { when: has_menu, accept: minus, send: Page_Up }      # - 上翻页
     - { when: has_menu, accept: equal, send: Page_Down }   # = 下翻页
     - { when: has_menu, accept: Tab, send: 2 }             # Tab 选择次选
+    - { when: has_menu, accept: "$", toggle: embeded_cands } #Control+Shift+r 手机快捷切换内嵌
+
 
 # ==================== 模式识别 ====================
 recognizer:
@@ -235,4 +233,3 @@ topup:
 # ==================== 菜单配置 ====================
 menu:
   alternative_select_keys: 1234567890  # 数字选词
-
