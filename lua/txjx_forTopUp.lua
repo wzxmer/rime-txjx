@@ -15,6 +15,8 @@ local function topup(env)
     else
         ctx:commit()
     end
+    -- 清理首字符状态缓存，防止状态残留
+    env.first_char = nil
 end
 
 local function processor(key_event, env)

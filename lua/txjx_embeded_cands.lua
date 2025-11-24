@@ -1,25 +1,18 @@
 local embeded_cands_filter = {}
 
--- 本地化常用函数
-local string_byte, string_char = string.byte, string.char
-local string_find, string_format = string.find, string.format
+-- 本地化常用函数（仅保留实际使用的）
+local string_format = string.format
 local string_gmatch, string_gsub = string.gmatch, string.gsub
-local string_len, string_lower = string.len, string.lower
-local string_match, string_rep = string.match, string.rep
-local string_sub, string_upper = string.sub, string.upper
+local string_len = string.len
+local string_match = string.match
+local string_sub = string.sub
 local table_concat, table_insert = table.concat, table.insert
-local table_remove, table_sort = table.remove, table.sort
-local table_unpack = table.unpack
-local math_floor, math_ceil = math.floor, math.ceil
-local math_max, math_min = math.max, math.min
-local pairs, ipairs, next = pairs, ipairs, next
-local pcall, type, tostring, tonumber = pcall, type, tostring, tonumber
-local select, assert, load = select, assert, load
+local table_unpack = table.unpack or unpack  -- Lua 5.1 兼容性
+local math_min = math.min
+local ipairs = ipairs
+local pcall, type, tostring = pcall, type, tostring
 local setmetatable = setmetatable
-local coroutine_wrap, coroutine_yield = coroutine.wrap, coroutine.yield
-local utf8_char, utf8_codes = utf8.char, utf8.codes
-local utf8_codepoint, utf8_len_utf8 = utf8.codepoint, utf8.len
-local utf8_offset = utf8.offset
+local coroutine_yield = coroutine.yield
 local Candidate = Candidate
 
 -- 默认配置
@@ -121,8 +114,9 @@ local function parse_conf_str_list(env, key, default_list)
     return list
 end
 
--- 配置缓存，支持多namespace
+-- 配置缓存，支持多namespace，使用弱引用防止内存泄漏
 local config_cache = {}
+setmetatable(config_cache, {__mode = "v"})
 local function get_config(env)
     local ns = env.name_space or "default"
     if not config_cache[ns] then
@@ -202,7 +196,12 @@ function embeded_cands_filter.func(input, env)
         local active_input_code = env.input_code or ""
         local active_stash = env.stashed_text or ""
         local sep = cfg.separator_str
-        local function clear(tbl) for i = #tbl, 1, -1 do table_remove(tbl, i) end end
+        -- 优化：直接设置为 nil 而不是使用 table.remove
+        local function clear(tbl) 
+            for i = 1, #tbl do 
+                tbl[i] = nil 
+            end 
+        end
         local iter, obj = input:iter()
         local next_cand = iter(obj)
         while next_cand do
@@ -240,6 +239,7 @@ end
 function embeded_cands_filter.fini(env)
     config_cache[env.name_space] = nil
     env.option = nil
+    collectgarbage("collect")  -- 主动触发垃圾回收（学习 wanxiang）
 end
 
 -- 保证 return 的 table 直接有 func 方法，兼容简洁 filter 引用

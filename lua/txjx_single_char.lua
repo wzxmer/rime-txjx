@@ -16,23 +16,24 @@ local function single_char_filter(input)
    
    for cand in input:iter() do
        -- 安全检查：确保cand是有效的候选对象
-       if not cand or not cand.text then goto continue end
-       
-       -- 优化：优先检查comment长度（性能更高）
-       if cand.comment and cand.comment:len() == 0 then
-           yield(cand)
-       else
-           -- 单字检查（带UTF-8安全处理）
-           local char_len = utf8.len(cand.text)
-           if char_len and char_len == 1 then
+       if cand and cand.text then
+           -- 优化：优先检查comment长度（性能更高）
+           if cand.comment and cand.comment:len() == 0 then
+               yield(cand)
+           -- 新增：如果是数字日期格式（如2025-06-13），也优先输出
+           elseif cand.text:match('^%d%d%d%d%-%d%d%-%d%d$') then
                yield(cand)
            else
-               buffer_size = buffer_size + 1
-               buffer[buffer_size] = cand
+               -- 单字检查（带UTF-8安全处理）
+               local char_len = utf8.len(cand.text)
+               if char_len and char_len == 1 then
+                   yield(cand)
+               else
+                   buffer_size = buffer_size + 1
+                   buffer[buffer_size] = cand
+               end
            end
        end
-       
-       ::continue::
    end
    
    -- 批量输出非优先候选项

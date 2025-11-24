@@ -14,9 +14,16 @@ local function processor(key_event, env)
     end
 
     local context = env.engine.context
-    local page_size = env.engine.schema.page_size
-    local selected_index = context.composition:back().selected_index
-    local page_start = (selected_index / page_size) * page_size
+    -- 添加边界检查，防止 composition:back() 返回 nil
+    local comp = context.composition:back()
+    if not comp then return kNoop end
+    
+    -- 防止 page_size 为 0 导致除零错误
+    local page_size = env.engine.schema.page_size or 5
+    if page_size == 0 then page_size = 5 end
+    
+    local selected_index = comp.selected_index
+    local page_start = math.floor(selected_index / page_size) * page_size
 
     local index = key == semicolon and 1 or 2
     if context:select(page_start + index) then
