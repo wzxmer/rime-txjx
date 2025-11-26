@@ -1,3 +1,4 @@
+-- txjx 内嵌候选模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
 local embeded_cands_filter = {}
 
 -- 本地化常用函数（仅保留实际使用的）
@@ -26,6 +27,7 @@ local DEFAULT_STASH_PLACEHOLDER = "~"
 local safe = {
     max_text_length = 100,    -- 单个候选最大长度
     max_total_length = 500,   -- 整页候选最大长度
+    gc_interval = 200,        -- 每处理 200 个候选词触发一次 GC
     truncate = function(text, max_len)
         if not text then return "" end
         text = tostring(text)
@@ -186,7 +188,10 @@ function embeded_cands_filter.func(input, env)
     local ok, err = pcall(function()
         local cfg = get_config(env)
         if not cfg or not (env.option and env.option["embeded_cands"]) then
-            for cand in input:iter() do coroutine_yield(cand) end
+            -- 功能未启用时直接透传
+            for cand in input:iter() do
+                coroutine_yield(cand)
+            end
             return
         end
         local page_size = get_page_size(env)
@@ -222,6 +227,7 @@ function embeded_cands_filter.func(input, env)
                 digested = false
                 clear(page_cands); clear(page_rendered)
             end
+            
             next_cand = iter(obj)
         end
         if idx > 0 and #page_cands > 0 then
@@ -232,14 +238,17 @@ function embeded_cands_filter.func(input, env)
         end
     end)
     if not ok then
-        for cand in input:iter() do coroutine_yield(cand) end
+        -- 错误时直接透传
+        for cand in input:iter() do
+            coroutine_yield(cand)
+        end
     end
 end
 
 function embeded_cands_filter.fini(env)
     config_cache[env.name_space] = nil
     env.option = nil
-    collectgarbage("collect")  -- 主动触发垃圾回收（学习 wanxiang）
+    collectgarbage()
 end
 
 -- 保证 return 的 table 直接有 func 方法，兼容简洁 filter 引用

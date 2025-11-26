@@ -15,6 +15,7 @@ local function single_char_filter(input)
    local buffer_size = 0
    
    for cand in input:iter() do
+       
        -- 安全检查：确保cand是有效的候选对象
        if cand and cand.text then
            -- 优化：优先检查comment长度（性能更高）
@@ -24,9 +25,8 @@ local function single_char_filter(input)
            elseif cand.text:match('^%d%d%d%d%-%d%d%-%d%d$') then
                yield(cand)
            else
-               -- 单字检查（带UTF-8安全处理）
-               local char_len = utf8.len(cand.text)
-               if char_len and char_len == 1 then
+               -- 单字检查
+               if utf8.len(cand.text) == 1 then
                    yield(cand)
                else
                    buffer_size = buffer_size + 1

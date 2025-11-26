@@ -1,8 +1,10 @@
+-- txjx smartTwo 快选模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- 常量
+local kAccepted = 1
+local kNoop = 2
+
 local semicolon = "semicolon"
 local apostrophe = "apostrophe"
-local kRejected = 0 -- do the OS default processing
-local kAccepted = 1 -- consume it
-local kNoop     = 2 -- leave it to other processors
 
 local function processor(key_event, env)
     if key_event:release() or key_event:alt() or key_event:super() then
@@ -32,7 +34,7 @@ local function processor(key_event, env)
     end
 
     if not context:get_selected_candidate() then
-        if context.input:len() <= 1 then
+        if #context.input <= 1 then
             -- 分号引导的符号需要交给下一个处理器
             return kNoop
         end
@@ -44,4 +46,8 @@ local function processor(key_event, env)
     return kAccepted
 end
 
-return { func = processor }
+local function fini(env)
+    collectgarbage()
+end
+
+return { func = processor, fini = fini }

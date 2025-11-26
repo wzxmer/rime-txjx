@@ -36,6 +36,6 @@ return {
     -- 清理函数
     fini = function(env)
         env.completion_enabled = nil
-        collectgarbage("collect")  -- 主动触发垃圾回收（学习 wanxiang）
+        collectgarbage()
     end
 }

@@ -1,4 +1,18 @@
 -- 优化版filter  来源：@浮生 https://github.com/wzxmer/rime-txjx
+
+-- 工具函数
+local function escape_pattern(s)
+    if not s then return "" end
+    return s:gsub("([%-%]%^])", "%%%1")
+end
+
+local function startswith(str, prefix)
+    if type(str) ~= "string" or type(prefix) ~= "string" then
+        return false
+    end
+    return str:sub(1, #prefix) == prefix
+end
+
 -- 常量定义（维护性提升）
 local DEFAULT_HINT_TEXT = "🚫"
 local CONFIG_KEYS = {
@@ -9,8 +23,6 @@ local CONFIG_KEYS = {
 }
 
 -- 局部化标准库函数（性能优化）
-local string_gsub = string.gsub
-local string_sub = string.sub
 local string_match = string.match
 local utf8_len = utf8.len
 
@@ -18,20 +30,7 @@ local utf8_len = utf8.len
 local M = {}
 
 -- 性能常量
-local MAX_CACHE_SIZE = 200  -- 缓存最大条目数，防止内存无限增长
-
---- 安全转义正则特殊字符（保持原始转义逻辑）
-local function escape_pattern(s)
-    return s and string_gsub(s, "([%-%]%^])", "%%%1") or ""
-end
-
---- 字符串前缀匹配（保持原始逻辑）
-local function startswith(str, start)
-    if type(str) ~= "string" or type(start) ~= "string" then return false end
-    if #start == 0 then return true end
-    if #str < #start then return false end
-    return string_sub(str, 1, #start) == start
-end
+local GC_INTERVAL = 200  -- 每处理 200 个候选词触发一次 GC
 
 --- 带缓存的提示匹配（保持原始匹配顺序）
 local function hint_optimized(cand, env)
@@ -50,7 +49,14 @@ local function hint_optimized(cand, env)
     end
     
     local context = env.engine.context
+    
+    -- 延迟创建 ReverseLookup 对象（仅在需要时创建）
+    if not env.cached_reverse_lookup then
+        local config = env.engine.schema.config
+        env.cached_reverse_lookup = ReverseLookup(config:get_string(CONFIG_KEYS.DICT) or "")
+    end
     local reverse = env.cached_reverse_lookup
+    
     local s = env.cached_s_escaped or ''
     local b = env.cached_b_escaped or ''
     if s == '' and b == '' then 
@@ -108,6 +114,16 @@ function M.filter(input, env)
     local input_text = context.input
     local input_len = #input_text
 
+    -- 反查模式检测：如果在反查，禁用提示功能以节省内存
+    local is_reverse_lookup = input_text:match("`")
+    if is_reverse_lookup then
+        -- 反查时直接透传，不处理提示
+        for cand in input:iter() do
+            yield(cand)
+        end
+        return
+    end
+
     -- 直接使用 env 属性，避免创建临时 table
     local hint_text = env.cached_hint_text
     local s_escaped = env.cached_s_escaped
@@ -117,7 +133,7 @@ function M.filter(input, env)
     local no_commit = (input_len < 4 and s_escaped ~= '' and string_match(input_text, "^["..s_escaped.."]+$")) or 
                      (b_escaped ~= '' and string_match(input_text, "^["..b_escaped.."]+$"))
 
-    -- 性能优化：如果不需要任何处理，直接透传所有候选（学习 wanxiang）
+    -- 性能优化：如果不需要任何处理，直接透传所有候选
     if not is_danzi_mode and not show_hint and not no_commit then
         for cand in input:iter() do
             yield(cand)
@@ -126,12 +142,10 @@ function M.filter(input, env)
     end
 
     -- 清空查询缓存（每次输入变化时重置）
-    -- 性能优化：如果缓存过大，触发垃圾回收
-    if env.lookup_cache and next(env.lookup_cache) then
-        local count = 0
-        for _ in pairs(env.lookup_cache) do count = count + 1 end
-        if count > MAX_CACHE_SIZE then
-            collectgarbage("step", 100)  -- 增量垃圾回收，不阻塞
+    -- 激进的内存管理：彻底清空旧缓存
+    if env.lookup_cache then
+        for k in pairs(env.lookup_cache) do
+            env.lookup_cache[k] = nil
         end
     end
     env.lookup_cache = {}
@@ -139,6 +153,7 @@ function M.filter(input, env)
     -- 候选词处理（保持原始流程）
     local is_first = true
     for cand in input:iter() do
+        
         -- 首候选提交提示
         if is_first and no_commit then
             apply_commit_hint(cand, hint_text)
@@ -162,17 +177,31 @@ function M.init(env)
     env.cached_s = config:get_string(CONFIG_KEYS.TOPUP_THIS) or ""
     env.cached_b = config:get_string(CONFIG_KEYS.TOPUP_WITH) or ""
     env.cached_hint_text = config:get_string(CONFIG_KEYS.HINT_TEXT) or DEFAULT_HINT_TEXT
-    env.cached_reverse_lookup = ReverseLookup(config:get_string(CONFIG_KEYS.DICT) or "")
+    
+    -- 清理旧的查询缓存（切换 APP 时释放内存）
+    if env.lookup_cache then
+        for k in pairs(env.lookup_cache) do
+            env.lookup_cache[k] = nil
+        end
+    end
+    env.lookup_cache = nil
+    
+    -- 清理旧的 ReverseLookup 对象（切换 APP 时释放内存）
+    env.cached_reverse_lookup = nil
+    
+    -- 多次触发 GC，确保 C++ 对象被完全释放
+    collectgarbage()
+    collectgarbage()  -- 第二次确保 finalizer 执行完毕
     
     -- 预转义字符（性能优化）
     env.cached_s_escaped = escape_pattern(env.cached_s)
     env.cached_b_escaped = escape_pattern(env.cached_b)
     
-    -- 初始化查询缓存表（学习 wanxiang 的 memoization）
+    -- 初始化查询缓存表
     env.lookup_cache = {}
 end
 
--- 清理函数：释放资源并触发垃圾回收（学习 wanxiang）
+-- 清理函数：释放资源并触发垃圾回收
 function M.fini(env)
     env.cached_reverse_lookup = nil
     env.lookup_cache = nil
@@ -181,7 +210,7 @@ function M.fini(env)
     env.cached_s_escaped = nil
     env.cached_b_escaped = nil
     env.cached_hint_text = nil
-    collectgarbage("collect")  -- 主动触发完整垃圾回收
+    collectgarbage()
 end
 
 return { init = M.init, func = M.filter, fini = M.fini }

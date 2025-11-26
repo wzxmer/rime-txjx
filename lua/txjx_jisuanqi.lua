@@ -1,4 +1,5 @@
 -- Rime Script >https://github.com/baopaau/rime-lua-collection/blob/master/calculator_translator.lua
+-- txjx 计算器适配版 来源：@浮生 https://github.com/wzxmer/rime-txjx
 -- 簡易計算器（執行任何Lua表達式）
 --
 -- 格式：=<exp>
@@ -554,4 +555,8 @@ local function calculator_translator(input, seg)
 
 end
 
-return calculator_translator
+local function fini(env)
+    collectgarbage()
+end
+
+return { func = calculator_translator, fini = fini }

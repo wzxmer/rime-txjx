@@ -1,9 +1,14 @@
 -- 优化版forTopUp  来源：@浮生 https://github.com/wzxmer/rime-txjx
-local function string2set(str)
+
+-- 常量
+local kNoop = 2
+
+-- 工具函数
+local function string_to_set(str)
     local t = {}
     if type(str) ~= "string" then return t end
     for i = 1, #str do
-        t[str:sub(i,i)] = true
+        t[str:sub(i, i)] = true
     end
     return t
 end
@@ -21,21 +26,21 @@ end
 
 local function processor(key_event, env)
     if key_event:release() or key_event:ctrl() or key_event:alt() then
-        return 2
+        return kNoop
     end
 
     local ch = key_event.keycode
     if ch < 0x20 or ch >= 0x7f then
-        return 2
+        return kNoop
     end
 
     local context = env.engine.context
     local input = context.input
-    if not input then return 2 end
+    if not input then return kNoop end
 
     local key = string.char(ch)
     if not env.alphabet[key] then
-        return 2
+        return kNoop
     end
 
     -- 首字符状态缓存
@@ -45,7 +50,7 @@ local function processor(key_event, env)
     local is_first_topup = env.topup_set[env.first_char or key]
 
     if env.topup_command and is_first_topup then
-        return 2
+        return kNoop
     end
 
     local input_len = utf8.len(input) or 0
@@ -65,13 +70,13 @@ local function processor(key_event, env)
         topup(env)
     end
 
-    return 2
+    return kNoop
 end
 
 local function init(env)
     local config = env.engine.schema.config
-    env.topup_set = string2set(config:get_string("topup/topup_with") or "")
-    env.alphabet = string2set(config:get_string("speller/alphabet") or "abcdefghijklmnopqrstuvwxyz")
+    env.topup_set = string_to_set(config:get_string("topup/topup_with") or "")
+    env.alphabet = string_to_set(config:get_string("speller/alphabet") or "abcdefghijklmnopqrstuvwxyz")
     
     env.topup_min = math.max(1, config:get_int("topup/min_length") or 4)
     env.topup_min_danzi = math.max(1, config:get_int("topup/min_length_danzi") or env.topup_min)
@@ -82,4 +87,16 @@ local function init(env)
     env.first_char = nil  -- 初始化首字符缓存
 end
 
-return { init = init, func = processor }
+local function fini(env)
+    env.topup_set = nil
+    env.alphabet = nil
+    env.first_char = nil
+    env.topup_min = nil
+    env.topup_min_danzi = nil
+    env.topup_max = nil
+    env.auto_clear = nil
+    env.topup_command = nil
+    collectgarbage()
+end
+
+return { init = init, func = processor, fini = fini }

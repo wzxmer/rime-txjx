@@ -1,3 +1,4 @@
+-- txjx 时间与农历模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
 --*******农历节气计算部分
 --========角度变换===============
 local rad = 180*3600/math.pi --每弧度的角秒数
@@ -1703,5 +1704,8 @@ function date_translator(input, seg)
    end
 end
 
+local function fini(env)
+    collectgarbage()
+end
 
-return translator
+return { func = translator, fini = fini }
