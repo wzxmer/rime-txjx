@@ -63,19 +63,15 @@ engine:
 switches:
   - name: ascii_mode      # 中英文切换
     states: [ 中文, 西文 ]
-    bind: { accept: "Control+Shift+2", toggle: true }
     
   - name: full_shape      # 全角半角
     states: [ 半角, 全角 ]
-    bind: { accept: "Control+Shift+asciitilde", toggle: true }
     
   - name: jffh            # 简繁切换
     states: [ 简体, 繁體 ]
-    bind: { accept: F7, toggle: true }
     
   - name: emoji_cn        # 表情开关
     states: [ 关闭表情, 开启表情 ]
-    bind: { accept: "Control+Shift+e", toggle: true }
     
   - name: embeded_cands   # 内嵌候选
     states: [普通, 嵌入候选]
