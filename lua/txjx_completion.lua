@@ -1,4 +1,4 @@
--- 优化版completion 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- 优化版completion，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
 -- 补全过滤器模块
 -- 用于控制是否显示编码补全候选词
 
@@ -36,6 +36,6 @@ return {
     -- 清理函数
     fini = function(env)
         env.completion_enabled = nil
-        collectgarbage()
+        collectgarbage("step", 1)
     end
 }

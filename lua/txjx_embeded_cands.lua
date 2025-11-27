@@ -1,4 +1,4 @@
--- txjx 内嵌候选模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- txjx 内嵌候选模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
 local embeded_cands_filter = {}
 
 -- 本地化常用函数（仅保留实际使用的）
@@ -248,7 +248,7 @@ end
 function embeded_cands_filter.fini(env)
     config_cache[env.name_space] = nil
     env.option = nil
-    collectgarbage()
+    collectgarbage("step", 1)
 end
 
 -- 保证 return 的 table 直接有 func 方法，兼容简洁 filter 引用

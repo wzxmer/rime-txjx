@@ -1,4 +1,4 @@
--- txjx 时间与农历模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- txjx 时间与农历模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
 --*******农历节气计算部分
 --========角度变换===============
 local rad = 180*3600/math.pi --每弧度的角秒数
@@ -1412,23 +1412,23 @@ end
 
 --农历倒计时
 local function nl_shengri(y,m,d)
-    nlsrsj=y..m..d--农历时间
-    date1=os.date("%Y%m%d")
-    date2=LunarDate2Date(nlsrsj,0)--如果是闰月0改1
-    m=string.match(date2,"年(.-)月")
+    local nlsrsj=y..m..d--农历时间
+    local date1=os.date("%Y%m%d")
+    local date2=LunarDate2Date(nlsrsj,0)--如果是闰月0改1
+    local m=string.match(date2,"年(.-)月")
     if #m==2 then
     date2=string.gsub(date2,"年","","1")
     else
     date2=string.gsub(date2,"年","0","1")
     end
-    d=string.match(date2,"月(.-)日") 
+    local d=string.match(date2,"月(.-)日") 
     if #d==2 then
     date2=string.gsub(date2,"月","","1")
     else
     date2=string.gsub(date2,"月","0","1")
     end
     date2=string.gsub(date2,"日","","1")
-    result=diffDate(date1,date2)
+    local result=diffDate(date1,date2)
     return result
 end
 
@@ -1436,7 +1436,7 @@ local function nl_shengri2(y,m,d)
   while nl_shengri(y,m,d)== -1 do
     y=tointeger(y+1)
   end
-    result=nl_shengri(y,m,d)
+    local result=nl_shengri(y,m,d)
   return result
 end
 --农历倒计时结束
@@ -1445,9 +1445,9 @@ end
 local function translator(input, seg)
 --日期
   if (input == "rq") then
-    date = os.date("%Y-%m-%d")
-    num_year=os.date("%j/")..IsLeap(os.date("%Y"))
-    candidate = Candidate("date", seg.start, seg._end, date, num_year)
+    local date = os.date("%Y-%m-%d")
+    local num_year=os.date("%j/")..IsLeap(os.date("%Y"))
+    local candidate = Candidate("date", seg.start, seg._end, date, num_year)
     yield(candidate)
     
     date = os.date("%Y年%m月%d日")
@@ -1464,19 +1464,19 @@ local function translator(input, seg)
 
   --时间
   elseif (input == "ej") then
-    time = string.gsub(os.date("%H:%M:%S"), "^0+", "")
-    candidate = Candidate("time", seg.start, seg._end, time,"" )
+    local time = string.gsub(os.date("%H:%M:%S"), "^0+", "")
+    local candidate = Candidate("time", seg.start, seg._end, time,"" )
     yield(candidate)
 
-	date = os.date("%Y-%m-%d")
+	local date = os.date("%Y-%m-%d")
     time = string.gsub(os.date("%H:%M:%S"), "^0+", "")
     candidate = Candidate("date", seg.start, seg._end, date.." "..time, "")
     yield(candidate)
 
   --星期
   elseif (input == "xq" or input == "oxq") then
-    weekday = chinese_weekday(os.date("%w"))
-    num_weekday = os.date("第%W周")
+    local weekday = chinese_weekday(os.date("%w"))
+    local num_weekday = os.date("第%W周")
     candidate = Candidate("xiqy", seg.start, seg._end, weekday, num_weekday)
     yield(candidate)
     
@@ -1494,8 +1494,8 @@ local function translator(input, seg)
 
 --农历
   elseif (input == "nl") then
-    date = Date2LunarDate(os.date("%Y%m%d")) .. JQtest(os.date("%Y%m%d"))
-    candidate = Candidate("date", seg.start, seg._end, date,"")
+    local date = Date2LunarDate(os.date("%Y%m%d")) .. JQtest(os.date("%Y%m%d"))
+    local candidate = Candidate("date", seg.start, seg._end, date,"")
     yield(candidate)
     
     date = lunarJzl(os.date("%Y%m%d%H"))
@@ -1510,8 +1510,8 @@ local function translator(input, seg)
   elseif (input == "jq" or input == "ojq") then
     local jqs=GetNowTimeJq(os.date("%Y%m%d"))--获取节气，从下个节气开始
     --当下个节气过远时(大于7天)，增加显示上个节气
-    if tonumber(diffDate(os.date("%Y%m%d"),string.gsub(jqs[1]:sub(8,-1),"-",""))) >7 then
-		a=string.gsub(jqs[1]:sub(8,-1),"-","")
+    if jqs and jqs[1] and tonumber(diffDate(os.date("%Y%m%d"),string.gsub(jqs[1]:sub(8,-1),"-",""))) >7 then
+		local a=string.gsub(jqs[1]:sub(8,-1),"-","")
 		if a:sub(7,8) >"17" then
 			a=a-17
 		elseif a:sub(5,6) > "01" then
@@ -1530,12 +1530,12 @@ local function translator(input, seg)
 --        yield(Candidate("jwql", seg.start, seg._end, string.sub(jqs[i],1,6), string.sub(jqs[i],7,-1)))
     end
   --日历查询
-  elseif string.sub(input, 1, 1) == "=" then
+  elseif string.len(input) > 1 and string.sub(input, 1, 1) == "=" then
   local n = string.sub(input, 2)
   if tonumber(n) ~= nil then
     if string.match(n,"^(20)%d%d+$")~=nil or string.match(n,"^(19)%d%d+$")~=nil then
-      lunar=QueryLunarInfo(n)
-      if #lunar>0 then
+      local lunar=QueryLunarInfo(n)
+      if lunar and #lunar>0 then
         for i=1,#lunar do
           yield(Candidate(input, seg.start, seg._end, lunar[i][1],lunar[i][2]))
         end
@@ -1544,29 +1544,29 @@ local function translator(input, seg)
   end --if tonumber
   elseif (input == "sjx/") then
     --公历倒计时
-    sth_y="2000" --公历生日——年
-    sth_m="10" --公历生日——月
-    sth_d="31" --公历生日——日
+    local sth_y="2000" --公历生日——年
+    local sth_m="10" --公历生日——月
+    local sth_d="31" --公历生日——日
 --[[    --农历倒计时
     bb_y="1997" --农历生日——年
     bb_m="03"  --农历生日——月
     bb_d="16"   --农历生日——日
 ]]
 --    sjxsr="距离下次生日还有"..nl_shengri2(sth_y,sth_m,sth_d).."天"
-    sjxsr="距离下次生日还有"..diffDate2(os.date("%Y%m%d"),sth_y..sth_m..sth_d).."天"
-    candidate = Candidate("sjx/", seg.start, seg._end, sjxsr, "")
+    local sjxsr="距离下次生日还有"..diffDate2(os.date("%Y%m%d"),sth_y..sth_m..sth_d).."天"
+    local candidate = Candidate("sjx/", seg.start, seg._end, sjxsr, "")
     yield(candidate)
     --公历倒计时
     sth_y="2021" --公历日期——年
     sth_m="02" --公历日期——月
     sth_d="14" --公历日期——日
-    djs="距离下次情人节还有"..diffDate2(os.date("%Y%m%d"),sth_y..sth_m..sth_d).."天"
+    local djs="距离下次情人节还有"..diffDate2(os.date("%Y%m%d"),sth_y..sth_m..sth_d).."天"
     candidate = Candidate("sjx/", seg.start, seg._end, djs, "")
     yield(candidate)
     --农历倒计时
-    bb_y="2021" --农历生日——年
-    bb_m="07"  --农历生日——月
-    bb_d="07"   --农历生日——日
+    local bb_y="2021" --农历生日——年
+    local bb_m="07"  --农历生日——月
+    local bb_d="07"   --农历生日——日
     djs="距离下次七夕节还有"..nl_shengri2(bb_y,bb_m,bb_d).."天"
     candidate = Candidate("sjx/", seg.start, seg._end, djs, "")
     yield(candidate)
@@ -1583,26 +1583,47 @@ function date_translator(input, seg)
 	  end
 	  
 	  --普通日期1，类似2020年02月04日
-      date1=os.date("%Y年%m月%d日")
-	  date_y=os.date("%Y") --取年
-	  date_m=os.date("%m") --取月
-	  date_d=os.date("%d") --取日
+      local date1=os.date("%Y年%m月%d日")
+	  local date_y=os.date("%Y") --取年
+	  local date_m=os.date("%m") --取月
+	  local date_d=os.date("%d") --取日
 
 	  --普通日期2，类似2020年2月4日
-	  num_m=os.date("%m")+0
-	  num_m1=math.modf(num_m)
-	  num_d=os.date("%d")+0 
-	  num_d1=math.modf(num_d)
-	  date2=os.date("%Y年")..tostring(num_m1).."月"..tostring(num_d1).."日"
-	  date20=os.date("%Y年")..tostring(num_m1).."月"..tostring(num_d1).."日"..os.date("%H点%M分%S秒")
+	  local num_m=os.date("%m")+0
+	  local num_m1=math.modf(num_m)
+	  local num_d=os.date("%d")+0 
+	  local num_d1=math.modf(num_d)
+	  local date2=os.date("%Y年")..tostring(num_m1).."月"..tostring(num_d1).."日"
+	  local date20=os.date("%Y年")..tostring(num_m1).."月"..tostring(num_d1).."日"..os.date("%H点%M分%S秒")
 	  --报时，类似2020-06-06㊅06:06:06
-	  date5=os.date("%Y-%m-%d")..os.date("%H:%M:%S")
+	  local date5=os.date("%Y-%m-%d")..os.date("%H:%M:%S")
+
+	  --星期（需要在 date4 之前计算）
+	  local day_w=os.date("%w")
+	  local day_w1=""
+	  if day_w=="0" then day_w1="星期日" end
+	  if day_w=="1" then day_w1="星期一" end
+	  if day_w=="2" then day_w1="星期二" end
+	  if day_w=="3" then day_w1="星期三" end
+	  if day_w=="4" then day_w1="星期四" end
+	  if day_w=="5" then day_w1="星期五" end
+	  if day_w=="6" then day_w1="星期六" end
+
+	  local day_w3=os.date("%w")
+	  local day_w2=""
+	  if day_w3=="0" then day_w2="㋐" end
+	  if day_w3=="1" then day_w2="㋀" end
+	  if day_w3=="2" then day_w2="㋁" end
+	  if day_w3=="3" then day_w2="㋂" end
+	  if day_w3=="4" then day_w2="㋃" end
+	  if day_w3=="5" then day_w2="㋄" end
+	  if day_w3=="6" then day_w2="㋅" end
 
 	  --报时，类似2020年6月6日星期六6点6分6秒
-	  date4=os.date(date2)..os.date(day_w1)..os.date("%H点%M分%S秒")
+	  local date4=date2..day_w1..os.date("%H点%M分%S秒")
 
 	  --报时，类似Sat Jun  6 06:06:06 2020
-	  date7=os.date(ChineseDate)
+	  local date7=os.date("%c")
 
 	  --大写日期，类似二〇二〇年十一月二十六日
 	 date_y=date_y:gsub("%d",{
@@ -1615,10 +1636,8 @@ function date_translator(input, seg)
        ["7"]="七",
        ["8"]="八",
        ["9"]="九",
-       ["0"]="〇",
+       ["0"]="",
       })
-	 date_y=date_y.."年"
-	 
 	 date_m=date_m:gsub("%d",{
        ["1"]="一",
        ["2"]="二",
@@ -1631,7 +1650,6 @@ function date_translator(input, seg)
        ["9"]="九",
        ["0"]="",
       })
-	 date_m=date_m.."月"
 	 if num_m1==10 then date_m="十月" end
 	 if num_m1==11 then date_m="十一月" end
 	 if num_m1==12 then date_m="十二月" end
@@ -1649,29 +1667,7 @@ function date_translator(input, seg)
        ["0"]="",
       })
 	 date_d=date_d.."日"
-	 date3=date_y..date_m..date_d
-	 
-	  --星期
-	 day_w=os.date("%w")
-	 day_w1=""
-	if day_w=="0" then day_w1="星期日" end
-	if day_w=="1" then day_w1="星期一" end
-	if day_w=="2" then day_w1="星期二" end
-	if day_w=="3" then day_w1="星期三" end
-	if day_w=="4" then day_w1="星期四" end
-	if day_w=="5" then day_w1="星期五" end
-	if day_w=="6" then day_w1="星期六" end
-
-	  --星期
-	 day_w3=os.date("%w")
-	 day_w2=""
-	if day_w3=="0" then day_w2="㊐" end
-	if day_w3=="1" then day_w2="㊀" end
-	if day_w3=="2" then day_w2="㊁" end
-	if day_w3=="3" then day_w2="㊂" end
-	if day_w3=="4" then day_w2="㊃" end
-	if day_w3=="5" then day_w2="㊄" end
-	if day_w3=="6" then day_w2="㊅" end
+	 local date3=date_y..date_m..date_d
 
 
    if (input == "oxz" or input == "oxz") then
@@ -1705,7 +1701,7 @@ function date_translator(input, seg)
 end
 
 local function fini(env)
-    collectgarbage()
+    collectgarbage("step", 1)
 end
 
 return { func = translator, fini = fini }

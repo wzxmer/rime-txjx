@@ -1,4 +1,4 @@
--- txjx smartTwo 快选模块 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- txjx smartTwo 快选模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
 -- 常量
 local kAccepted = 1
 local kNoop = 2
@@ -47,7 +47,7 @@ local function processor(key_event, env)
 end
 
 local function fini(env)
-    collectgarbage()
+    collectgarbage("step", 1)
 end
 
 return { func = processor, fini = fini }
