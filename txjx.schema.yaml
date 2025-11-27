@@ -52,7 +52,7 @@ engine:
     - reverse_lookup_filter@gbk_lookup      # GBK反查
     - lua_filter@*txjx_completion   # 辅助码提示（必须在 embeded_cands 之前）
     - lua_filter@*txjx_embeded_cands  # 内嵌候选
-    - lua_filter@*txjx_single_char  # 单字优先
+    - lua_filter@*txjx_single_char  #单字优先
     - simplifier@emoji_cn  # 表情符号
     - simplifier@jffh      # 简繁转换
     - simplifier@ascii_punct  # 英文标点
@@ -191,6 +191,9 @@ txjxgbk:
 reverse_lookup:
   dictionary: txjx.cx
   enable_completion: true
+  # 限制反查候选词数量，减少内存占用
+  initial_quality: 0.5
+  max_phrase_length: 10  # 限制最大词长
   comment_format:
     - xform/ /，/
 
