@@ -1,13 +1,13 @@
 # Rime 天行键输入方案配置
 # encoding: utf-8
-# 版本: 1.0
+# 版本: 2026年1月1日
 # 作者: 大牛（吅吅大山）, 浮生 <wzxmer@outlook.com>
 
 schema:
   schema_id: txjx
   name: 天行键
   icon: "tian.ico"
-  version: "1.0"
+  version: "2026年1月1日"
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
@@ -63,13 +63,13 @@ engine:
 switches:
   - name: ascii_mode      # 中英文切换
     states: [ 中文, 西文 ]
-    
+
   - name: full_shape      # 全角半角
     states: [ 半角, 全角 ]
-    
+
   - name: jffh            # 简繁切换
     states: [ 简体, 繁體 ]
-    
+
   - name: emoji_cn        # 表情开关
     states: [ 关闭表情, 开启表情 ]
     
@@ -104,7 +104,8 @@ layout:
 
 # ==================== 标点符号配置 ====================
 punctuator:
-  digit_separator_action: commit
+  # digit_separator_action: commit
+  digit_separators: "./"
   import_preset: txjx.symbols
 
 # ==================== 拼写处理 ====================
@@ -133,7 +134,7 @@ translator:
 # ==================== 特殊功能配置 ====================
 ## 重复历史记录
 repeat_history:
-  input: ;f       # 触发键
+  input: i       # 触发键
   size: 1         # 记忆数量
   initial_quality: 10000
 
@@ -203,7 +204,6 @@ key_binder:
     - { when: has_menu, accept: minus, send: Page_Up }      # - 上翻页
     - { when: has_menu, accept: equal, send: Page_Down }   # = 下翻页
     - { when: has_menu, accept: Tab, send: 2 }             # Tab 选择次选
-    - { when: has_menu, accept: "$", toggle: embeded_cands } #Control+Shift+r 手机快捷切换内嵌
 
 
 # ==================== 模式识别 ====================
