@@ -5,8 +5,8 @@
 patch:
   # ==================== 基础配置 ====================
   schema/name: '天行键'              # 修改方案名称，显示在状态栏
-  speller/auto_select: false        # 自动上屏开关，默认关闭  
-  translator/enable_completion: true # 逐码提示总开关，关闭后无法使用txjx_completion
+  speller/auto_select: false        # 自动上屏开关，默认关闭
+  translator/enable_completion: true # 禁用逐码提示（逐键提示），节省内存
   hint_text: ''                     # 顶功提示符（空表示无提示）
   menu/page_size: 5                 # 候选词显示数量
 
@@ -23,7 +23,7 @@ patch:
 
   # ==================== 输入处理器配置 ====================
   # 以词定字功能开关（注释此行表示开启以词定字功能）
-  # engine/processors/@5: null
+  engine/processors/@5: null
 
   # ==================== Lua 过滤器模块配置 ====================
   # 说明：取消注释（删除行首#）即可关闭对应功能
@@ -32,13 +32,13 @@ patch:
   # engine/filters/@1: null
   
   # 辅助码提示模块 (txjx_completion)
-  # engine/filters/@2: null
+  #engine/filters/@2: null
   
   # 内嵌候选模块 (txjx_embeded_cands) 
-  # engine/filters/@3: null
+  engine/filters/@3: null
   
   # 单字优先模块 (txjx_single_char)
-  # engine/filters/@4: null
+  #engine/filters/@4: null
   
   # 注意：如需重新开启某个功能，请在对应行前加 # 注释掉即可
 

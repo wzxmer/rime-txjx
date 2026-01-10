@@ -6,7 +6,7 @@ schema:
   name: 天行键反查·勿选
   author:
     - ProudCat
-  version: "1.0"
+  version: "2026年1月1日"
 
 switches:
   - name: ascii_mode

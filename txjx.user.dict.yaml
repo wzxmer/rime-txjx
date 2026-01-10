@@ -3,9 +3,11 @@
 # 该文件以UTF-8编码保存
 ---
 name: txjx.user
-version: "1.0"
+version: "2026年1月1日"
 sort: original
 ...
+# 注：用户码表在所有码表中优先级最高
+# 注：此码表所加词汇，如果一个音已有候选，那么会顶替首选位置
 # 编码各字段以制表符（Tab）分隔
 # ==============================
 # Tab符（右滑T）或（长按G）点Tab
@@ -18,5 +20,25 @@ sort: original
 猫佬	mzlz 
 猫猫佬	mmlz 
 Proud丶Cat	prou
-付佬	fjlzi
+付佬	fjlz
+兰佬	lflz
+皮佬	pklza
 
+#加词
+石云	ekyw
+卓狗	flgd
+马哥	msgea
+逆水寒	neho
+三乡	sfxxv
+鸡山	jkef
+凤鸣里	fmlu
+卸势	xdeku
+南屏	nfpgu
+折音	feybi
+道主	dzqj
+和鸣	hemg
+田英	tmyg
+郭昕	glxbo
+嗔焰	jnyf
+五维	wjwwvv
+气竭	qkjd
