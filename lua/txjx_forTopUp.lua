@@ -43,6 +43,7 @@ local function topup(env)
         end
     else
         env.engine.context:commit()
+        collectgarbage("collect")
     end
 end
 
