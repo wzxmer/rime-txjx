@@ -1,4 +1,4 @@
--- txjx 内嵌候选模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- txjx 内嵌候选模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx  时间：2026-01-10
 local embeded_cands_filter = {}
 
 -- 本地化常用函数（仅保留实际使用的）

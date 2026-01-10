@@ -1,4 +1,5 @@
--- txjx filter 模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx
+-- txjx filter 模块，此版本经过二次优化 来源：@浮生 https://github.com/wzxmer/rime-txjx 时间：2026-01-10
+
 local function startswith(str, start)
     return string.sub(str, 1, #start) == start
 end
