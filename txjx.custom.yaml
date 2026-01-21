@@ -6,7 +6,7 @@ patch:
   # ==================== 基础配置 ====================
   schema/name: '天行键'              # 修改方案名称，显示在状态栏
   speller/auto_select: false        # 自动上屏开关，默认关闭
-  translator/enable_completion: true # 禁用逐码提示（逐键提示），节省内存
+  translator/enable_completion: true # 禁用逐码提示（默认开），关闭可节省内存
   hint_text: ''                     # 顶功提示符（空表示无提示）
   menu/page_size: 5                 # 候选词显示数量
 
