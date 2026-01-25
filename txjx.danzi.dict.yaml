@@ -4,7 +4,7 @@
 # 2025年11月26日
 ---
 name: txjx.danzi
-version: "2026年1月1日"
+version: "2026年1月25日"
 sort: original
 ...
 
@@ -1430,6 +1430,7 @@ sort: original
 𮐠	bziiuv	#无读音
 堡	bzio
 儤	bzioi
+𨰻	bzioio
 儤	bzioiv
 煲	bzioo
 煲	bzioou
@@ -12536,6 +12537,7 @@ sort: original
 楚	jjvvai
 亍	jjvvi
 耡	jjvvia
+耝	jjvvia
 亍	jjvvii
 琡	jjvviv
 樗	jjvvo
@@ -14120,6 +14122,8 @@ sort: original
 姢	jtaua
 姢	jtauao
 娟	jtauou
+㢧	jtav
+㢧	jtavav
 捐	jti
 圈	jtia
 巂	jtiai
@@ -22901,6 +22905,7 @@ sort: original
 璖	qlvva
 璖	qlvvav
 𱋐	qlvvi
+耝	qlvvia
 𱋐	qlvvia
 璩	qlvviv
 㭕	qlvvo
@@ -26507,6 +26512,7 @@ sort: original
 䑙	tmuvia
 舑	tmuvia
 𦧝	tmuvu
+舚	tmuvua
 𦧝	tmuvui
 甜	tmuvvi
 舔	tmuvvv
@@ -28606,6 +28612,7 @@ sort: original
 围	wwiavv
 萎	wwii
 偎	wwiia
+𦾡	wwiiau
 蔚	wwiiav
 偎	wwiiav
 𫢭	wwiii
@@ -31236,6 +31243,8 @@ sort: original
 眩	xtia
 翾	xtiaa
 翾	xtiaao
+蠉	xtiai
+蠉	xtiaia
 㘣	xtiao
 悬	xtiaoa
 睻	xtiaoo
