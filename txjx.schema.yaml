@@ -49,14 +49,14 @@ engine:
 
   filters:
     - reverse_lookup_filter@jderfen_lookup  # 二分反查
-    - reverse_lookup_filter@gbk_lookup      # GBK反查
-    - lua_filter@*txjx_completion   # 辅助码提示（必须在 embeded_cands 之前）
-    - lua_filter@*txjx_embeded_cands  # 内嵌候选
-    - lua_filter@*txjx_single_char  #单字优先
-    - simplifier@emoji_cn  # 表情符号
+    - reverse_lookup_filter@gbk_lookup      # GBK反查（可在 custom 中禁用）
+    - simplifier@emoji_cn  # 表情符号（必须在最前面）
+    - lua_filter@*txjx_completion   # 辅助码提示
+    - lua_filter@*txjx_filter  # 630提示（必须在繁体转换之前）
     - simplifier@jffh      # 简繁转换
+    - lua_filter@*txjx_embeded_cands  # 内嵌候选（在所有转换之后）
+    - lua_filter@*txjx_single_char  # 单字优先（可在 custom 中禁用）
     - simplifier@ascii_punct  # 英文标点
-    - lua_filter@*txjx_filter  # 自定义过滤
     - uniquifier          # 去重
 
 # ==================== 输入法功能开关 ====================
@@ -114,7 +114,7 @@ speller:
   alphabet: "abcdefghijklmnopqrstuvwxyz;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
   delimiter: " '"
-  algebra: 
+  algebra:
     - derive/[0-9]$//      # 过滤数字
     - derive|^;|/|         # 处理分号开头
 
