@@ -3,55 +3,108 @@
 -- 特点：
 --   1. 支持动态开关（completion）监听
 --   2. 优化内存管理，正确断开监听器防止泄漏
+--   3. 候选排序：带"~"的单字立即输出，其他候选延迟输出
+--   4. 采用立即输出策略，显著降低卡顿
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-01-25
+-- 更新：2026-02-16
+
+local ctx_handlers = setmetatable({}, { __mode = "k" })
 
 return {
-    -- 初始化函数
     init = function(env)
         local ctx = env.engine.context
+        if env._completion_handler and ctx.option_update_notifier then
+            pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
+        end
+        if ctx_handlers[ctx] and ctx.option_update_notifier then
+            pcall(function() ctx.option_update_notifier:disconnect(ctx_handlers[ctx]) end)
+        end
+        env._completion_handler = nil
+        ctx_handlers[ctx] = nil
 
-        -- 读取当前开关状态，避免硬编码
         env.completion_enabled = ctx:get_option("completion")
         if env.completion_enabled == nil then
-            env.completion_enabled = false  -- 默认关闭
+            env.completion_enabled = false
         end
 
-        -- 定义选项更新回调函数
-        -- 注意：不要在闭包中捕获 ctx，避免循环引用
         local handler = function(context, opname)
             if opname == "completion" then
                 env.completion_enabled = context:get_option(opname)
             end
         end
 
-        -- 注册监听器（保存引用供 fini 断开，防止内存泄漏）
         env._completion_handler = handler
+        ctx_handlers[ctx] = handler
         ctx.option_update_notifier:connect(handler)
     end,
 
-    -- 候选词过滤函数
     func = function(input, env)
-        for cand in input:iter() do
-            -- 补全功能关闭时，跳过所有 completion 类型的候选
-            -- 使用 return 提前终止（假设 completion 候选集中在一起）
-            if not env.completion_enabled and cand.type == "completion" then
-                return
+        if not env.completion_enabled then
+            local seen_non_completion = false
+            local after_non_completion_count = 0
+
+            for cand in input:iter() do
+                if cand.type == "completion" then
+                    if seen_non_completion then
+                        after_non_completion_count = after_non_completion_count + 1
+                        if after_non_completion_count > 30 then
+                            return
+                        end
+                    end
+                else
+                    seen_non_completion = true
+                    yield(cand)
+                end
             end
-            yield(cand)
+            return
+        end
+
+        local processed = 0
+        local MAX_PROCESS = 100
+        local deferred = {}
+        local deferred_count = 0
+
+        for cand in input:iter() do
+            processed = processed + 1
+            if processed > MAX_PROCESS then break end
+
+            local comment = cand.comment
+            local is_hint = comment and type(comment) == "string" and #comment > 0 and string.byte(comment, 1) == 126
+
+            if is_hint then
+                local text = cand.text
+                if not text or #text <= 4 then
+                    local text_len = text and utf8.len(text)
+                    if text_len == 1 or text_len == nil then
+                        yield(cand)
+                    elseif text_len > 1 and deferred_count < 100 then
+                        deferred_count = deferred_count + 1
+                        deferred[deferred_count] = cand
+                    end
+                elseif deferred_count < 100 then
+                    deferred_count = deferred_count + 1
+                    deferred[deferred_count] = cand
+                end
+            else
+                yield(cand)
+            end
+        end
+
+        for i = 1, deferred_count do
+            yield(deferred[i])
+            deferred[i] = nil
         end
     end,
 
-    -- 清理函数
     fini = function(env)
-        -- 断开监听器，防止内存泄漏
-        if env._completion_handler then
-            pcall(function()
-                env.engine.context.option_update_notifier:disconnect(env._completion_handler)
-            end)
-            env._completion_handler = nil
+        local ctx = env.engine and env.engine.context
+        if ctx then
+            if env._completion_handler and ctx.option_update_notifier then
+                pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
+            end
+            ctx_handlers[ctx] = nil
         end
+        env._completion_handler = nil
         env.completion_enabled = nil
-        collectgarbage("step", 1)
     end
 }
