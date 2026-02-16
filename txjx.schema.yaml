@@ -1,13 +1,13 @@
 # Rime 天行键输入方案配置
 # encoding: utf-8
-# 版本: 2026年1月25日
+# 版本: 2026年2月16日
 # 作者: 大牛（吅吅大山）, 浮生 <wzxmer@outlook.com>
 
 schema:
   schema_id: txjx
   name: 天行键
   icon: "tian.ico"
-  version: "2026年1月25日"
+  version: "2026年2月16日"
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
@@ -18,10 +18,8 @@ engine:
   processors:
     - ascii_composer       # 英文模式处理
     - recognizer           # 特殊模式识别
+    - lua_processor@*txjx_processor     # 按键处理（次选·空顶·顶功）
     - key_binder           # 快捷键绑定
-    - lua_processor@*txjx_smartTwo     # 次选功能
-    - lua_processor@*txjx_forTopUp     # 顶功输入
-    - lua_processor@*txjx_select_character  # 以词定字
     - speller              # 拼写处理
     - punctuator           # 标点处理
     - selector             # 候选选择
@@ -42,52 +40,68 @@ engine:
     - lua_translator@*txjx_time        # 时间转换
     - punct_translator     # 标点翻译
     - table_translator     # 主词典
-    - reverse_lookup_translator  # 反查
+    - reverse_lookup_translator  # 反查（万能符 `）
     - history_translator@repeat_history  # 历史记录
     - script_translator@jderfen  # 二分翻译
     - script_translator@txjxgbk  # GBK翻译
 
   filters:
-    - reverse_lookup_filter@jderfen_lookup  # 二分反查
-    - reverse_lookup_filter@gbk_lookup      # GBK反查（可在 custom 中禁用）
-    - simplifier@emoji_cn  # 表情符号（必须在最前面）
+    - reverse_lookup_filter@jderfen_lookup  # v 模式美化
+    - reverse_lookup_filter@gbk_lookup      # o 模式美化
+    - lua_filter@*txjx_filter       # 630提示 & 格式辅助
     - lua_filter@*txjx_completion   # 辅助码提示
-    - lua_filter@*txjx_filter  # 630提示（必须在繁体转换之前）
+    - lua_filter@*txjx_embeded_cands  # 内嵌候选
     - simplifier@jffh      # 简繁转换
-    - lua_filter@*txjx_embeded_cands  # 内嵌候选（在所有转换之后）
-    - lua_filter@*txjx_single_char  # 单字优先（可在 custom 中禁用）
-    - simplifier@ascii_punct  # 英文标点
+    - simplifier@emoji_cn  # 表情符号
+    - reverse_lookup_filter@core_lookup_trigger # 强制编译 core
     - uniquifier          # 去重
 
 # ==================== 输入法功能开关 ====================
 switches:
   - name: ascii_mode      # 中英文切换
-    states: [ 中文, 西文 ]
-
-  - name: full_shape      # 全角半角
-    states: [ 半角, 全角 ]
+    states: [ 中文, 英文 ]
 
   - name: jffh            # 简繁切换
     states: [ 简体, 繁體 ]
 
+  - name: completion      # 候选提示
+    states: [提示关,提示开]
+
   - name: emoji_cn        # 表情开关
-    states: [ 关闭表情, 开启表情 ]
-    
+    states: [ 表情关, 表情开 ]
+
+  - name: direct_symbols    # 符号直上屏
+    states: [ 快符关, 快符开 ]
+
+  - name: smarttwo        # 次选开关
+    states: [ ";次选关", ";次选开" ]
+
+  - name: jisuanqi        # 计算器开关
+    states: [ 计算关, 计算开 ]
+
+  - name: auto_fallback   # 空码自动回退
+    states: [ 空顶关, 空顶开 ]
+
+  - name: sbb_hint        # 630提示
+    states: [ 630提示关, 630提示开 ]
+
   - name: embeded_cands   # 内嵌候选
     states: [普通, 嵌入候选]
 
-  - name: sbb_hint        # 630提示
-    states: [ 关闭630提示, 开启630提示 ]
-    
-  - name: completion      # 补全提示
-    states: [提示关,提示开]
+  - name: full_shape      # 全角半角
+    states: [ 半角, 全角 ]
 
-# ==================== 键盘布局配置 ====================
+# ==================== 标点符号配置 ====================
+punctuator:
+  # digit_separator_action: commit
+  digit_separators: "./"
+  import_preset: txjx.symbols
+
+# ==================== 拼写处理 ====================
 layout:
   topup:
     topup_this: "bcdefghjklmnpqrstwxyz"
     topup_with: "avuio;"
-  
   algebra:
     - derive/^[bcdefghjklmnpqrstwxyz;]([bcdefghjklmnpqrstwxyz;][avuio].*)$/`$1/
     - derive/^([bcdefghjklmnpqrstwxyz;])[bcdefghjklmnpqrstwxyz;]([avuio].*)$/$1`$2/
@@ -102,25 +116,20 @@ layout:
   patterns:
     special: "^(?:;?[avuio])[a-z]{0,}"
 
-# ==================== 标点符号配置 ====================
-punctuator:
-  # digit_separator_action: commit
-  digit_separators: "./"
-  import_preset: txjx.symbols
-
-# ==================== 拼写处理 ====================
 speller:
-  auto_select: false
-  alphabet: "abcdefghijklmnopqrstuvwxyz;'"
+  auto_select: false   #自动上屏
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
   delimiter: " '"
   algebra:
-    - derive/[0-9]$//      # 过滤数字
-    - derive|^;|/|         # 处理分号开头
+    - derive/[0-9]$//  #无数字
+    - derive|^;|/|
+
 
 # ==================== 词典配置 ====================
 translator:
   dictionary: txjx.extended
+  db_class: tabledb          # 强制只读，内存优化
   enable_charset_filter: false
   enable_completion: true    # 启用提示
   enable_sentence: false     # 禁用整句
@@ -147,20 +156,12 @@ emoji_cn:
 jffh:
   opencc_config: s2g.json
   option_name: jffh
-
-## 英文标点
-ascii_punct:
-  option_name: ascii_punct
+  tags: [ abc, jderfen, txjxgbk, phrase, sentence, date, time, xiqy, jwql, "sjx/" ]
 
 # ==================== 反查配置 ====================
-## 二分反查
-jderfen_lookup:
-  tags: [jderfen]
-  dictionary: txjx.cx
-  overwrite_comment: true
-  comment_format:
-    - xform/ /，/
 
+# 1. 二分反查 (v) ------------------------------------------------
+# 翻译器：负责从 liangfen 词库中查词
 jderfen:
   tag: jderfen
   dictionary: liangfen
@@ -169,37 +170,61 @@ jderfen:
   prefix: "v"
   tips: "〔二分〕"
 
-## GBK反查
-gbk_lookup:
-  tags: [txjxgbk]
+# 过滤器：负责给 v 模式的候选词添加[读音/编码]注释
+# 使用 txjx.cx (全拼库) 或 liangfen 自带注释进行格式化
+jderfen_lookup:
+  tags: [jderfen]
   dictionary: txjx.cx
+  option_name: jderfen_lookup
   overwrite_comment: true
   comment_format:
-    - xform/ /，/
+    - xform|^\(([^)]+)\) +|($1)★|   # 保护读音和分隔符
+    - xform| +|, |                  # 编码间分隔：空格变逗号
+    - xform|^\(([^)]+)\)★(.+)$|[$1/ $2]| # 恢复：有读音有编码
+    - xform|^\(([^)]+)\)(★)?$|[$1]|      # 恢复：只有读音
+    - xform|^([^\[].*)$|[$1]|            # 兜底：只有编码
 
+# 2. GBK反查 (o) ------------------------------------------------
+# 翻译器：负责从 txjx.gbk 词库中查词
 txjxgbk:
   tag: txjxgbk
   dictionary: txjx.gbk
   enable_sentence: true
   enable_user_dict: false
   prefix: "o"
+  # tips: "〔GBK〕" # 可选提示
 
-## 通用反查
-reverse_lookup:
-  dictionary: txjx.cx
-  enable_completion: true
-  # 限制反查候选词数量，减少内存占用
-  initial_quality: 0.5
-  max_phrase_length: 10  # 限制最大词长
+# 过滤器：负责给 o 模式的候选词添加注释并格式化
+gbk_lookup:
+  tags: [txjxgbk]
+  dictionary: txjx.gbk
+  option_name: gbk_lookup
+  overwrite_comment: true
   comment_format:
-    - xform/ /，/
+    - xform|^\(([^)]+)\) +|($1)★|
+    - xform| +|, |
+    - xform|^\(([^)]+)\)★(.+)$|[$1/ $2]|
+    - xform|^\(([^)]+)\)(★)?$|[$1]|
+    - xform|^([^\[].*)$|[$1]|
+
+# 3. 万能符反查 (`) ---------------------------------------------
+# 翻译器：负责从 txjx.cx 词库中查词
+# 注意：此模式不挂载 Filter，直接由 Translator 输出以保证性能
+reverse_lookup:
+  tags: [reverse_lookup] # 独立 Tag，不被 Filter 拦截
+  dictionary: txjx.cx
+  option_name: reverse_lookup
+  enable_completion: false
+  initial_quality: 0.5
+  max_phrase_length: 6
+  overwrite_comment: false
+  comment_format:
+    - xform/^/[/
+    - xform/$/]/
+    - xform/ /, /
 
 # ==================== 快捷键配置 ====================
 key_binder:
-  # 以词定字
-  select_first_character: "bracketleft"   # [ 选择首字
-  select_last_character: "bracketright"   # ] 选择尾字
-
   bindings:
     - { when: has_menu, accept: minus, send: Page_Up }      # - 上翻页
     - { when: has_menu, accept: equal, send: Page_Down }   # = 下翻页
@@ -213,12 +238,10 @@ recognizer:
     uppercase: "[A-Z][-_+.'0-9A-Za-z]*$"
     url: "^(www[.]|https?:|ftp[.:]|mailto:|file:).*$|^[a-z]+[.].+$"
     reverse_lookup: "[a-z`]*`+[a-z`]*"
-    punct: "^/([0-9]0?|[a-z]+)$"
+    punct: "^/([0-9]0?|[a-z]+)$" 
     jderfen: "^v[a-z']*'?$"
     txjxgbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
-    zhuan: "^-.*$"
-    zhuanxiao: "^\\+.*$"
 
 # ==================== 顶功配置 ====================
 topup:
@@ -232,3 +255,10 @@ topup:
 # ==================== 菜单配置 ====================
 menu:
   alternative_select_keys: 1234567890  # 数字选词
+
+# ==================== 强制编译 Core 词库 ====================
+core_lookup_trigger:
+  tags: [ __compile_only__ ] # 这里的 tag 永远不会匹配到候选，所以不会显示提示
+  dictionary: txjx.core
+  overwrite_comment: false
+  comment_format: []
