@@ -1,6 +1,6 @@
 -- 天行键统一按键处理器 (性能优化版)
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-16
+-- 更新：2026-02-16 使用请注明出处
 
 local string_sub = string.sub
 local string_match = string.match

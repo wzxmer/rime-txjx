@@ -5,8 +5,8 @@
 --   2. 优化内存管理，正确断开监听器防止泄漏
 --   3. 候选排序：带"~"的单字立即输出，其他候选延迟输出
 --   4. 采用立即输出策略，显著降低卡顿
--- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-16
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx 
+-- 更新：2026-02-16 使用请注明出处
 
 local ctx_handlers = setmetatable({}, { __mode = "k" })
 

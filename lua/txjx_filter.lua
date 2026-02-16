@@ -5,7 +5,7 @@
 --   3. 内存管理：全局引用计数缓存 + 按需加载 + 定期 GC
 --   4. 通用适配：自动识别 txjx/xmjd6 方案ID
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-16
+-- 更新：2026-02-16 使用请注明出处
 
 local reverse_cache = {}
 

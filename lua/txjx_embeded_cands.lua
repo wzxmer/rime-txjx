@@ -1,6 +1,6 @@
--- 内嵌候选显示优化版
+-- 内嵌候选显示优化版 原作者为饼干@https://github.com/lost-melody
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-15
+-- 更新：2026-02-16  使用请注明出处
 
 local embeded_cands_filter = {}
 
