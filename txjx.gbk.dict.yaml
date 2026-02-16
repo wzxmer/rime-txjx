@@ -5,6 +5,8 @@
 name: txjx.gbk
 version: "2026年1月1日"
 sort: original
+import_tables:
+  - txjx.cx
 ...
 # 编码各字段以制表符（Tab）分隔
 # ==============================

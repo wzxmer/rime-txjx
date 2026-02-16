@@ -13,15 +13,6 @@ schema:
     http://yedict.com/
     Dict is from http://yedict.com/
 
-switches:
-  - name: ascii_mode
-    reset: 0
-    states: [ Chi, Eng ]
-  - name: full_shape
-    states: [ Half, Full ]
-  - name: simplification
-    states: [ Trad, Simp ]
-
 engine:
   processors:
     - ascii_composer
