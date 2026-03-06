@@ -1,6 +1,6 @@
 -- 天行键过滤器 
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-16
+-- 更新：2026-02-26
 
 local string_match = string.match
 local string_find = string.find
