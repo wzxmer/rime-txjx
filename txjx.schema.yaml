@@ -11,7 +11,7 @@ schema:
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
-  dependencies: [txjx.cx, liangfen, txjx.gbk]
+  dependencies: [txjx.cx, txjx.gbk, liangfen]
 
 # ==================== 输入法核心配置 ====================
 engine:
@@ -46,15 +46,16 @@ engine:
     - script_translator@txjxgbk  # GBK翻译
 
   filters:
-    - reverse_lookup_filter@jderfen_lookup  # v 模式美化
-    - reverse_lookup_filter@gbk_lookup      # o 模式美化
-    - lua_filter@*txjx_filter       # 630提示 & 格式辅助
-    - lua_filter@*txjx_completion   # 辅助码提示
-    - lua_filter@*txjx_embeded_cands  # 内嵌候选
-    - simplifier@jffh      # 简繁转换
-    - simplifier@emoji_cn  # 表情符号
-    - reverse_lookup_filter@core_lookup_trigger # 强制编译 core
-    - uniquifier          # 去重
+    - lua_filter@*txjx_completion
+    - reverse_lookup_filter@jderfen_lookup
+    - reverse_lookup_filter@gbk_lookup
+    - lua_filter@*txjx_filter
+    - simplifier@jffh
+    - simplifier@emoji_cn
+    - uniquifier
+    - lua_filter@*txjx_embeded_cands
+
+
 
 # ==================== 输入法功能开关 ====================
 switches:
@@ -137,8 +138,7 @@ translator:
   encode_commit_history: true
   max_phrase_length: 6
   initial_quality: 0
-  comment_format:
-    - xform/[0-9]//         # 过滤数字注释
+  # comment_format 数字过滤已移至 txjx_completion.lua 排序后处理
 
 # ==================== 特殊功能配置 ====================
 ## 重复历史记录
@@ -256,9 +256,3 @@ topup:
 menu:
   alternative_select_keys: 1234567890  # 数字选词
 
-# ==================== 强制编译 Core 词库 ====================
-core_lookup_trigger:
-  tags: [ __compile_only__ ] # 这里的 tag 永远不会匹配到候选，所以不会显示提示
-  dictionary: txjx.core
-  overwrite_comment: false
-  comment_format: []
