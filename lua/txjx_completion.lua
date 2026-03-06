@@ -1,7 +1,6 @@
--- 补全候选过滤器 + 单字优先
+-- 补全候选过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-21
--- 功能：completion 关闭时截断补全候选；enable_sentence 关闭时对候选做单字优先排序
+-- 更新：2026-02-24
 
 local utf8_len = utf8.len
 local type = type
