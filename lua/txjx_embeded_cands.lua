@@ -1,89 +1,68 @@
 -- 内嵌候选显示优化版 原作者为饼干@https://github.com/lost-melody
--- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-16  使用请注明出处
+-- 文件名：lua/txjx_embeded_cands.lua
+-- 优化：2026-02-21
 
 local embeded_cands_filter = {}
 
--- 本地化常用函数（仅保留实际使用的）
-local string_format = string.format
-local string_gmatch, string_gsub = string.gmatch, string.gsub
+-- 局部化
 local string_len = string.len
-local string_match = string.match
 local string_sub = string.sub
-local table_concat, table_insert = table.concat, table.insert
-local table_unpack = table.unpack or unpack  -- Lua 5.1 兼容性
+local string_gsub = string.gsub
+local string_format = string.format
+local table_insert = table.insert
+local table_concat = table.concat
 local math_min = math.min
-local ipairs = ipairs
-local pcall, type, tostring = pcall, type, tostring
-local setmetatable = setmetatable
-local coroutine_yield = coroutine.yield
-local Candidate = Candidate
+local table_unpack = table.unpack or unpack
 
--- 弱引用表防止 Context 泄漏
+-- 弱引用
 local ctx_handlers = setmetatable({}, { __mode = "k" })
+-- 配置缓存
+local config_cache = setmetatable({}, { __mode = "v" })
 
--- 清空表内容（复用表，避免每次创建新表）
-local function clear_table(tbl)
-    for i = 1, #tbl do tbl[i] = nil end
-end
-
--- 默认配置
 local DEFAULT_INDEX_INDICATORS = {"¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁰"}
 local DEFAULT_FIRST_FORMAT = "${Stash}[${候選}${Seq}]${Code}${Comment}"
 local DEFAULT_NEXT_FORMAT = "${Stash}${候選}${Seq}${Comment}"
 local DEFAULT_SEPARATOR = " "
 local DEFAULT_STASH_PLACEHOLDER = "~"
 
--- 安全处理模块
 local safe = {
-    max_text_length = 60,
-    max_total_length = 150,
     truncate = function(text, max_len)
         if not text then return "" end
-        text = tostring(text)
         return #text <= max_len and text or text:sub(1, max_len).."…"
     end
 }
 
--- 格式化模板编译
 local function compile_formatter(format_str)
-    if not format_str then
-        format_str = DEFAULT_FIRST_FORMAT
-    end
-    if string_len(format_str) > safe.max_text_length then
-        format_str = "${候選}${Comment}"
-    end
+    if not format_str then format_str = DEFAULT_FIRST_FORMAT end
+    if string_len(format_str) > 60 then format_str = "${候選}${Comment}" end
     local pattern = "%${[^{}]+%}"
     local verbs = {}
-    for s in string_gmatch(format_str, pattern) do table_insert(verbs, s) end
+    for s in string.gmatch(format_str, pattern) do table_insert(verbs, s) end
     local compiled = {
         format_pattern = string_gsub(format_str, pattern, "%%s"),
         verbs_order = verbs,
     }
-    local meta = { __index = function() return "" end }
+    -- 预分配 args 表复用，避免每次 build 创建新表
+    local args = {}
+    for i = 1, #verbs do args[i] = "" end
     function compiled:build(dict)
-        setmetatable(dict, meta)
-        local args = {}
         for i = 1, #self.verbs_order do
-            table_insert(args, dict[self.verbs_order[i]])
+            args[i] = dict[self.verbs_order[i]] or ""
         end
-        return string_format(self.format_pattern, table_unpack(args))
+        return string_format(self.format_pattern, table_unpack(args, 1, #self.verbs_order))
     end
     return compiled
 end
 
--- comment渲染逻辑，~开头隐藏
+-- 辅助逻辑
 local function render_comment_text_inline_logic(comment)
-    if comment and string_len(comment) > 0 and string_sub(comment, 1, 1) == "~" then
-        return ""
-    end
+    if comment and #comment > 0 and string.byte(comment, 1) == 126 then return "" end -- 126 is '~'
     return comment or ""
 end
 
--- stash渲染逻辑
 local function render_stashcand_inline_logic(cfg, seq, stash, text, digested)
     local s, t = stash, text
-    local sl, tl = string_len(stash), string_len(text)
+    local sl, tl = #stash, #text
     if sl > 0 and tl >= sl and string_sub(text, 1, sl) == stash then
         if seq == 1 then
             digested = true
@@ -93,6 +72,7 @@ local function render_stashcand_inline_logic(cfg, seq, stash, text, digested)
             s = "["..stash.."]"
             t = string_sub(text, sl + 1)
         else
+            -- 优化：减少 gsub 调用
             local placeholder = cfg.stash_placeholder_str
             s = ""
             t = string_gsub(placeholder, "%${Stash}", stash)..string_sub(text, sl + 1)
@@ -103,43 +83,36 @@ local function render_stashcand_inline_logic(cfg, seq, stash, text, digested)
     return s, t, digested
 end
 
--- 健壮的配置读取，支持schema缺省，自动fallback
 local function parse_conf_str(env, key, default_val)
-    local val = nil
-    pcall(function()
-        val = env.engine.schema.config:get_string((env.name_space or "") .. "/" .. key)
-    end)
-    if not val or val == "" then return default_val end
-    return val
+    local val = env.engine.schema.config:get_string((env.name_space or "") .. "/" .. key)
+    return (val and val ~= "") and val or default_val
 end
 
 local function parse_conf_str_list(env, key, default_list)
     local list = nil
-    pcall(function()
-        local l = env.engine.schema.config:get_list((env.name_space or "") .. "/" .. key)
-        if l then
-            list = {}
-            for i = 0, l:size() - 1 do
-                local v = l:get_value_at(i)
-                table_insert(list, v.value or v:get_string())
-            end
+    local l = env.engine.schema.config:get_list((env.name_space or "") .. "/" .. key)
+    if l then
+        list = {}
+        for i = 0, l:size() - 1 do
+            local v = l:get_value_at(i)
+            table_insert(list, v.value or v:get_string())
         end
-    end)
-    if not list or #list == 0 then return default_list end
-    return list
+    end
+    return (list and #list > 0) and list or default_list
 end
 
--- 配置缓存，支持多namespace（弱引用，自动回收不再使用的配置）
-local config_cache = setmetatable({}, { __mode = "v" })
 local function get_config(env)
     local ns = env.name_space or "default"
     if not config_cache[ns] then
         local cfg = {}
-        cfg.index_indicators = parse_conf_str_list(env, "index_indicators", DEFAULT_INDEX_INDICATORS)
-        cfg.first_format_str = parse_conf_str(env, "first_format", DEFAULT_FIRST_FORMAT)
-        cfg.next_format_str = parse_conf_str(env, "next_format", DEFAULT_NEXT_FORMAT)
-        cfg.separator_str = parse_conf_str(env, "separator", DEFAULT_SEPARATOR)
-        cfg.stash_placeholder_str = parse_conf_str(env, "stash_placeholder", DEFAULT_STASH_PLACEHOLDER)
+        -- 使用 pcall 保护 config 读取
+        pcall(function()
+            cfg.index_indicators = parse_conf_str_list(env, "index_indicators", DEFAULT_INDEX_INDICATORS)
+            cfg.first_format_str = parse_conf_str(env, "first_format", DEFAULT_FIRST_FORMAT)
+            cfg.next_format_str = parse_conf_str(env, "next_format", DEFAULT_NEXT_FORMAT)
+            cfg.separator_str = parse_conf_str(env, "separator", DEFAULT_SEPARATOR)
+            cfg.stash_placeholder_str = parse_conf_str(env, "stash_placeholder", DEFAULT_STASH_PLACEHOLDER)
+        end)
         cfg.formatter = {
             first = compile_formatter(cfg.first_format_str),
             next = compile_formatter(cfg.next_format_str),
@@ -150,131 +123,151 @@ local function get_config(env)
 end
 
 function embeded_cands_filter.init(env)
-    -- ① 先清空旧状态，防止切换APP时旧闭包持有大对象
     env.option = nil
-
     local ctx = env.engine.context
 
-    -- ② 断开旧监听器
     if env._embeded_handler and ctx.option_update_notifier then
         pcall(function() ctx.option_update_notifier:disconnect(env._embeded_handler) end)
     end
-    if ctx_handlers[ctx] and ctx.option_update_notifier then
-        pcall(function() ctx.option_update_notifier:disconnect(ctx_handlers[ctx]) end)
-    end
-    env._embeded_handler = nil
     ctx_handlers[ctx] = nil
 
-    -- ③ 加载配置
     get_config(env)
 
-    -- ④ 注册新监听器
     local option_name = "embeded_cands"
     env.option = {}
     local function handler(context, name)
         if name == option_name then
             env.option[name] = context:get_option(name)
-            context:refresh_non_confirmed_composition()
         end
     end
-    -- 初始化时同步一次
     handler(ctx, option_name)
     env._embeded_handler = handler
     ctx_handlers[ctx] = handler
     ctx.option_update_notifier:connect(handler)
+    
+    -- 核心优化：预分配内存池
+    env.page_cands_pool = {} 
+    env.page_rendered_pool = {}
+    -- 预定义 dict 表，避免 render_candidate 中重复创建
+    env.render_dict = {}
 end
 
-local function render_candidate(cfg, seq, input_code, stashed_text, text, comment, digested)
-    -- 安全检查
-    if string_len(text) > safe.max_text_length then
-        text = safe.truncate(text, safe.max_text_length)
-    end
-    if string_len(comment) > safe.max_text_length then
-        comment = safe.truncate(comment, safe.max_text_length)
-    end
+local function render_candidate(cfg, seq, input_code, stashed_text, text, comment, digested, dict_buffer)
+    if #text > 60 then text = safe.truncate(text, 60) end
+    if #comment > 60 then comment = safe.truncate(comment, 60) end
+    
     local formatter = (seq == 1) and cfg.formatter.first or cfg.formatter.next
     local s, t, d = render_stashcand_inline_logic(cfg, seq, stashed_text, text, digested)
-    if seq ~= 1 and string_len(t) == 0 then return "", d end
+    
+    if seq ~= 1 and #t == 0 then return "", d end
+    
     local cmt = render_comment_text_inline_logic(comment)
-    local dict = {
-        ["${Seq}"] = cfg.index_indicators[math_min(seq, #cfg.index_indicators)] or "",
-        ["${Code}"] = input_code or "",
-        ["${Stash}"] = s,
-        ["${候選}"] = t,
-        ["${Comment}"] = cmt,
-    }
-    return formatter:build(dict), d
+    
+    -- 复用传入的 dict_buffer
+    dict_buffer["${Seq}"] = cfg.index_indicators[math_min(seq, #cfg.index_indicators)] or ""
+    dict_buffer["${Code}"] = input_code or ""
+    dict_buffer["${Stash}"] = s
+    dict_buffer["${候選}"] = t
+    dict_buffer["${Comment}"] = cmt
+    
+    return formatter:build(dict_buffer), d
 end
 
--- 获取 page_size，优先用 env.page_size，其次 schema 配置，最后默认 5
 local function get_page_size(env)
-    if env.page_size and type(env.page_size)=="number" then return env.page_size end
-    local ok, val = pcall(function()
-        return env.engine.schema.page_size
-    end)
-    if ok and type(val)=="number" then return val end
-    return 5
+    -- 简化 page_size 获取，假设大部分情况为 5，避免频繁调用 C++ 接口
+    return env.engine.schema.page_size or 5
 end
 
 function embeded_cands_filter.func(input, env)
-    local ok, err = pcall(function()
-        local cfg = get_config(env)
-        if not cfg or not (env.option and env.option["embeded_cands"]) then
-            for cand in input:iter() do coroutine_yield(cand) end
-            return
+    -- 快速路径：如果不开启，直接透传
+    if not (env.option and env.option["embeded_cands"]) then
+        for cand in input:iter() do yield(cand) end
+        return
+    end
+
+    local cfg = get_config(env)
+    local page_size = get_page_size(env)
+    
+    -- 使用内存池
+    local page_cands = env.page_cands_pool
+    local page_rendered = env.page_rendered_pool
+    local dict_buffer = env.render_dict
+    
+    local idx = 0
+    local first_cand = nil
+    local digested = false
+    local active_input_code = env.input_code or ""
+    local active_stash = env.stashed_text or ""
+    local sep = cfg.separator_str
+    
+    local preedit = ""
+    local cands_count = 0
+    local rendered_count = 0
+
+    for cand in input:iter() do
+        idx = idx + 1
+        if idx == 1 then first_cand = cand end
+        
+        local code = (#active_input_code == 0) and (cand.preedit or "") or active_input_code
+        local cand_text = cand.text or ""
+        
+        preedit, digested = render_candidate(cfg, idx, code, active_stash, cand_text, cand.comment, digested, dict_buffer)
+        
+        cands_count = cands_count + 1
+        page_cands[cands_count] = cand
+        
+        if #preedit > 0 then 
+            rendered_count = rendered_count + 1
+            page_rendered[rendered_count] = preedit 
         end
-        local page_size = get_page_size(env)
-        local page_cands, page_rendered = {}, {}
-        local idx, first_cand, preedit = 0, nil, ""
-        local digested = false
-        local active_input_code = env.input_code or ""
-        local active_stash = env.stashed_text or ""
-        local sep = cfg.separator_str
-        local iter, obj = input:iter()
-        local next_cand = iter(obj)
-        while next_cand do
-            idx = idx + 1
-            if idx == 1 then first_cand = next_cand end
-            local code = (string_len(active_input_code) == 0) and (next_cand.preedit or "") or active_input_code
-            local cand_text = next_cand.text or ""
-            preedit, digested = render_candidate(cfg, idx, code, active_stash, cand_text, next_cand.comment, digested)
-            table_insert(page_cands, next_cand)
-            if string_len(preedit) > 0 then table_insert(page_rendered, preedit) end
-            if idx == page_size then
-                if first_cand and #page_rendered > 0 then
-                    first_cand.preedit = table_concat(page_rendered, sep)
-                end
-                for _, c in ipairs(page_cands) do coroutine_yield(c) end
-                idx, first_cand, preedit = 0, nil, ""
-                digested = false
-                clear_table(page_cands); clear_table(page_rendered)
+        
+        if idx == page_size then
+            if first_cand and rendered_count > 0 then
+                -- 使用 table.concat 高效拼接
+                first_cand.preedit = table_concat(page_rendered, sep, 1, rendered_count)
             end
-            next_cand = iter(obj)
-        end
-        if idx > 0 and #page_cands > 0 then
-            if first_cand and #page_rendered > 0 then
-                first_cand.preedit = table_concat(page_rendered, sep)
+            
+            for i = 1, cands_count do
+                yield(page_cands[i])
+                page_cands[i] = nil -- 释放引用
             end
-            for _, c in ipairs(page_cands) do coroutine_yield(c) end
+            
+            -- 重置状态
+            idx = 0
+            first_cand = nil
+            digested = false
+            cands_count = 0
+            rendered_count = 0
+            -- page_rendered 不需要逐个 nil，下次直接覆盖即可，
+            -- 但为了保险防止长串残留，可以清理
+            for i=1, page_size do page_rendered[i] = nil end
         end
-    end)
-    if not ok then
-        for cand in input:iter() do coroutine_yield(cand) end
+    end
+    
+    -- 处理剩余不足一页的候选
+    if cands_count > 0 then
+        if first_cand and rendered_count > 0 then
+            first_cand.preedit = table_concat(page_rendered, sep, 1, rendered_count)
+        end
+        for i = 1, cands_count do
+            yield(page_cands[i])
+            page_cands[i] = nil
+        end
+        for i=1, page_size do page_rendered[i] = nil end
     end
 end
 
 function embeded_cands_filter.fini(env)
     local ctx = env.engine and env.engine.context
-    if ctx then
-        if env._embeded_handler and ctx.option_update_notifier then
-            pcall(function() ctx.option_update_notifier:disconnect(env._embeded_handler) end)
-        end
-        ctx_handlers[ctx] = nil
+    if ctx and env._embeded_handler then
+        pcall(function() ctx.option_update_notifier:disconnect(env._embeded_handler) end)
     end
     env._embeded_handler = nil
-    config_cache[env.name_space or "default"] = nil
     env.option = nil
+    -- 释放内存池
+    env.page_cands_pool = nil
+    env.page_rendered_pool = nil
+    env.render_dict = nil
 end
 
--- 保证 return 的 table 直接有 func 方法，兼容简洁 filter 引用
 return embeded_cands_filter
