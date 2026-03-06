@@ -1,31 +1,27 @@
--- 补全候选过滤器（Completion Filter）
--- 功能：根据开关控制是否显示编码补全候选词
--- 特点：
---   1. 支持动态开关（completion）监听
---   2. 优化内存管理，正确断开监听器防止泄漏
---   3. 候选排序：带"~"的单字立即输出，其他候选延迟输出
---   4. 采用立即输出策略，显著降低卡顿
--- 作者：@浮生 https://github.com/wzxmer/rime-txjx 
--- 更新：2026-02-16 使用请注明出处
+-- 补全候选过滤器 + 单字优先
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-02-21
+-- 功能：completion 关闭时截断补全候选；enable_sentence 关闭时对候选做单字优先排序
+
+local utf8_len = utf8.len
+local type = type
 
 local ctx_handlers = setmetatable({}, { __mode = "k" })
 
 return {
     init = function(env)
         local ctx = env.engine.context
+        local config = env.engine.schema.config
+
         if env._completion_handler and ctx.option_update_notifier then
             pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
         end
-        if ctx_handlers[ctx] and ctx.option_update_notifier then
-            pcall(function() ctx.option_update_notifier:disconnect(ctx_handlers[ctx]) end)
-        end
-        env._completion_handler = nil
         ctx_handlers[ctx] = nil
 
         env.completion_enabled = ctx:get_option("completion")
-        if env.completion_enabled == nil then
-            env.completion_enabled = false
-        end
+        if env.completion_enabled == nil then env.completion_enabled = false end
+
+        env._danzi_first = not (config:get_bool("translator/enable_sentence") or false)
 
         local handler = function(context, opname)
             if opname == "completion" then
@@ -39,72 +35,47 @@ return {
     end,
 
     func = function(input, env)
-        if not env.completion_enabled then
-            local seen_non_completion = false
-            local after_non_completion_count = 0
-
-            for cand in input:iter() do
-                if cand.type == "completion" then
-                    if seen_non_completion then
-                        after_non_completion_count = after_non_completion_count + 1
-                        if after_non_completion_count > 30 then
-                            return
-                        end
-                    end
-                else
-                    seen_non_completion = true
-                    yield(cand)
-                end
-            end
-            return
-        end
-
-        local processed = 0
-        local MAX_PROCESS = 100
-        local deferred = {}
-        local deferred_count = 0
+        local enabled = env.completion_enabled
+        local danzi = env._danzi_first
+        local buffer = {}
+        local buffer_size = 0
+        local comp_count = 0
 
         for cand in input:iter() do
-            processed = processed + 1
-            if processed > MAX_PROCESS then break end
-
-            local comment = cand.comment
-            local is_hint = comment and type(comment) == "string" and #comment > 0 and string.byte(comment, 1) == 126
-
-            if is_hint then
-                local text = cand.text
-                if not text or #text <= 4 then
-                    local text_len = text and utf8.len(text)
-                    if text_len == 1 or text_len == nil then
-                        yield(cand)
-                    elseif text_len > 1 and deferred_count < 100 then
-                        deferred_count = deferred_count + 1
-                        deferred[deferred_count] = cand
-                    end
-                elseif deferred_count < 100 then
-                    deferred_count = deferred_count + 1
-                    deferred[deferred_count] = cand
-                end
-            else
+            if cand.type == "completion" then
+                if not enabled then break end
+                comp_count = comp_count + 1
+                if comp_count > 30 then break end
+            end
+            if not danzi then
                 yield(cand)
+            else
+                local c = cand.comment
+                if c and type(c) == "string" and #c == 0 then
+                    yield(cand)
+                else
+                    local text_len = utf8_len(cand.text)
+                    if text_len == 1 then
+                        yield(cand)
+                    elseif text_len and text_len > 1 then
+                        buffer_size = buffer_size + 1
+                        buffer[buffer_size] = cand
+                    end
+                end
             end
         end
 
-        for i = 1, deferred_count do
-            yield(deferred[i])
-            deferred[i] = nil
+        for i = 1, buffer_size do
+            yield(buffer[i])
         end
     end,
 
     fini = function(env)
         local ctx = env.engine and env.engine.context
-        if ctx then
-            if env._completion_handler and ctx.option_update_notifier then
-                pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
-            end
-            ctx_handlers[ctx] = nil
+        if ctx and env._completion_handler then
+            pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
         end
+        ctx_handlers[ctx] = nil
         env._completion_handler = nil
-        env.completion_enabled = nil
     end
 }
