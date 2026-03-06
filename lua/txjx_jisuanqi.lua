@@ -303,17 +303,19 @@ local function serialize(obj)
   elseif type == "string" then
     return '"'..obj..'"'
   elseif type == "table" then
-    local str = "{"
+    local parts = {"{"}
     local i = 1
     for k, v in pairs(obj) do
-      if i ~= k then  
-        str = str.."["..serialize(k).."]="
+      if i ~= k then
+        parts[#parts + 1] = "["..serialize(k).."]="
       end
-      str = str..serialize(v)..", "  
+      parts[#parts + 1] = serialize(v)
+      parts[#parts + 1] = ", "
       i = i + 1
     end
-    str = str:len() > 3 and str:sub(0,-3) or str
-    return str.."}"
+    if #parts > 1 then parts[#parts] = nil end
+    parts[#parts + 1] = "}"
+    return table.concat(parts)
   elseif pcall(obj) then
     return "callable"
   end
@@ -334,11 +336,16 @@ local function load_money_functions()
         return part
     end
 
+    local defaultValMap = {
+        [0] = "零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
+        ["+"] = "正", ["-"] = "负", ["."] = "点", [""] = ""
+    }
+    local defaultPosMap4 = {[1]="仟"; [2]="佰"; [3]="拾"; [4]=""}
+    local defaultValMap10 = {[0]="零"; "一"; "二"; "三" ;"四"; "五"; "六"; "七"; "八"; "九"}
+    local defaultPosMap_int = { [1] = "千",[2] = "百",[3] = "十",[4] = "" }
+
     local function speakLiterally(str, valMap)
-        valMap = valMap or {
-            [0] = "零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
-            ["+"] = "正", ["-"] = "负", ["."] = "点", [""] = ""
-        }
+        valMap = valMap or defaultValMap
         local tbOut = {}
         for k = 1, #str do
             local v = string.sub(str, k, k)
@@ -349,8 +356,8 @@ local function load_money_functions()
     end
 
     local function speakBar(str, posMap, valMap)
-        posMap = posMap or {[1]="仟"; [2]="佰"; [3]="拾"; [4]=""}
-        valMap = valMap or {[0]="零"; "一"; "二"; "三" ;"四"; "五"; "六"; "七"; "八"; "九"}
+        posMap = posMap or defaultPosMap4
+        valMap = valMap or defaultValMap10
 
         local out = ""
         local bar = string.sub("****" .. str, -4, -1)
@@ -375,9 +382,8 @@ local function load_money_functions()
     end
 
     local function speakIntOfficially(str, posMap, valMap)
-        posMap = posMap or { [1] = "千",[2] = "百",[3] = "十",[4] = "" }
-        valMap = valMap or
-            { [0] = "零", "一", "二", "三", "四", "五", "六", "七", "八", "九" }
+        posMap = posMap or defaultPosMap_int
+        valMap = valMap or defaultValMap10
 
         local int = string.match(str, "^0*(%d+)$")
         if int == "" then int = "0" end
