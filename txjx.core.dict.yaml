@@ -9,15 +9,15 @@ sort: original
 
 #region <二简+新630 声声笔>
 #笔笔笔
-那是	ao
 那又	aa
 那去	av
-又是	aoi
+那个	ai
+那是	ao
 那有	avu
-又下	avi
 又用	au
+又是	aoi
+又下	avi
 #为了使用时提高输入体验，增加630衔接
-#yo 因为 ao 那是，yoao 因为那是
 因为那是	yoao
 
 #二简+声声笔
@@ -202,7 +202,7 @@ sort: original
 世界	eia
 是个	eii
 适当	eio
-是件	eiu
+数据	eiu
 适合	eiv
 时间	eo
 试试	eoa
@@ -521,7 +521,7 @@ sort: original
 主要	qvi
 起来	qvo
 前面	qvu
-整天	qvv
+前天	qvv
 人民	ra
 热线	raa
 日子	rai
