@@ -1,6 +1,6 @@
 -- 时间与农历模块
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 优化：2026-02-23
+-- 优化：2026-03-03
 
 local math_floor = math.floor
 local math_sin = math.sin
