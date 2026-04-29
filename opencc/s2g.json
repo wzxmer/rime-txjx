@@ -1,5 +1,6 @@
 {
   "name": "Simplified Chinese to Guji Chinese",
+  "source": "宇浩 GujiCC: https://github.com/forfudan/GujiCC",
   "segmentation": {
     "type": "mmseg",
     "dict": {
