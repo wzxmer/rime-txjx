@@ -1,6 +1,15 @@
+-- 天行键低频扩展核心
+-- 合并时间/农历与计算器完整逻辑，由 txjx_core.lua 按需加载。
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-04-29
+
+local M = {}
+
+-- time core ---------------------------------------------------------------
+do
 -- 时间与农历模块
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 优化：2026-03-03
+-- 优化：2026-03-17
 
 local math_floor = math.floor
 local math_sin = math.sin
@@ -111,8 +120,8 @@ setFromJD = function(JDate, jd,UTC) --儒略日数转公历,UTC=1表示目标公
 end,
 
 setFromStr = function(JDate, s) --设置时间,参数例:"20000101 120000"或"20000101"
-	JDate.Y=string.sub(s, 1,4)	JDate.M=string.sub(s, 5, 6)  JDate.D=string.sub(s,7, 8)
-	JDate.h=string.sub(s, 10, 11) JDate.m=string.sub(s, 12,13) JDate.s=string.sub(s, 14,18)
+	JDate.Y=string_sub(s, 1,4)	JDate.M=string_sub(s, 5, 6)  JDate.D=string_sub(s,7, 8)
+	JDate.h=string_sub(s, 10, 11) JDate.m=string_sub(s, 12,13) JDate.s=string_sub(s, 14,18)
 end,
 toStr = function(JDate) --日期转为串
 	local s = math_floor(JDate.s + 0.5)
@@ -150,8 +159,8 @@ end,
 
 d1_d2 = function(JDate, d1,d2) --计算两个日期的相差的天数,输入字串格式日期,如:"20080101"
 	local Y=JDate.Y local M=JDate.M local D=JDate.D local h=JDate.h local m=JDate.m local s=JDate.s --备份原来的数据
-	JDate.setFromStr(string.sub(d1,1,8)+" 120000")	local jd1=JDate.toJD(0)
-	JDate.setFromStr(string.sub(d2,1,8)+" 120000")	local jd2=JDate.toJD(0)
+	JDate.setFromStr(string_sub(d1,1,8)+" 120000")	local jd1=JDate.toJD(0)
+	JDate.setFromStr(string_sub(d2,1,8)+" 120000")	local jd2=JDate.toJD(0)
 
 	JDate.Y=Y JDate.M=M JDate.D=D JDate.h=h JDate.m=m JDate.s=s --还原
 	if jd1>jd2 then  return  math_floor(jd1-jd2+.0001)
@@ -546,12 +555,12 @@ local jqB={ --节气表
 
 local function JQtest(y)
 	local i,q,s1,s2,jqData  y=tostring(y)
-	local jd=365.2422*(tonumber(y.sub(y,1,4))-2000)
+	local jd=365.2422*(tonumber(string_sub(y,1,4))-2000)
 	for i=0,23 do
 		q=jiaoCal(jd+i*15.2,i*15,0)+J2000+8/24  --计算第i个节气(i=0是春分),结果转为北京时
 		JDate:setFromJD(q,1)  s1=JDate:toStr()  --将儒略日转成世界时
 		JDate:setFromJD(q,0)  s2=JDate:toStr()  --将儒略日转成日期格式(输出日期形式的力学时)
-		jqData=s1.sub(s1.gsub(s1, "^( )", ""),1,10)  jqData=jqData.gsub(jqData, "-", "")
+		jqData=string_sub(string_gsub(s1, "^( )", ""),1,10)  jqData=string_gsub(jqData, "-", "")
 		if (jqData == y) then return "-" .. jqB[i+1] end
 	end
 	return ""
@@ -559,15 +568,15 @@ end
 
 local function GetNextJQ(y)
 	local i,obj,q,s1,s2,jqData  y=tostring(y)
-	local jd=365.2422*(tonumber(y.sub(y,1,4))-2000)
+	local jd=365.2422*(tonumber(string_sub(y,1,4))-2000)
 	obj={}
 	for i=0,23 do
 		q=jiaoCal(jd+i*15.2,i*15,0)+J2000+8/24  --计算第i个节气(i=0是春风),结果转为北京时
 		JDate:setFromJD(q,1)  s1=JDate:toStr()  --将儒略日转成世界时
 		JDate:setFromJD(q,0)  s2=JDate:toStr()  --将儒略日转成日期格式(输出日期形式的力学时)
-		jqData=s1.sub(s1.gsub(s1, "^( )", ""),1,10)  jqData=jqData.gsub(jqData, "-", "")
+		jqData=string_sub(string_gsub(s1, "^( )", ""),1,10)  jqData=string_gsub(jqData, "-", "")
 		if (jqData>=y) then
-			table.insert(obj,jqB[i+1] .." ".. s1.sub(s1.gsub(s1, "^( )", ""),1,10))
+			table.insert(obj,jqB[i+1] .." ".. string_sub(string_gsub(s1, "^( )", ""),1,10))
 	  end
 
 	end
@@ -641,15 +650,15 @@ local function GetNowTimeJq(date)
 	date=tostring(date)
 	if string.len(date)<8 then return "无效日期" end
 	JQtable2=GetNextJQ(date)
-	if tonumber(string.sub(date,5,8))<322 then
-		JQtable1=GetNextJQ(tonumber(string.sub(date,1,4))-1 .. string.sub(date,5,8))
-		if tonumber(string.sub(date,5,8))<108 then 
+	if tonumber(string_sub(date,5,8))<322 then
+		JQtable1=GetNextJQ(tonumber(string_sub(date,1,4))-1 .. string_sub(date,5,8))
+		if tonumber(string_sub(date,5,8))<108 then 
 			for i=20,24 do table.insert(JQtable2,i-19,JQtable1[i]) end
-		elseif tonumber(string.sub(date,5,8))<122 then
+		elseif tonumber(string_sub(date,5,8))<122 then
 			for i=21,24 do table.insert(JQtable2,i-20,JQtable1[i]) end
-		elseif tonumber(string.sub(date,5,8))<206 then
+		elseif tonumber(string_sub(date,5,8))<206 then
 			for i=22,24 do table.insert(JQtable2,i-21,JQtable1[i]) end
-		elseif tonumber(string.sub(date,5,8))<221 then
+		elseif tonumber(string_sub(date,5,8))<221 then
 			for i=23,24 do table.insert(JQtable2,i-22,JQtable1[i]) end
 		else
 			table.insert(JQtable2,1,JQtable1[24])
@@ -851,7 +860,7 @@ end
 local function lunarJzl(y)
     local yidx,midx,didx,hidx
     y=tostring(y)
-    local t = os_time({year=tonumber(y.sub(y,1,4)),month=tonumber(y.sub(y,5,-5)), day=tonumber(y.sub(y,7,-3)),hour=tonumber(y.sub(y,9,-1)),min=4,sec=5})
+    local t = os_time({year=tonumber(string_sub(y,1,4)),month=tonumber(string_sub(y,5,-5)), day=tonumber(string_sub(y,7,-3)),hour=tonumber(string_sub(y,9,-1)),min=4,sec=5})
     local x
     if _gzl_cache_key == t and _gzl_cache_obj then
         x = _gzl_cache_obj
@@ -892,8 +901,8 @@ end
 local function time_to_num(time)
   local pattern = "(%d+):(%d+) +([AP]M)"
   local hours, minutes, am
-  if string.match(time, pattern) ~= nil then
-    hours, minutes, am = string.match(time, pattern)
+  if string_match(time, pattern) ~= nil then
+    hours, minutes, am = string_match(time, pattern)
     if ((am == "AM") and (tonumber(hours) >= 12)) then
       hours = hours - 12
     elseif ((am == "PM") and (tonumber(hours) < 12)) then
@@ -901,7 +910,7 @@ local function time_to_num(time)
     end
   else
     pattern = "(%d+):(%d+)"
-    hours, minutes = string.match(time, pattern)
+    hours, minutes = string_match(time, pattern)
   end
   return (hours*60) + minutes
 end
@@ -926,7 +935,7 @@ local function Dec2bin(n)
 		t=math_floor(t/2)
 		if t==1 then if #tables>0 then table.insert(tables,1,1) else tables[1]=1 end end
 	end
-	return string.gsub(table.concat(tables),"^[0]+","")
+	return string_gsub(table.concat(tables),"^[0]+","")
 end
 
 --2/10/16进制互转
@@ -957,13 +966,13 @@ end
 --农历16进制数据分解
 local function Analyze(Data)
 	local rtn1,rtn2,rtn3,rtn4
-	rtn1=system(string.sub(Data,1,3),16,2)
+	rtn1=system(string_sub(Data,1,3),16,2)
 	if string.len(rtn1)<12 then rtn1="0" .. rtn1 end
-	rtn2=string.sub(Data,4,4)
-	rtn3=system(string.sub(Data,5,5),16,10)
-	rtn4=system(string.sub(Data,-2,-1),16,10)
-	if string.len(rtn4)==3 then rtn4="0" .. system(string.sub(Data,-2,-1),16,10) end
-	--string.gsub(rtn1, "^[0]*", "")
+	rtn2=string_sub(Data,4,4)
+	rtn3=system(string_sub(Data,5,5),16,10)
+	rtn4=system(string_sub(Data,-2,-1),16,10)
+	if string.len(rtn4)==3 then rtn4="0" .. system(string_sub(Data,-2,-1),16,10) end
+	--string_gsub(rtn1, "^[0]*", "")
 	return {rtn1,rtn2,rtn3,rtn4}
 end
 
@@ -979,13 +988,13 @@ end
 local function leaveDate(y)
 	local day,total
 	total=0
-	if IsLeap(tonumber(string.sub(y,1,4)))>365 then day={31,29,31,30,31,30,31,31,30,31,30,31}
+	if IsLeap(tonumber(string_sub(y,1,4)))>365 then day={31,29,31,30,31,30,31,31,30,31,30,31}
 	else day={31,28,31,30,31,30,31,31,30,31,30,31} end
-	if tonumber(string.sub(y,5,6))>1 then
-		for i=1,tonumber(string.sub(y,5,6))-1 do total=total+day[i] end
-		total=total+tonumber(string.sub(y,7,8))
+	if tonumber(string_sub(y,5,6))>1 then
+		for i=1,tonumber(string_sub(y,5,6))-1 do total=total+day[i] end
+		total=total+tonumber(string_sub(y,7,8))
 	else
-		return tonumber(string.sub(y,7,8))
+		return tonumber(string_sub(y,7,8))
 	end
 	return tonumber(total)
 end
@@ -996,16 +1005,16 @@ local function diffDate(date1,date2)
 	local t1,t2,n,total
 	total=0 date1=tostring(date1) date2=tostring(date2)
 	if tonumber(date2)>tonumber(date1) then
-		n=tonumber(string.sub(date2,1,4))-tonumber(string.sub(date1,1,4))
+		n=tonumber(string_sub(date2,1,4))-tonumber(string_sub(date1,1,4))
 		if n>1 then
 			for i=1,n-1 do
-				total=total+IsLeap(tonumber(string.sub(date1,1,4))+i)
+				total=total+IsLeap(tonumber(string_sub(date1,1,4))+i)
 			end
-			total=total+leaveDate(tonumber(string.sub(date2,1,8)))+IsLeap(tonumber(string.sub(date1,1,4)))-leaveDate(tonumber(string.sub(date1,1,8)))
+			total=total+leaveDate(tonumber(string_sub(date2,1,8)))+IsLeap(tonumber(string_sub(date1,1,4)))-leaveDate(tonumber(string_sub(date1,1,8)))
 		elseif n==1 then
-			total=IsLeap(tonumber(string.sub(date1,1,4)))-leaveDate(tonumber(string.sub(date1,1,8)))+leaveDate(tonumber(string.sub(date2,1,8)))
+			total=IsLeap(tonumber(string_sub(date1,1,4)))-leaveDate(tonumber(string_sub(date1,1,8)))+leaveDate(tonumber(string_sub(date2,1,8)))
 		else
-			total=leaveDate(tonumber(string.sub(date2,1,8)))-leaveDate(tonumber(string.sub(date1,1,8)))
+			total=leaveDate(tonumber(string_sub(date2,1,8)))-leaveDate(tonumber(string_sub(date1,1,8)))
 		end
 	elseif tonumber(date2)==tonumber(date1) then
 		return 0
@@ -1017,50 +1026,24 @@ end
 
 
 --日期星期几查询
+local MONTH_ACC = {0,31,59,90,120,151,181,212,243,273,304,334}
 local function CXweek(ymd)--8位数日期
-  local z,r,temp;
-  local y=tonumber(string.sub(ymd,1,4))
-  local m=tonumber(string.sub(ymd,5,6))
-  local d=tonumber(string.sub(ymd,7,8))
-  r=(y-1901)/4;
-  if (y%4==0 and m>=3) then
-    r=r+1;
-  end
-  if(m==1) then
-    z=(y-1901)*365+r+d;
-   elseif(m==2)then
-    z=(y-1901)*365+r+31+d;
-   elseif(m==3) then
-    z=(y-1901)*365+r+59+d;
-   elseif(m==4)then
-    z=(y-1901)*365+r+90+d;
-   elseif(m==5)then
-    z=(y-1901)*365+r+120+d;
-   elseif(m==6)then
-    z=(y-1901)*365+r+151+d;
-   elseif(m==7)then
-    z=(y-1901)*365+r+181+d;
-   elseif(m==8)then
-    z=(y-1901)*365+r+212+d;
-   elseif(m==9)then
-    z=(y-1901)*365+r+243+d;
-   elseif(m==10)then
-    z=(y-1901)*365+r+273+d;
-   elseif(m==11)then
-    z=(y-1901)*365+r+304+d;
-   elseif(m==12)then
-    z=(y-1901)*365+r+334+d;
-  end--if
-  temp=z%7;
-  return string.sub(temp+1,1,1)
+  local y=tonumber(string_sub(ymd,1,4))
+  local m=tonumber(string_sub(ymd,5,6))
+  local d=tonumber(string_sub(ymd,7,8))
+  local r=(y-1901)/4
+  if (y%4==0 and m>=3) then r=r+1 end
+  local z=(y-1901)*365+r+MONTH_ACC[m]+d
+  local temp=z%7
+  return string_sub(temp+1,1,1)
 end --function
 
 --日期周数查询
 local function CXweek2(ymd)--8位数日期
-	local yd=tonumber(string.sub(ymd,1,4).."0101")
+	local yd=tonumber(string_sub(ymd,1,4).."0101")
 	local ydw=CXweek(yd)--查询目标日期年份元旦是周几
 	local cj=diffDate(yd,ymd)
-	local W=string.match(tostring((cj+ydw+7)/7),"(.-)%.")
+	local W=string_match(tostring((cj+ydw+7)/7),"(.-)%.")
 	return W
 end-- function
 
@@ -1113,8 +1096,8 @@ local function Date2LunarDate(Gregorian)
 	Gregorian=tostring(Gregorian)
 	ensure_lunar_data()
 	local Year,Month,Day,Pos,Data0,Data1,MonthInfo,LeapInfo,Leap,Newyear,Data2,Data3,Date1,Date2,LYear,thisMonthInfo,LMonth
-	Year =tonumber(Gregorian.sub(Gregorian,1,4))  Month =tonumber(Gregorian.sub(Gregorian,5,6))
-	Day =tonumber(Gregorian.sub(Gregorian,7,8))
+	Year =tonumber(string_sub(Gregorian,1,4))  Month =tonumber(string_sub(Gregorian,5,6))
+	Day =tonumber(string_sub(Gregorian,7,8))
 	if (Year>2100 or Year<1899 or Month>12 or Month<1 or Day<1 or Day>31 or string.len(Gregorian)<8) then
 		return "无效日期"
 	end
@@ -1134,13 +1117,13 @@ local function Date2LunarDate(Gregorian)
 	Date3=Date3+1
 	LYear=Year	--农历年份，就是上面计算后的值
 	if Leap>0 then	--有闰月
-		thisMonthInfo=string.sub(MonthInfo,1,Leap) .. LeapInfo .. string.sub(MonthInfo,Leap+1)
+		thisMonthInfo=string_sub(MonthInfo,1,Leap) .. LeapInfo .. string_sub(MonthInfo,Leap+1)
 	else
 		thisMonthInfo=MonthInfo
 	end
 	local thisMonth,thisDays,LDay,Isleap,LunarYear,LunarMonth
 	for i=1,13 do
-		thisMonth=string.sub(thisMonthInfo,i,i)  thisDays=29+thisMonth
+		thisMonth=string_sub(thisMonthInfo,i,i)  thisDays=29+thisMonth
 		if (Date3>thisDays) then
 			Date3=Date3-thisDays
 		else
@@ -1168,9 +1151,9 @@ end
 local function GettotalDay(Date,dayCount)
 	local Year,Month,Day,days,total,t
 	Date=tostring(Date)
-	Year=tonumber(Date.sub(Date,1,4))
-	Month=tonumber(Date.sub(Date,5,6))
-	Day=tonumber(Date.sub(Date,7,8))
+	Year=tonumber(string_sub(Date,1,4))
+	Month=tonumber(string_sub(Date,5,6))
+	Day=tonumber(string_sub(Date,7,8))
 	if IsLeap(Year)>365 then days={31,29,31,30,31,30,31,31,30,31,30,31}
 	else days={31,28,31,30,31,30,31,31,30,31,30,31} end
 	if dayCount>days[Month]-Day then
@@ -1204,8 +1187,8 @@ local function LunarDate2Date(Gregorian,IsLeap)
 	Gregorian=tostring(Gregorian)
 	ensure_lunar_data()
 	local Year,Month,Day,Pos,Data,MonthInfo,LeapInfo,Leap,Newyear,Sum,thisMonthInfo,GDate
-	Year=tonumber(Gregorian.sub(Gregorian,1,4))  Month=tonumber(Gregorian.sub(Gregorian,5,6))
-	Day=tonumber(Gregorian.sub(Gregorian,7,8))
+	Year=tonumber(string_sub(Gregorian,1,4))  Month=tonumber(string_sub(Gregorian,5,6))
+	Day=tonumber(string_sub(Gregorian,7,8))
 	if (Year>2100 or Year<1900 or Month>12 or Month<1 or Day>30 or Day<1 or string.len(Gregorian)<8) then
 		return "无效日期"
 	end
@@ -1219,14 +1202,14 @@ local function LunarDate2Date(Gregorian,IsLeap)
 	Sum=0
 
 	if Leap>0 then    --有闰月
-		thisMonthInfo=string.sub(MonthInfo,1,Leap) .. LeapInfo .. string.sub(MonthInfo,Leap+1)
+		thisMonthInfo=string_sub(MonthInfo,1,Leap) .. LeapInfo .. string_sub(MonthInfo,Leap+1)
 		if (Leap~=Month and tonumber(IsLeap)==1) then
 			return "该月不是闰月！"
 		end
 		if (Month<=Leap and tonumber(IsLeap)==0) then
-			for i=1,Month-1 do Sum=Sum+29+string.sub(thisMonthInfo,i,i) end
+			for i=1,Month-1 do Sum=Sum+29+string_sub(thisMonthInfo,i,i) end
 		else
-			for i=1,Month do Sum=Sum+29+string.sub(thisMonthInfo,i,i) end
+			for i=1,Month do Sum=Sum+29+string_sub(thisMonthInfo,i,i) end
 		end
 	else
 		if (tonumber(IsLeap)==1) then
@@ -1234,7 +1217,7 @@ local function LunarDate2Date(Gregorian,IsLeap)
 		end
 		for i=1,Month-1 do
 			thisMonthInfo=MonthInfo
-			Sum=Sum+29+string.sub(thisMonthInfo,i,i)
+			Sum=Sum+29+string_sub(thisMonthInfo,i,i)
 		end
 	end
 	Sum=math_floor(Sum+Day-1)
@@ -1292,14 +1275,14 @@ local function QueryLunarInfo(date)
 	local str,LunarDate,LunarGz,result,DateTime,Cweek
 	date=tostring(date) result={}
 	str = date:gsub("^(%u+)","")
-	if string.match(str,"^(20)%d%d+$")~=nil or string.match(str,"^(19)%d%d+$")~=nil then
-		if string.len(str)==4 then str=str..string.sub(os_date("%m%d%H"),1) elseif string.len(str)==5 then str=str..string.sub(os_date("%m%d%H"),2) elseif string.len(str)==6 then str=str..string.sub(os_date("%m%d%H"),3) elseif string.len(str)==7 then str=str..string.sub(os_date("%m%d%H"),4)
-		elseif string.len(str)==8 then str=str..string.sub(os_date("%m%d%H"),5) elseif string.len(str)==9 then str=str..string.sub(os_date("%m%d%H"),6) else str=string.sub(str,1,10) end
-		if tonumber(string.sub(str,5,6))>12 or tonumber(string.sub(str,5,6))<1 or tonumber(string.sub(str,7,8))>31 or tonumber(string.sub(str,7,8))<1 or tonumber(string.sub(str,9,10))>24 then return result end
+	if string_match(str,"^(20)%d%d+$")~=nil or string_match(str,"^(19)%d%d+$")~=nil then
+		if string.len(str)==4 then str=str..string_sub(os_date("%m%d%H"),1) elseif string.len(str)==5 then str=str..string_sub(os_date("%m%d%H"),2) elseif string.len(str)==6 then str=str..string_sub(os_date("%m%d%H"),3) elseif string.len(str)==7 then str=str..string_sub(os_date("%m%d%H"),4)
+		elseif string.len(str)==8 then str=str..string_sub(os_date("%m%d%H"),5) elseif string.len(str)==9 then str=str..string_sub(os_date("%m%d%H"),6) else str=string_sub(str,1,10) end
+		if tonumber(string_sub(str,5,6))>12 or tonumber(string_sub(str,5,6))<1 or tonumber(string_sub(str,7,8))>31 or tonumber(string_sub(str,7,8))<1 or tonumber(string_sub(str,9,10))>24 then return result end
 		LunarDate=Date2LunarDate(str)  LunarGz=lunarJzl(str)  DateTime=LunarDate2Date(str,0)
-		local dateRQ=string.sub(str,1,4).."年"..string.sub(str,5,6).."月"..string.sub(str,7,8).."日"
-		Cweek=chinese_weekday(CXweek(string.sub(str,1,8)))--查询目标日期星期几
-		local Cweek2=string.sub(str,1,4).."年第"..CXweek2(string.sub(str,1,8)).."周 "--查询目标日期周数
+		local dateRQ=string_sub(str,1,4).."年"..string_sub(str,5,6).."月"..string_sub(str,7,8).."日"
+		Cweek=chinese_weekday(CXweek(string_sub(str,1,8)))--查询目标日期星期几
+		local Cweek2=string_sub(str,1,4).."年第"..CXweek2(string_sub(str,1,8)).."周 "--查询目标日期周数
 		if LunarGz~=nil then
 			result={
 				{dateRQ,"〔数字⇉公历〕"}
@@ -1307,45 +1290,45 @@ local function QueryLunarInfo(date)
 				,{LunarDate,"〔公历⇉农历〕"}
 				,{LunarGz,"〔公历⇉干支〕"}
 			}
-			if tonumber(string.sub(str,7,8))<31 then
+			if tonumber(string_sub(str,7,8))<31 then
 				table.insert(result,{DateTime,"〔农历⇉公历〕"})
 
-				local glrq=LunarDate2Date(string.sub(str,1,8),0)--如果是闰月0改成1
-				local m=string.match(glrq,"年(.-)月")
+				local glrq=LunarDate2Date(string_sub(str,1,8),0)--如果是闰月0改成1
+				local m=string_match(glrq,"年(.-)月")
 				if #m==2 then
-					glrq=string.gsub(glrq,"年","","1")
+					glrq=string_gsub(glrq,"年","","1")
 				else
-					glrq=string.gsub(glrq,"年","0","1")
+					glrq=string_gsub(glrq,"年","0","1")
 				end
-					local d=string.match(glrq,"月(.-)日") 
+					local d=string_match(glrq,"月(.-)日") 
 				if #d==2 then
-					glrq=string.gsub(glrq,"月","","1")
+					glrq=string_gsub(glrq,"月","","1")
 				else
-					glrq=string.gsub(glrq,"月","0","1")
+					glrq=string_gsub(glrq,"月","0","1")
 				end
-				glrq=string.gsub(glrq,"日","","1")
-				glrq=glrq..string.sub(str,9,10)
+				glrq=string_gsub(glrq,"日","","1")
+				glrq=glrq..string_sub(str,9,10)
 				table.insert(result,{lunarJzl(glrq),"〔农历⇉干支〕"})
 
 				local leapDate={LunarDate2Date(str,1),"〔农历".."（闰）".."⇉公历〕"}
-				if string.match(leapDate[1],"^(%d+)")~=nil then
+				if string_match(leapDate[1],"^(%d+)")~=nil then
 					table.insert(result,leapDate)
 
-					local glrq=LunarDate2Date(string.sub(str,1,8),1)--如果是闰月0改成1
-					local m=string.match(glrq,"年(.-)月")
+					local glrq=LunarDate2Date(string_sub(str,1,8),1)--如果是闰月0改成1
+					local m=string_match(glrq,"年(.-)月")
 					if #m==2 then
-						glrq=string.gsub(glrq,"年","","1")
+						glrq=string_gsub(glrq,"年","","1")
 					else
-						glrq=string.gsub(glrq,"年","0","1")
+						glrq=string_gsub(glrq,"年","0","1")
 					end
-						local d=string.match(glrq,"月(.-)日") 
+						local d=string_match(glrq,"月(.-)日") 
 					if #d==2 then
-						glrq=string.gsub(glrq,"月","","1")
+						glrq=string_gsub(glrq,"月","","1")
 					else
-						glrq=string.gsub(glrq,"月","0","1")
+						glrq=string_gsub(glrq,"月","0","1")
 					end
-					glrq=string.gsub(glrq,"日","","1")
-					glrq=glrq..string.sub(str,9,10)
+					glrq=string_gsub(glrq,"日","","1")
+					glrq=glrq..string_sub(str,9,10)
 					table.insert(result,{lunarJzl(glrq),"〔农历".."（闰）".."⇉干支〕"})
 
 				end
@@ -1481,8 +1464,8 @@ local function translator(input, seg)
             local ymd = os_date("%Y%m%d")
             
             -- 将计算结果存入 data 表，而不是直接生成 Candidate
-            table_insert(data, {os_date("%Y年%m月%d日"), ""})
             table_insert(data, {os_date("%Y-%m-%d"), ""})
+            table_insert(data, {os_date("%Y年%m月%d日"), ""})
             table_insert(data, {os_date("%Y%m%d"), ""})
             table_insert(data, {CnDate_translator(ymd), ""})
             table_insert(data, {Date2LunarDate(ymd) .. JQtest(ymd), num_year})
@@ -1588,4 +1571,589 @@ local function fini(env)
     _G_CACHE = { key = nil, rq = nil, nl = nil, jq = nil }
 end
 
-return { func = translator, fini = fini }
+
+M.time_func = translator
+M.time_fini = fini
+end
+
+-- calculator core ---------------------------------------------------------
+do
+-- Rime Script >https://github.com/baopaau/rime-lua-collection/blob/master/calculator_translator.lua
+-- 计算器适配版，此版本经过二次优化 
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-03-17
+-- 簡易計算器（執行任何Lua表達式）
+-- 优化说明：高级数学函数(微积分、统计)改为延迟加载，节省内存；使用沙盒环境增强安全性和性能。
+--
+-- 格式：=<exp>
+-- Lambda語法糖：\<arg>.<exp>|
+--
+-- 例子：
+-- =1+1 輸出 2
+-- =floor(9^(8/7)*cos(deg(6))) 輸出 -3
+-- =e^pi>pi^e 輸出 true
+-- =max({1,7,2}) 輸出 7
+-- =map({1,2,3},\x.x^2|) 輸出 {1, 4, 9}
+-- =map(range(-5,5),\x.x*pi/4|,deriv(sin)) 輸出 {-0.7071, -1, -0.7071, 0, 0.7071, 1, 0.7071, 0, -0.7071, -1}
+-- =$(range(-50,50))(map,\x.x/100|,\x.-60*x^2-16*x+20|)(max)() 輸出 21.066
+
+-- 需在方案增加 `recognizer/patterns/expression: "^=.*$"`
+
+-- # 环境构建 (Sandbox Env)
+-- 将所有可用函数放入 Env 表中，load 时直接使用此表作为环境，无需每次定义局部变量，且天然隔离 unsafe 函数。
+
+local Env = {}
+
+-- 注入 math 库所有函数到顶层 (sin, cos, floor, etc.)
+for k, v in pairs(math) do
+  Env[k] = v
+end
+Env.abs = math.abs -- 确保常用函数存在
+Env.mod = math.fmod
+
+-- 补充常量
+Env.inf = math.huge
+Env.e = math.exp(1)
+Env.pi = math.pi
+
+-- 基础 Helper 函数
+Env.trunc = function (x, dc)
+  if dc == nil then
+    return math.modf(x)
+  end
+  return x - Env.mod(x, dc)
+end
+
+Env.round = function (x, dc)
+  dc = dc or 1
+  local dif = Env.mod(x, dc)
+  if math.abs(dif) > dc / 2 then
+    return x < 0 and x - dif - dc or x - dif + dc
+  end
+  return x - dif
+end
+
+Env.log = function (x, base)
+  base = base or 10
+  return math.log(x)/math.log(base)
+end
+
+Env.isinteger = function (x)
+  return math.fmod(x, 1) == 0
+end
+
+-- 数组/迭代器 Helper
+Env.array = function (...)
+  local arr = {}
+  for v in ... do
+    arr[#arr + 1] = v
+  end
+  return arr
+end
+
+local irange = function (from,to)
+  if to == nil then
+    to = from
+    from = 0
+  end
+  local i = from - 1
+  to = to - 1
+  return function()
+    if i < to then
+      i = i + 1
+      return i
+    end
+  end
+end
+Env.irange = irange
+
+Env.range = function (from, to)
+  if to - from > 10000 then return {} end
+  return Env.array(irange(from, to))
+end
+
+local irev = function (arr)
+  local i = #arr + 1
+  return function()
+    if i > 1 then
+      i = i - 1
+      return arr[i]
+    end
+  end
+end
+Env.irev = irev
+
+Env.arev = function (arr)
+  return Env.array(irev(arr))
+end
+
+Env.min = function (arr)
+  local m = Env.inf
+  for k, x in ipairs(arr) do
+   m = x < m and x or m
+  end
+  return m
+end
+
+Env.max = function (arr)
+  local m = -Env.inf
+  for k, x in ipairs(arr) do
+   m = x > m and x or m
+  end
+  return m
+end
+
+Env.sum = function (t)
+  local acc = 0
+  for k,v in ipairs(t) do
+    acc = acc + v
+  end
+  return acc
+end
+
+Env.avg = function (t)
+  return Env.sum(t) / #t
+end
+
+-- Functional Helpers
+Env.map = function (t, ...)
+  local ta = {}
+  for k,v in pairs(t) do
+    local tmp = v
+    for _,f in pairs({...}) do tmp = f(tmp) end
+    ta[k] = tmp
+  end
+  return ta
+end
+
+Env.filter = function (t, ...)
+  local ta = {}
+  local i = 1
+  for k,v in pairs(t) do
+    local erase = false
+    for _,f in pairs({...}) do
+      if not f(v) then
+        erase = true
+        break
+      end
+    end
+    if not erase then
+	  ta[i] = v
+	  i = i + 1
+    end
+  end
+  return ta
+end
+
+Env.foldr = function (t, f, val)
+  for k,v in pairs(t) do
+    val = f(val, v)
+  end
+  return val
+end
+
+Env.foldl = function (t, f, val)
+  for v in irev(t) do
+    val = f(val, v)
+  end
+  return val
+end
+
+Env.chain = function (t)
+  local ta = t
+  local function cf(f, ...)
+    if f ~= nil then
+      ta = f(ta, ...)
+      return cf
+    else
+      return ta
+    end
+  end
+  return cf
+end
+
+-- Statistics
+Env.fac = function (n)
+  if n > 170 then return math.huge end
+  local acc = 1
+  for i = 2,n do
+    acc = acc * i
+  end
+  return acc
+end
+
+Env.nPr = function (n, r)
+  return Env.fac(n) / Env.fac(n - r)
+end
+
+Env.nCr = function (n, r)
+  return Env.nPr(n,r) / Env.fac(r)
+end
+
+Env.MSE = function (t)
+  local ss = 0
+  local s = 0
+  local n = #t
+  for k,v in ipairs(t) do
+    ss = ss + v*v
+    s = s + v
+  end
+  return math.sqrt((n*ss - s*s) / (n*n))
+end
+
+-- Safe OS functions
+Env.date = os.date
+Env.time = os.time
+
+-- # Calculus (优化：延迟加载，注入到 Env 中)
+local function load_calculus()
+    if Env.deriv then return end
+
+    local lapproxd = function (f, delta)
+      local delta = delta or 1e-8
+      return function (x)
+               return (f(x+delta) - f(x)) / delta
+             end
+    end
+
+    local sapproxd = function (f, delta)
+      local delta = delta or 1e-8
+      return function (x)
+               return (f(x+delta) - f(x-delta)) / delta / 2
+             end
+    end
+
+    Env.deriv = function (f, delta, dc)
+      dc = dc or 1e-4
+      local fd = sapproxd(f, delta)
+      return function (x)
+               return Env.round(fd(x), dc)
+             end
+    end
+
+    local trapzo = function (f, a, b, n)
+      local dif = b - a
+      local acc = 0
+      for i = 1, n-1 do
+        acc = acc + f(a + dif * (i/n))
+      end
+      acc = acc * 2 + f(a) + f(b)
+      acc = acc * dif / n / 2
+      return acc
+    end
+
+    Env.integ = function (f, delta, dc)
+      delta = delta or 1e-4
+      dc = dc or 1e-4
+      return function (a, b)
+               if b == nil then
+                 b = a
+                 a = 0
+               end
+               local n = Env.round(math.abs(b - a) / delta)
+               if n > 1e6 then n = 1e6 end
+               return Env.round(trapzo(f, a, b, n), dc)
+             end
+    end
+
+    Env.rk4 = function (f, timestep)
+      local timestep = timestep or 0.01
+      return function (start_x, start_y, time)
+               local x = start_x
+               local y = start_y
+               local t = math.min(time, timestep * 1e6)
+               for i = 0, t, timestep do
+                 local k1 = f(x, y)
+                 local k2 = f(x + (timestep/2), y + (timestep/2)*k1)
+                 local k3 = f(x + (timestep/2), y + (timestep/2)*k2)
+                 local k4 = f(x + timestep, y + timestep*k3)
+                 y = y + (timestep/6)*(k1 + 2*k2 + 2*k3 + k4)
+                 x = x + timestep
+               end
+               return y
+             end
+    end
+end
+
+-- # System & Output formatting
+
+local function serialize(obj)
+  local type = type(obj)
+  if type == "number" then
+    return Env.isinteger(obj) and math.floor(obj) or obj
+  elseif type == "boolean" then
+    return tostring(obj)
+  elseif type == "string" then
+    return '"'..obj..'"'
+  elseif type == "table" then
+    local parts = {"{"}
+    local i = 1
+    for k, v in pairs(obj) do
+      if i ~= k then
+        parts[#parts + 1] = "["..serialize(k).."]="
+      end
+      parts[#parts + 1] = serialize(v)
+      parts[#parts + 1] = ", "
+      i = i + 1
+    end
+    if #parts > 1 then parts[#parts] = nil end
+    parts[#parts + 1] = "}"
+    return table.concat(parts)
+  elseif type(obj) == "function" then
+    return "callable"
+  end
+  return obj
+end
+
+local greedy = true
+
+-- # 金额转换函数（延迟加载优化）
+local speakMoney_cached
+
+local function load_money_functions()
+    if speakMoney_cached then return speakMoney_cached end
+
+    local function splitNumStr(str)
+        local part = {}
+        part.sym, part.int, part.dig, part.dec = string.match(str, "^([%+%-]?)(%d*)(%.?)(%d*)")
+        return part
+    end
+
+    local defaultValMap = {
+        [0] = "零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
+        ["+"] = "正", ["-"] = "负", ["."] = "点", [""] = ""
+    }
+    local defaultPosMap4 = {[1]="仟"; [2]="佰"; [3]="拾"; [4]=""}
+    local defaultValMap10 = {[0]="零"; "一"; "二"; "三" ;"四"; "五"; "六"; "七"; "八"; "九"}
+    local defaultPosMap_int = { [1] = "千",[2] = "百",[3] = "十",[4] = "" }
+
+    local function speakLiterally(str, valMap)
+        valMap = valMap or defaultValMap
+        local tbOut = {}
+        for k = 1, #str do
+            local v = string.sub(str, k, k)
+            v = tonumber(v) or v
+            tbOut[k] = valMap[v]
+        end
+        return table.concat(tbOut)
+    end
+
+    local function speakBar(str, posMap, valMap)
+        posMap = posMap or defaultPosMap4
+        valMap = valMap or defaultValMap10
+
+        local out = ""
+        local bar = string.sub("****" .. str, -4, -1)
+        for pos = 1, 4 do
+            local val = tonumber(string.sub(bar, pos, pos))
+            if val == nil then goto continue end
+            if val > 0 then
+                out = out .. valMap[val] .. posMap[pos]
+                goto continue
+            end
+            local valNext = tonumber(string.sub(bar, pos+1, pos+1))
+            if ( valNext==nil or valNext==0 )then
+                goto continue
+            else
+                out = out .. valMap[0]
+                goto continue
+            end
+        ::continue::
+        end
+        if out == "" then out = valMap[0] end
+        return out
+    end
+
+    local function speakIntOfficially(str, posMap, valMap)
+        posMap = posMap or defaultPosMap_int
+        valMap = valMap or defaultValMap10
+
+        local int = string.match(str, "^0*(%d+)$")
+        if int == "" then int = "0" end
+        local remain = #int % 4
+        if remain == 0 then remain = 4 end
+        local tbBar = { [1] = string.sub(int, 1, remain) }
+        for pos = remain + 1, #int, 4 do
+            local bar = string.sub(int, pos, pos + 3)
+            table.insert(tbBar, bar)
+        end
+        local tbSpeakBarSuffix = { [1] = "" }
+        for iBar = 2, #tbBar do
+            local suffix = (iBar % 2 == 0) and ("万" .. tbSpeakBarSuffix[1]) or ("亿" .. tbSpeakBarSuffix[2])
+            table.insert(tbSpeakBarSuffix, 1, suffix)
+        end
+        local tbSpeakBar = {}
+        for k = 1, #tbBar do
+            tbSpeakBar[k] = speakBar(tbBar[k], posMap, valMap)
+        end
+        local out = ""
+        for k = 1, #tbBar do
+            local speakBar = tbSpeakBar[k]
+            if speakBar ~= valMap[0] then
+                out = out .. speakBar .. tbSpeakBarSuffix[k]
+            end
+        end
+        if out == "" then out = valMap[0] end
+        return out
+    end
+
+    local function speakDecMoney(str, posMap, valMap)
+        posMap = posMap or {[1]="角"; [2]="分"; [3]="厘"; [4]="毫"}
+        valMap = valMap or {[0]="零"; "壹"; "贰"; "叁" ;"肆"; "伍"; "陆"; "柒"; "捌"; "玖"}
+
+        local dec = string.sub(str, 1, 4)
+        dec = string.gsub(dec, "0*$", "")
+        if dec == "" then return "整" end
+
+        local out = ""
+        for pos = 1, #dec do
+            local val = tonumber(string.sub(dec, pos, pos))
+            out = out .. valMap[val] .. posMap[pos]
+        end
+        return out
+    end
+
+    local function speakMoney(str)
+        local part = splitNumStr(str)
+        if not part.int then return str end
+        local speakSym = speakLiterally(part.sym)
+        local speakInt = speakIntOfficially(part.int, { [1] = "仟",[2] = "佰",[3] = "拾",[4] = "" },
+        { [0] = "零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖" }) .. "元"
+        local speakDec = speakDecMoney(part.dec)
+        local out = speakSym .. speakInt .. speakDec
+        return out
+    end
+
+    speakMoney_cached = speakMoney
+    return speakMoney
+end
+
+
+
+local function calculator_translator(input, seg, env)
+  local ctx = env and env.engine and env.engine.context
+  if ctx and ctx.get_option and not ctx:get_option("jisuanqi") then return end
+  if string.sub(input, 1, 1) ~= "=" then return end
+  
+  -- 原有的 // 处理逻辑被移除，因为存在死代码问题且逻辑不明
+
+  local expfin = greedy or string.sub(input, -1, -1) == ";"
+  local exp = (greedy or not expfin) and string.sub(input, 2, -1) or string.sub(input, 2, -2)
+  
+  exp = exp:gsub("#", " ")
+  
+  if not expfin then return end
+  
+  local expe = exp
+  expe = expe:gsub("%$", " chain ")
+  
+  -- lambda parser
+  do
+    local count
+    repeat
+      expe, count = expe:gsub("\\%s*([%a%d%s,_]-)%s*%.(.-)|", " (function (%1) return %2 end) ")
+    until count == 0
+  end
+  
+  -- 按需加载微积分
+  if expe:find("deriv") or expe:find("integ") or expe:find("rk4") then
+    load_calculus()
+  end
+
+  -- 安全执行：使用 Env 沙盒
+  -- 注意：load 的环境参数在 Lua 5.2+ 中支持。Rime 通常使用较新 Lua。
+  -- 如果环境不支持，这里可能需要回退，但 Env 方案是最优解。
+  local func, load_err
+  local lua_ver = tonumber(_VERSION:match("Lua (%d+%.%d+)")) or 5.1
+  if lua_ver >= 5.2 then
+      func, load_err = load("return "..expe, "calc", "t", Env)
+  else
+      func, load_err = loadstring("return "..expe)
+      if func then setfenv(func, Env) end
+  end
+
+  if not func then return end
+  
+  local success, result = pcall(func)
+  if not success or result == nil then return end
+  
+  local resultStr = serialize(result)
+  yield(Candidate("number", seg.start, seg._end, exp.."="..resultStr, "等式", "123"))
+  yield(Candidate("number", seg.start, seg._end, resultStr, "答案"))
+
+  -- 优化：只有结果为数字时才延迟加载金额转换函数
+  if type(result) == "number" then
+      local speakMoney = load_money_functions()
+      yield(Candidate("number", seg.start, seg._end, speakMoney(resultStr), "金额"))
+  end
+end
+
+local function fini(env)
+end
+
+
+M.jisuanqi_func = calculator_translator
+M.jisuanqi_fini = fini
+end
+
+local string_sub = string.sub
+
+local function is_calendar_query(input)
+    local n = input:match("^=(%d+)$")
+    if not n or not (n:match("^19%d%d") or n:match("^20%d%d") or n:match("^21%d%d")) then
+        return false
+    end
+    if #n >= 6 then
+        local month = tonumber(string_sub(n, 5, 6))
+        if not month or month < 1 or month > 12 then
+            return false
+        end
+    end
+    if #n >= 8 then
+        local day = tonumber(string_sub(n, 7, 8))
+        if not day or day < 1 or day > 31 then
+            return false
+        end
+    end
+    return true
+end
+
+local function is_calendar_input(input)
+    return input == "rq"
+        or input == "nl"
+        or input == "nylk"
+        or input == "jq"
+        or input == "eo"
+        or input == "jkdm"
+        or input == "xq"
+        or is_calendar_query(input)
+end
+
+function M.func(input, seg, env)
+    if not input or input == "" then
+        return
+    end
+
+    if string_sub(input, 1, 1) == "=" then
+        M.jisuanqi_func(input, seg, env)
+        if is_calendar_input(input) then
+            M.time_func(input, seg, env)
+        end
+        return
+    end
+
+    if is_calendar_input(input) then
+        M.time_func(input, seg, env)
+    end
+end
+
+function M.fini(env)
+    if M.jisuanqi_fini then
+        M.jisuanqi_fini(env)
+    end
+    if M.time_fini then
+        M.time_fini(env)
+    end
+end
+
+return M

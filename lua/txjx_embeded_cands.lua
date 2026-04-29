@@ -1,6 +1,6 @@
 -- 内嵌候选显示优化版 原作者为饼干@https://github.com/lost-melody
 -- 文件名：lua/txjx_embeded_cands.lua
--- 优化：2026-02-21
+-- 更新：2026-03-09
 
 local embeded_cands_filter = {}
 
@@ -238,8 +238,6 @@ function embeded_cands_filter.func(input, env)
             digested = false
             cands_count = 0
             rendered_count = 0
-            -- page_rendered 不需要逐个 nil，下次直接覆盖即可，
-            -- 但为了保险防止长串残留，可以清理
             for i=1, page_size do page_rendered[i] = nil end
         end
     end

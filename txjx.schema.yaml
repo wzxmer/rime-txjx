@@ -36,8 +36,7 @@ engine:
     - fallback_segmentor   # 回退分段
 
   translators:
-    - lua_translator@*txjx_jisuanqi    # 计算器
-    - lua_translator@*txjx_time        # 时间转换
+    - lua_translator@*txjx_core        # 低频扩展入口（计算器·时间转换）
     - punct_translator     # 标点翻译
     - table_translator     # 主词典
     - reverse_lookup_translator  # 反查（万能符 `）
@@ -49,11 +48,12 @@ engine:
     - lua_filter@*txjx_completion
     - reverse_lookup_filter@jderfen_lookup
     - reverse_lookup_filter@gbk_lookup
+    - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
     - simplifier@jffh
     - simplifier@emoji_cn
     - uniquifier
-    - lua_filter@*txjx_embeded_cands
+    # - lua_filter@*txjx_embeded_cands  # 取消注释启用内嵌功能
 
 
 
@@ -86,16 +86,16 @@ switches:
   - name: sbb_hint        # 630提示
     states: [ 630提示关, 630提示开 ]
 
-  - name: embeded_cands   # 内嵌候选
-    states: [普通, 嵌入候选]
+  # - name: embeded_cands   # 内嵌候选；需同时取消 filters 中 txjx_embeded_cands 注释
+  #   states: [普通, 嵌入候选]
 
   - name: full_shape      # 全角半角
     states: [ 半角, 全角 ]
 
 # ==================== 标点符号配置 ====================
 punctuator:
-  # digit_separator_action: commit
-  digit_separators: "./"
+  digit_separator_action: commit
+  #digit_separators: "./"
   import_preset: txjx.symbols
 
 # ==================== 拼写处理 ====================
@@ -180,7 +180,7 @@ jderfen_lookup:
   comment_format:
     - xform|^\(([^)]+)\) +|($1)★|   # 保护读音和分隔符
     - xform| +|, |                  # 编码间分隔：空格变逗号
-    - xform|^\(([^)]+)\)★(.+)$|[$1/ $2]| # 恢复：有读音有编码
+    - xform|^\(([^)]+)\)★(.+)$|[$1 | $2]| # 恢复：有读音有编码
     - xform|^\(([^)]+)\)(★)?$|[$1]|      # 恢复：只有读音
     - xform|^([^\[].*)$|[$1]|            # 兜底：只有编码
 
@@ -203,7 +203,7 @@ gbk_lookup:
   comment_format:
     - xform|^\(([^)]+)\) +|($1)★|
     - xform| +|, |
-    - xform|^\(([^)]+)\)★(.+)$|[$1/ $2]|
+    - xform|^\(([^)]+)\)★(.+)$|[$1 | $2]|
     - xform|^\(([^)]+)\)(★)?$|[$1]|
     - xform|^([^\[].*)$|[$1]|
 
@@ -255,4 +255,3 @@ topup:
 # ==================== 菜单配置 ====================
 menu:
   alternative_select_keys: 1234567890  # 数字选词
-

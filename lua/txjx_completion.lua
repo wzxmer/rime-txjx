@@ -1,11 +1,8 @@
 -- 补全候选过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-24
-
+-- 更新：2026-03-17
 local utf8_len = utf8.len
 local type = type
-
-local ctx_handlers = setmetatable({}, { __mode = "k" })
 
 return {
     init = function(env)
@@ -15,7 +12,6 @@ return {
         if env._completion_handler and ctx.option_update_notifier then
             pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
         end
-        ctx_handlers[ctx] = nil
 
         env.completion_enabled = ctx:get_option("completion")
         if env.completion_enabled == nil then env.completion_enabled = false end
@@ -29,7 +25,6 @@ return {
         end
 
         env._completion_handler = handler
-        ctx_handlers[ctx] = handler
         ctx.option_update_notifier:connect(handler)
     end,
 
@@ -74,7 +69,6 @@ return {
         if ctx and env._completion_handler then
             pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
         end
-        ctx_handlers[ctx] = nil
         env._completion_handler = nil
     end
 }
