@@ -1,6 +1,6 @@
 -- 天行键过滤器 
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-02-26
+-- 更新：2026-04-30
 
 local string_match = string.match
 local string_find = string.find
@@ -67,7 +67,8 @@ local function process_hint(cand, env, input_text)
     local short = string_match(lookup, env.p1) or
                   string_match(lookup, env.p2) or
                   string_match(lookup, env.p3) or
-                  string_match(lookup, env.p4)
+                  string_match(lookup, env.p4) or
+                  string_match(lookup, env.p5)
 
     if short then
         local short_len = utf8_len(short)
@@ -201,10 +202,11 @@ local function init(env)
         env.p2 = " ([" .. env.b .. "][" .. env.b .. "]) "
         env.p3 = " ([" .. env.s .. "][" .. env.s .. "][" .. env.b .. "]) "
         env.p4 = " ([" .. env.b .. "][" .. env.b .. "][" .. env.b .. "]) "
+        env.p5 = " ([" .. env.s .. "][" .. env.s .. "]) "
         env.match_s_pattern = "^["..env.s.."]+$"
         env.match_b_pattern = "^["..env.b.."]+$"
     else
-        env.p1, env.p2, env.p3, env.p4 = "^$", "^$", "^$", "^$"
+        env.p1, env.p2, env.p3, env.p4, env.p5 = "^$", "^$", "^$", "^$", "^$"
         env.match_s_pattern = "^$"
         env.match_b_pattern = "^$"
     end
