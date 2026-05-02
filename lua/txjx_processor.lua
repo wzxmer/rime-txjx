@@ -1,6 +1,6 @@
 -- 天行键统一按键处理器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-03-17
+-- 更新：2026-04-30
 
 local string_sub = string.sub
 local string_byte = string.byte
@@ -232,7 +232,12 @@ end
 local function processor(key_event, env)
     local kn, sf, clean_key = _resolve_key(key_event, env)
     local ctx = env.engine.context
-    local opts = env._opt 
+    local opts = {
+        smarttwo = ctx:get_option("smarttwo"),
+        direct_symbols = ctx:get_option("direct_symbols"),
+        jisuanqi = ctx:get_option("jisuanqi"),
+        auto_fallback = ctx:get_option("auto_fallback"),
+    }
     
     local sm_result = _smart_process(key_event, env, kn, sf, clean_key, opts)
     if sm_result == kAccepted then return kAccepted end
@@ -283,7 +288,7 @@ local function processor(key_event, env)
     if not env._tu_streaming and env._alpha[key] then
         local current_input = ctx.input
         local input_len = #current_input
-        local min_len = opts.danzi_mode and env._tu_min_dz or env._tu_min
+        local min_len = env._tu_min
         
         local prev = (input_len > 0) and string_sub(current_input, -1) or ""
         local first = (input_len > 0) and string_sub(current_input, 1, 1) or key
@@ -306,27 +311,6 @@ end
 
 local function init(env)
     local config = env.engine.schema.config
-    local ctx = env.engine.context
-    
-    if env._option_handler and ctx.option_update_notifier then
-        pcall(function() ctx.option_update_notifier:disconnect(env._option_handler) end)
-    end
-
-    env._opt = {
-        smarttwo = ctx:get_option("smarttwo"),
-        direct_symbols = ctx:get_option("direct_symbols"),
-        jisuanqi = ctx:get_option("jisuanqi"),
-        auto_fallback = ctx:get_option("auto_fallback"),
-        danzi_mode = ctx:get_option("danzi_mode"),
-    }
-
-    if ctx.option_update_notifier then
-        local function on_option(context, name)
-            if env._opt[name] ~= nil then env._opt[name] = context:get_option(name) end
-        end
-        env._option_handler = on_option
-        ctx.option_update_notifier:connect(on_option)
-    end
 
     env._ks = {}
     env._sw = nil
@@ -338,7 +322,6 @@ local function init(env)
     
     env._tu_set = _s2set(config:get_string("topup/topup_with") or "")
     env._tu_min = config:get_int("topup/min_length") or 4
-    env._tu_min_dz = config:get_int("topup/min_length_danzi") or env._tu_min
     env._tu_max = config:get_int("topup/max_length") or 6
     env._tu_ac = config:get_bool("topup/auto_clear") or false
     env._tu_cmd = config:get_bool("topup/topup_command") or false
@@ -349,12 +332,6 @@ local function init(env)
 end
 
 local function fini(env)
-    local ctx = env.engine and env.engine.context
-    if ctx and env._option_handler then
-        pcall(function() ctx.option_update_notifier:disconnect(env._option_handler) end)
-    end
-    env._option_handler = nil
-    env._opt = nil
     env._ks = nil
     env._alpha = nil
     env._tu_set = nil

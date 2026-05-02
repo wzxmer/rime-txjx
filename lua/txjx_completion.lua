@@ -1,35 +1,18 @@
 -- 补全候选过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-03-17
+-- 更新：2026-04-30
 local utf8_len = utf8.len
 local type = type
 
 return {
     init = function(env)
-        local ctx = env.engine.context
         local config = env.engine.schema.config
-
-        if env._completion_handler and ctx.option_update_notifier then
-            pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
-        end
-
-        env.completion_enabled = ctx:get_option("completion")
-        if env.completion_enabled == nil then env.completion_enabled = false end
-
         env._danzi_first = not (config:get_bool("translator/enable_sentence") or false)
-
-        local handler = function(context, opname)
-            if opname == "completion" then
-                env.completion_enabled = context:get_option(opname)
-            end
-        end
-
-        env._completion_handler = handler
-        ctx.option_update_notifier:connect(handler)
     end,
 
     func = function(input, env)
-        local enabled = env.completion_enabled
+        local ctx = env.engine and env.engine.context
+        local enabled = ctx and ctx:get_option("completion") or false
         local danzi = env._danzi_first
         local buffer = {}
         local buffer_size = 0
@@ -65,10 +48,6 @@ return {
     end,
 
     fini = function(env)
-        local ctx = env.engine and env.engine.context
-        if ctx and env._completion_handler then
-            pcall(function() ctx.option_update_notifier:disconnect(env._completion_handler) end)
-        end
-        env._completion_handler = nil
+        env._danzi_first = nil
     end
 }

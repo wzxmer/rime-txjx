@@ -14,9 +14,6 @@ do
 local math_floor = math.floor
 local math_sin = math.sin
 local math_cos = math.cos
-local math_tan = math.tan
-local math_asin = math.asin
-local math_atan2 = math.atan2 or math.atan
 local math_pi = math.pi
 local math_abs = math.abs
 local math_fmod = math.fmod
@@ -30,7 +27,6 @@ local tostring = tostring
 local os_date = os.date
 local os_time = os.time
 local table_insert = table.insert
-local table_concat = table.concat
 
 -- 全局计算缓存：以“分钟”为 Key
 local _G_CACHE = {
@@ -331,23 +327,6 @@ local function FreeAstro()
   _gzl_cache_key = nil
   _gzl_cache_obj = nil
 end
---=========黄赤交角及黄赤坐标变换===========
-
-local function hcjj1 (t) --返回黄赤交角(常规精度),短期精度很高
-	local t1=t/36525 local t2=t1*t1 local t3=t2*t1
-	return (hcjjB[1] +hcjjB[2]*t1 +hcjjB[3]*t2 +hcjjB[4]*t3)/rad
-end
-
-local function HCconv(JW,E) --黄赤转换(黄赤坐标旋转)
-	--黄道赤道坐标变换,赤到黄E取负
-	local HJ=rad2mrad(JW[1]) local HW=JW[2]
-	local sinE =math_sin(E) local cosE =math_cos(E)
-	local sinW=cosE*math_sin(HW)+sinE*math_cos(HW)*math_sin(HJ)
-	local J=math_atan2( math_sin(HJ)*cosE-math_tan(HW)*sinE, math_cos(HJ) )
-	JW[1]=rad2mrad(J)
-	JW[2]=math_asin(sinW)
-end
-
 local function addPrece(jd,zb) --补岁差
 	local i local t=1 local v=0 local t1=jd/365250
 	for i=2,8 do t=t*t1 v=v+preceB[i]*t end
@@ -389,21 +368,6 @@ local function nutation(t) --计算黄经章动及交角章动
 	d.Lon=d.Lon/(rad*10000) --黄经章动
 	d.Obl=d.Obl/(rad*10000) --交角章动
 	return d
-end
-
-local function nutationRaDec(t,zb) --本函数计算赤经章动及赤纬章动
-	local Ra=zb[1]
-	local Dec=zb[2]
-	local E=hcjj1(t)
-	local sinE=math_sin(E)
-	local cosE=math_cos(E) --计算黄赤交角
-	local d=nutation(t)								  --计算黄经章动及交角章动
-	local cosRa=math_cos(Ra)
-	local sinRa=math_sin(Ra)
-	local tanDec=math_tan(Dec)
-	zb[1]=zb[1] + (cosE+sinE*sinRa*tanDec)*d.Lon-cosRa*tanDec*d.Obl --赤经章动
-	zb[2]= zb[2] + sinE*cosRa*d.Lon+sinRa*d.Obl   --赤纬章动
-	zb[1]=rad2mrad(zb[1])
 end
 
 --=================以下是月球及地球运动参数表===================
@@ -449,13 +413,6 @@ local function earCal(jd)--返回地球位置,日心Date黄道分点坐标
 	return llr
 end
 
-local function sunCal2(jd) --传回jd时刻太阳的地心视黄经及黄纬
-	local sun=earCal(jd)  sun[1]=sun[1] + math_pi sun[2]=-sun[2] --计算太阳真位置
-	local d=nutation(jd)  sun[1]=rad2mrad(sun[1]+d.Lon)   --补章动
-	addGxc(jd,sun)  --补周年黄经光行差
-	return sun	  --返回太阳视位置
-end
-
 --==================月位置计算===================
 local MnnT=0 --调用Mnn前先设置MnnT时间变量
 local function Mnn(F) --计算M10,M11,M20等,计算前先设置MnnT时间
@@ -485,21 +442,6 @@ local function moonCal(jd)--返回月球位置,返回地心Date黄道坐标
 	llr[1] =rad2mrad(llr[1]) --地心Date黄道原点坐标(不含岁差)
 	addPrece(jd,llr) --补岁差
 	return llr
-end
-
-local function moonCal2(jd) --传回月球的地心视黄经及视黄纬
-	local moon=moonCal(jd)
-	local d=nutation(jd)
-	moon[1]=rad2mrad(moon[1]+d.Lon) --补章动
-	return moon
-end
-
-local function moonCal3(jd) --传回月球的地心视赤经及视赤纬
-	local moon=moonCal(jd)
-	HCconv(moon,hcjj1(jd))
-	nutationRaDec(jd,moon) --补赤经及赤纬章动
-	--如果黄赤转换前补了黄经章动及交章动,就不能再补赤经赤纬章动
-	return moon
 end
 
 --==================地心坐标中的日月位置计算===================
@@ -898,23 +840,6 @@ local function chinese_weekday2(wday)
   return WEEKDAY_LONG[wday_num]
 end
 
-local function time_to_num(time)
-  local pattern = "(%d+):(%d+) +([AP]M)"
-  local hours, minutes, am
-  if string_match(time, pattern) ~= nil then
-    hours, minutes, am = string_match(time, pattern)
-    if ((am == "AM") and (tonumber(hours) >= 12)) then
-      hours = hours - 12
-    elseif ((am == "PM") and (tonumber(hours) < 12)) then
-      hours = hours + 12
-    end
-  else
-    pattern = "(%d+):(%d+)"
-    hours, minutes = string_match(time, pattern)
-  end
-  return (hours*60) + minutes
-end
-
 local LUNAR_SICHEN = {"子时(夜半｜三更)", "丑时(鸡鸣｜四更)", "寅时(平旦｜五更)", "卯时(日出)", "辰时(食时)", "巳时(隅中)", "午时(日中)", "未时(日昳)", "申时(哺时)", "酉时(日入)", "戌时(黄昏｜一更)", "亥时(人定｜二更)"}
 
 local GetLunarSichen= function(time,t)
@@ -1245,10 +1170,6 @@ end
 	--os.date() 把时间戳转化成可显示的时间字符串
 	--os.time ([table])
 --]]
-
-local format_Time= function()
-	if os_date("%p")=="AM" then return "上午" else return "下午" end
-end
 
 local CN_DIGITS = {"〇","一","二","三","四","五","六","七","八","九"}
 
@@ -1809,13 +1730,6 @@ Env.time = os.time
 local function load_calculus()
     if Env.deriv then return end
 
-    local lapproxd = function (f, delta)
-      local delta = delta or 1e-8
-      return function (x)
-               return (f(x+delta) - f(x)) / delta
-             end
-    end
-
     local sapproxd = function (f, delta)
       local delta = delta or 1e-8
       return function (x)
@@ -2135,9 +2049,10 @@ function M.func(input, seg, env)
     end
 
     if string_sub(input, 1, 1) == "=" then
-        M.jisuanqi_func(input, seg, env)
-        if is_calendar_input(input) then
+        if is_calendar_query(input) then
             M.time_func(input, seg, env)
+        else
+            M.jisuanqi_func(input, seg, env)
         end
         return
     end
