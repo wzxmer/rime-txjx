@@ -4,7 +4,7 @@
 ---
 name: txjx.gbk
 version: "2026年1月1日"
-sort: original
+sort: by_weight
 import_tables:
   - txjx.cx
 ...

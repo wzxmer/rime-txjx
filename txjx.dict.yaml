@@ -6,8 +6,8 @@
 # 词组排列勿动，会影响功能使用
 ---
 name: txjx
-version: "2026年3月06日"
-sort: original
+version: "2026年5月1日"
+sort: by_weight
 ...
 
 #region <简字>
@@ -3647,8 +3647,8 @@ sort: original
 不必	bjbkv
 不避	bjbkva
 不逼	bjbkvv
-不剥	bjbl
 半斤八两	bjbl
+不剥	bjbl
 补播	bjblo
 补拨	bjbloi
 不播	bjblv
@@ -4707,9 +4707,9 @@ sort: original
 不往	bjwpvu
 不差	bjws
 补差	bjwso
-不察	bjwsv
+不查	bjwsv
+不察	bjwsvo
 不挖	bjwsvi
-不查	bjwsvv
 不穿	bjwt
 不传	bjwtv
 不成问题	bjwtvu
@@ -4770,8 +4770,8 @@ sort: original
 不二	bjxj
 布尔	bjxjv
 不拘小节	bjxjvi
-不惜	bjxk
 不洗	bjxk
+不惜	bjxk
 补习	bjxko
 补硒	bjxkov
 不喜	bjxkv
@@ -10451,9 +10451,12 @@ sort: original
 爆扣	bzkd
 暴扣	bzkdo
 胞口	bzkdu
-薄壳	bzke
+报课	bzke
+薄壳	bzkei
 剥壳	bzkea
 宝可	bzkeo
+包客	bzkeu
+包壳	bzkeuv
 报刊	bzkf
 爆砍	bzkfo
 包块	bzkg
@@ -12384,9 +12387,11 @@ sort: original
 彩铅	chqmu
 才真	chqn
 凑合着	chqo
-财长	chqp
-才涨	chqpv
-才长	chqpvu
+才涨	chqp
+财长	chqpa
+才长	chqpv
+彩仗	chqpu
+才仗	chqpvi
 彩球	chqq
 财政	chqr
 猜拳	chqt
@@ -13343,8 +13348,8 @@ sort: original
 磁尾	ckwwva
 次创	ckwx
 参考文献	ckwxa
-茨冲	ckwy
 词重	ckwy
+茨冲	ckwyi
 存款额	ckx
 参考系	ckxa
 此心	ckxb
@@ -17785,8 +17790,8 @@ sort: original
 单句	dfjlo
 单局	dfjloa
 丹剧	dfjlu
-单肩	dfjm
 单间	dfjm
+单肩	dfjm
 但见	dfjmi
 担肩	dfjmio
 单件	dfjmo
@@ -18354,8 +18359,8 @@ sort: original
 订数	dgejoo
 顶数	dgejv
 顶枢	dgejvv
-定事	dgek
 定时	dgek
+定事	dgek
 盯视	dgeki
 定是	dgeko
 定势	dgekoi
@@ -21802,6 +21807,7 @@ sort: original
 电吧	dmbsio
 电霸	dmbsiv
 点杯	dmbw
+点呗	dmbw
 垫背	dmbwi
 点背	dmbwii
 垫被	dmbwio
@@ -28740,8 +28746,8 @@ sort: original
 双电源	edyai
 圣诞夜	edyao
 手瘾	edyb
-收银	edyb
-收音	edyba
+收银	edyba
+收音	edybao
 收阴	edybaa
 手印	edybi
 手淫	edybia
@@ -30782,8 +30788,8 @@ sort: original
 生产工具	ejgjuo
 世界冠军	ejgjv
 世界格局	ejgjvi
-疏果	ejgl
 蔬果	ejgl
+疏果	ejgl
 漱过	ejgla
 属国	ejglai
 蜀国	ejgli
@@ -32997,8 +33003,8 @@ sort: original
 视差	ekwsoo
 失察	ekwsu
 石碴	ekwsv
-十串	ekwt
 试穿	ekwt
+十串	ekwt
 史传	ekwti
 师传	ekwtii
 逝川	ekwtiu
@@ -36260,7 +36266,6 @@ sort: original
 圣痕	erhn
 说人话	erho
 省行	erhp
-升华	erhq
 升华	erhq
 生化	erhqu
 声画	erhqv
@@ -45028,8 +45033,8 @@ sort: original
 锋芒逼人	fmbr
 装吧	fmbs
 捉摸不透	fmbt
-装呗	fmbw
 装备	fmbw
+装呗	fmbw
 执迷不悟	fmbwi
 装杯	fmbwo
 庄北	fmbwoi
@@ -49597,8 +49602,8 @@ sort: original
 忠孝不能两全	fxbqi
 装吧	fxbs
 风向标	fxbu
-装呗	fxbw
 装备	fxbw
+装呗	fxbw
 止血八味	fxbwi
 装杯	fxbwo
 放心不下	fxbx
@@ -49704,7 +49709,7 @@ sort: original
 壮观	fxgt
 反效果	fxgu
 装给	fxgw
-装给	fxgw
+装给	fmgw
 执行公务	fxgwi
 壮工	fxgy
 状告	fxgz
@@ -53687,8 +53692,8 @@ sort: original
 敢逼	gfbk
 甘比	gfbkv
 高分辨率	gfbl
-干煸	gfbm
 干遍	gfbm
+干煸	gfbm
 敢编	gfbma
 敢变	gfbmao
 干扁	gfbmv
@@ -60463,8 +60468,8 @@ sort: original
 公路	gylj
 公鹿	gylju
 工艺流程	gyljv
-公历	gylk
 公里	gylk
+公历	gylk
 宫里	gylko
 公立	gylku
 公力	gylkua
@@ -62266,6 +62271,7 @@ sort: original
 回迁	hbqmiu
 会诊	hbqn
 回诊	hbqni
+会涨	hbqp
 回涨	hbqp
 会长	hbqpi
 会账	hbqpia
@@ -62282,9 +62288,9 @@ sort: original
 挥拳	hbqt
 后半期	hbqu
 很抱歉	hbqui
-还不去	hbqv
-还不清	hbqv
-还不起	hbqvv
+还不去	hbq
+还不起	hbqv
+还不清	hbqvv
 会抢	hbqx
 汇强	hbqxa
 回呛	hbqxi
@@ -64155,8 +64161,8 @@ sort: original
 荷泽	hezei
 呵责	hezeo
 和咱	hezf
-何在	hezh
 合在	hezh
+何在	hezh
 红十字会	hezha
 荷载	hezhi
 何哉	hezhiu
@@ -71757,6 +71763,9 @@ sort: original
 哄笑	hyxc
 虹咲	hyxci
 荒野行动	hyxd
+很有限	hyxu
+很有效	hyxuv
+衡阳县	hyxua
 红鞋	hyxda
 烘鞋	hyxdo
 鸿鹗	hyxe
@@ -72573,6 +72582,8 @@ sort: original
 合作协议	hzxyi
 豪雄	hzxyo
 好在有	hzy
+会怎样	hzyi
+虹鳟鱼	hzyiu
 豪饮	hzyb
 好银	hzyba
 号印	hzybo
@@ -75011,8 +75022,8 @@ sort: original
 劫数	jdejv
 皆属	jdejva
 皆输	jdejvv
-结实	jdek
 解释	jdek
+结实	jdek
 届时	jdeka
 结识	jdekao
 结石	jdekav
@@ -75554,8 +75565,8 @@ sort: original
 揭橥	jdqjiu
 节柱	jdqjiv
 截住	jdqju
-节气	jdqk
 解气	jdqk
+节气	jdqk
 结起	jdqka
 届期	jdqkav
 揭起	jdqki
@@ -82061,8 +82072,8 @@ sort: original
 称名道姓	jmdx
 建东	jmdy
 剪动	jmdyo
-减到	jmdz
 见到	jmdz
+减到	jmdz
 溅到	jmdza
 鸡毛掸子	jmdzau
 贱到	jmdzav
@@ -82514,8 +82525,8 @@ sort: original
 剑灵	jmlg
 尖岭	jmlgi
 减龄	jmlgo
-剑来	jmlh
 简略	jmlh
+剑来	jmlh
 捡来	jmlhi
 拣来	jmlhiv
 剪来	jmlho
@@ -88105,7 +88116,8 @@ sort: original
 将败	jxbh
 接线板	jxbi
 将不	jxbj
-降部	jxbja
+降不	jxbja
+降部	jxbjao
 讲不	jxbjo
 将比	jxbk
 江波	jxbl
@@ -108898,8 +108910,9 @@ sort: original
 墓园	mjyt
 牧原	mjytu
 木原	mjytv
-牡荆叶	mjyu
-牡荆油	mjyu
+卖假药	mjyu
+牡荆叶	mjyui
+牡荆油	mjyuia
 暮云	mjyw
 木俑	mjyy
 马基雅维利主义	mjyya
@@ -118714,6 +118727,7 @@ sort: original
 弄给	nygw
 年逾古稀	nygx
 农工	nygy
+弄高	nygz
 你以后	nyh
 农会	nyhb
 浓洄	nyhba
@@ -119026,7 +119040,7 @@ sort: original
 闹个	nzge
 脑干	nzgf
 你咋干	nzgi
-内资股	nzgi
+内资股	nzgio
 内增高	nzgiv
 闹过	nzgl
 你在干嘛	nzgm
@@ -132045,8 +132059,8 @@ sort: original
 真取	qnqlu
 震区	qnqlv
 枕区	qnqlvv
-真前	qnqm
 真浅	qnqm
+真前	qnqm
 阵前	qnqma
 真钱	qnqmu
 真签	qnqmuu
@@ -132102,8 +132116,8 @@ sort: original
 青年团	qnt
 真挑	qntc
 真跳	qntcu
-枕头	qntd
 真投	qntd
+枕头	qntdv
 阵头	qntda
 针头	qntdi
 镇头	qntdio
@@ -132665,9 +132679,9 @@ sort: original
 帐面	qpmmi
 掌门	qpmn
 张萌	qpmr
-张妈	qpms
-张码	qpmsa
-涨吗	qpmsao
+涨吗	qpms
+张妈	qpmsa
+张码	qpmsav
 张梅	qpmw
 张美	qpmwa
 长霉	qpmwu
@@ -132759,7 +132773,7 @@ sort: original
 章颂	qpsy
 全平台	qpt
 张腿	qptb
-章推	qptb
+章推	qptbo
 张贴	qptd
 账头	qptda
 长头	qptdu
@@ -135823,9 +135837,9 @@ sort: original
 枪托	qxtl
 弃暗投明	qxtm
 清醒头脑	qxtn
-主席台	qxto
 这些天	qxto
-主席团	qxtoo
+主席台	qxtoo
+主席团	qxtooi
 粘性土	qxtoov
 枪膛	qxtp
 抢他	qxts
@@ -136741,8 +136755,8 @@ sort: original
 赵湾	qzwfv
 找踹	qzwg
 罩外	qzwh
-昭武	qzwj
 照物	qzwj
+昭武	qzwjo
 照吃	qzwk
 找吃	qzwki
 找尺	qzwkia
@@ -136753,7 +136767,6 @@ sort: original
 找床	qzwm
 照窗	qzwmo
 照问	qzwn
-赵文	qzwn
 照吻	qzwno
 找网	qzwp
 招网	qzwpi
@@ -143105,12 +143118,12 @@ sort: original
 四重	skwy
 丝虫	skwya
 思潮	skwz
-死心	skxb
 私信	skxb
 四心	skxbi
 四新	skxbio
 私心	skxbu
-死信	skxbv
+死心	skxbv
+死信	skxbvi
 四小	skxc
 四校	skxci
 私销	skxcu
@@ -147258,8 +147271,8 @@ sort: original
 天妇罗	tfl
 陀飞轮	tfla
 通知栏	tflau
-摊了	tfle
 谈了	tfle
+摊了	tfle
 贪了	tflei
 探了	tfleia
 叹了	tfleo
@@ -147520,8 +147533,8 @@ sort: original
 挺拔	tgbsiv
 听罢	tgbso
 挺背	tgbw
-停保	tgbz
 挺饱	tgbz
+停保	tgbz
 挺薄	tgbzi
 停报	tgbzii
 泰国菜	tgc
@@ -147603,6 +147616,8 @@ sort: original
 挺爽	tgex
 挺少	tgez
 太过分	tgf
+挺粉	tgfn
+停分	tgfni
 汀州	tgfd
 听着	tgfe
 停着	tgfei
@@ -148634,8 +148649,8 @@ sort: original
 太息	thxkv
 泰西	thxkvv
 太虚	thxl
-太咸	thxm
 太闲	thxm
+太咸	thxm
 苔藓	thxmi
 太显	thxmv
 太限	thxmv
@@ -151005,6 +151020,7 @@ sort: original
 他宁可	tnkio
 特难看	tnku
 太难考	tnkv
+太难看了	tnkl
 太难了	tnl
 她那里	tnla
 他那里	tnli
@@ -155704,8 +155720,8 @@ sort: original
 腕套	wftzu
 稳扎稳打	wfwd
 晚车	wfwe
-万万	wfwf
 玩玩	wfwf
+万万	wfwf
 婉娩	wfwfa
 弯弯	wfwfo
 玩完	wfwfv
@@ -157759,8 +157775,8 @@ sort: original
 五岳	wjyhv
 吾悦	wjyhvo
 无月	wjyhvu
-五一	wjyk
 无意	wjyk
+五一	wjyk
 伍亿	wjyki
 吴仪	wjyko
 误译	wjykoo
@@ -158565,8 +158581,9 @@ sort: original
 我多	wldl
 我躲	wldlu
 窝点	wldm
-我党	wldp
-我当	wldpu
+我当	wldp
+我挡	wldpu
+我党	wldpui
 重峦叠嶂	wldq
 我丢	wldqu
 我等	wldr
@@ -159035,10 +159052,10 @@ sort: original
 我同	wlty
 我痛	wltyu
 万里挑一	wltyv
-我讨	wltz
+我掏	wltz
 我逃	wltz
 窝逃	wltzo
-我掏	wltzu
+我讨	wltzu
 我淘	wltzua
 闻了闻	wlw
 我丑	wlwd
@@ -159224,7 +159241,6 @@ sort: original
 我们班	wmbu
 我明白	wmbuo
 床被	wmbw
-点呗	wmbw
 我们必须	wmbx
 我们不要	wmby
 我们从	wmc
@@ -168534,9 +168550,9 @@ sort: original
 二手烟	xeyv
 而是要	xeyvo
 相适应	xeyvu
-厄运	xeyw
-饿晕	xeyw
-而是因为	xeywv
+而是因为	xeyw
+厄运	xeywv
+饿晕	xeywu
 噩运	xeywvv
 修身养性	xeyx
 相视一笑	xeyxv
@@ -169211,8 +169227,8 @@ sort: original
 安逸	xfyk
 安义	xfyko
 安宜	xfykoo
-暗喻	xfyl
 暗语	xfyl
+暗喻	xfyl
 按语	xfyli
 安于	xfylo
 心烦意乱	xfyloo
@@ -172120,13 +172136,14 @@ sort: original
 而要	xjyz
 二要	xjyzv
 二爻	xjyzvu
-阿昌族	xjz
+小舅子	xjz
+阿昌族	xjza
+小家子	xjzi
 而最	xjzb
 而走	xjzd
 二则	xjze
 而在	xjzh
 而再	xjzhv
-小舅子	xjzi
 二组	xjzj
 儿子	xjzk
 饵子	xjzku
@@ -176018,8 +176035,8 @@ sort: original
 下腹	xsfjv
 下附	xsfjva
 相似之处	xsfjvi
-下直	xsfk
 下至	xsfk
+下直	xsfk
 阿之	xsfka
 阿志	xsfkav
 辖制	xsfkv
@@ -176764,8 +176781,8 @@ sort: original
 下月	xsyh
 阿约	xsyha
 阿月	xsyhau
-下以	xsyk
 阿姨	xsyk
+下以	xsyk
 阿依	xsykai
 阿忆	xsykao
 侠义	xsyki
@@ -186832,8 +186849,8 @@ sort: original
 一挂	ykgq
 一更	ykgr
 依噶	ykgs
-一关	ykgt
 一贯	ykgt
+一关	ykgt
 已关	ykgta
 驿馆	ykgtao
 翼管	ykgtau
@@ -187596,8 +187613,8 @@ sort: original
 一千	ykqmv
 壹仟	ykqmvi
 一签	ykqmvu
-一振	ykqn
 一阵	ykqn
+一振	ykqn
 已臻	ykqna
 义诊	ykqno
 疑阵	ykqnu
@@ -189051,11 +189068,11 @@ sort: original
 预配	ylpwa
 一路平安	ylpx
 预抛	ylpz
-鱼泡	ylpz
 预跑	ylpza
 预泡	ylpzaa
 浴袍	ylpzao
-欲跑	ylpzu
+鱼泡	ylpzu
+欲跑	ylpzuo
 欲抛	ylpzui
 娱乐圈	ylq
 玉琴	ylqb
@@ -194403,8 +194420,8 @@ sort: original
 要提	yztk
 要替	yztkv
 要踢	yztkvo
-要托	yztl
 要拖	yztl
+要托	yztl
 药托	yztli
 腰托	yztlu
 要脱	yztlv
@@ -194771,7 +194788,8 @@ sort: original
 最嗨	zbhh
 嘴嗨	zbhho
 做不好	zbhi
-紫百合	zbhi
+做不会	zbhiv
+紫百合	zbhivi
 作壁画	zbhia
 最糊	zbhj
 最虎	zbhjo
@@ -195131,6 +195149,8 @@ sort: original
 走蹿	zdct
 驺从	zdcy
 做得到	zdd
+再等等	zddv
+在对待	zddva
 奏对	zddb
 走对	zddbv
 走掉	zddc
@@ -196075,8 +196095,8 @@ sort: original
 在跪	zhgbvo
 再鬼	zhgbvu
 在轨	zhgbvv
-再个	zhge
 再隔	zhge
+再个	zhge
 在各	zhge
 纵虎归山	zhgea
 宰割	zhgeo
@@ -196539,8 +196559,8 @@ sort: original
 再续	zhxl
 在哦	zhxlv
 再叙	zhxlvi
-在现	zhxm
 在线	zhxm
+在现	zhxm
 在先	zhxmv
 再陷	zhxmva
 再掀	zhxmvi
@@ -197864,8 +197884,8 @@ sort: original
 做掉	zldc
 做爹	zldd
 坐蔸	zlddi
-作的	zlde
 做得	zlde
+作的	zlde
 坐的	zldei
 做的	zldeiu
 左的	zldev
@@ -199607,8 +199627,8 @@ sort: original
 宗数	zyejoo
 自由市场	zyeju
 棕树	zyejv
-总时	zyek
 纵使	zyek
+总时	zyek
 纵是	zyeka
 宗师	zyeko
 总师	zyekoi

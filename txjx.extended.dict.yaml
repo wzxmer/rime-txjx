@@ -5,20 +5,18 @@
 ---
 name: txjx.extended
 version: "2026年1月1日"
-sort: original 
+sort: by_weight
 use_preset_vocabulary: false
 columns:
   - text
   - code
-  - stem
-  - weight
 encoder:
   rules:
     - length_equal: 2
       formula: "AaAbBaBb"
     - length_equal: 3
       formula: "AaBaCaAc"
-    - length_in_range: [4, 99]
+    - length_in_range: [4, 6]
       formula: "AaBaCaZa"
 import_tables:
 # ---------------------------------------
@@ -33,10 +31,10 @@ import_tables:
 # 扩展：词组
   - txjx.core
   - txjx.danzi
-  #- txjx.cx
   - txjx
 # ---------------------------------------
 
 ## 自定义词库：自己做的词库，自己维护
 ## 扩展：附加词语
   - txjx.fjcy
+...

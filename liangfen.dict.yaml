@@ -9,7 +9,7 @@
 ---
 name: liangfen
 version: "4.0"
-sort: by_weight
+sort: original
 use_preset_vocabulary: true
 max_phrase_length: 7
 min_phrase_weight: 100
