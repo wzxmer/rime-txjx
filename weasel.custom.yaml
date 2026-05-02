@@ -1,11 +1,21 @@
+# weasel.custom.yaml
 patch:
+  show_notifications: false
   app_options:
-    excel.exe: {ascii_mode: false}
-    msedge.exe: {ascii_mode: false}
-    qq.exe: {ascii_mode: false}
-    wechat.exe: {ascii_mode: false}
-    #chrome.exe: {ascii_mode: false}
-    telegram.exe: {ascii_mode: false}
+    excel.exe:
+      ascii_mode: false
+    msedge.exe:
+      ascii_mode: false
+    qq.exe:
+      ascii_mode: false
+    wechat.exe:
+      ascii_mode: false
+    weixin.exe:
+      ascii_mode: false
+    #chrome.exe:
+    #  ascii_mode: false
+    telegram.exe:
+      ascii_mode: false
   ascii_composer: # 英文模式配置
     good_old_caps_lock: false # 用`Caps Lock`切换英文模式时，是否激活大写锁定（默认关闭）
     switch_key: # 英文模式切换键配置
@@ -13,114 +23,351 @@ patch:
       Shift_R: commit_text # 按下右`Shift`时（默认上屏候选项）
       Control_L: commit_code # 按下左`Control`时（默认上屏编码）
       Control_R: commit_code # 按下右`Control`时（默认上屏编码）
-      Caps_Lock: inline_ascii # 按下`Caps Lock`时（默认保留输入区）
+      #Caps_Lock: inline_ascii # 按下`Caps Lock`时（默认保留输入区）
       Eisu_toggle: clear # 按下英数键（日文键盘）时（默认清空输入区）
 
-  "preset_color_schemes/white":
-    name: 白色/white
-    #悬浮窗口
-    border_color: 0x000000                   #候选区边框色
-    label_color: 0x444444                    #其余序号字色
-    # text_color: 0xFFFFFF                      #输入编码字色
-    # text_back_color: 0xFFFFFF                #编码区背景（仅当  layout/background 设置失效时才会起作用）
-    # hilited_back_color: 0xFFFFFF              #高亮输入编码背景色
-    # preedit_back_color: 0xFFFFFF              #鍵入碼區底色
-    #候选项
-    back_color: 0xFFFFFF                      #候选区背景
-    hilited_label_color: 0x444444     #首选序号的颜色
-    #hilited_candidate_back_color: 0x444444    #首选背景色
-    hilited_candidate_back_color: 0xFFFFFF    #首选背景色
-    hilited_candidate_text_color: 0x000000      #首选文本字色
-    #hilited_text_color: 0x000000              #首选编码字色
-    hilited_text_color: 0x1B1B1B              #首选编码字色
-    hilited_comment_text_color: 0x1B1B1B      #首选注释字色
-    comment_text_color: 0x444444              #候选项注释字色
-    #candidate_back_color: 0xededed            #非高亮候选文本底色
-    candidate_text_color: 0x000000            #候选文本字色
-    #阴影 数值，从00到100，透明效果从低到高
-    # hilited_shadow_color: 0x60444444            #输入编码阴影
-    # hilited_candidate_shadow_color: 0x60444444   #首选候选阴影
-    # candidate_shadow_color: 0x60444444          #其余候选阴影
-    # shadow_color: 0x60444444                    #外框阴影c39379  9c9cb5
-
-
-  "preset_color_schemes/black":
-    name: "黑色/black"
-#    color_format:  rgba  #defalt not set, rgba or argb optional
-  #悬浮窗口
-    border_color: 0x000000                    #候选边框色
-    hilited_candidate_back_color: 0x2b8aed    #首选背景色
-    hilited_candidate_text_color: 0x000000    #首选文本字色
-    hilited_label_color: 0x000000             #首選序号字色
-    hilited_text_color: 0x000000              #首选编码字色
-    hilited_comment_text_color: 0xFFFFFF      #首选注释字色
-    label_color: 0xFFFFFF                     #次选序号字色
-    back_color: 0x000000                      #次选区背景色     
-    comment_text_color: 0x2b8aed              #次选注释字色
-    candidate_text_color: 0xFFFFFF            #次选文本字色
-    text_color: 0x2b8aed                      #输入编码字色
-    text_back_color: 0x000000                 #编码区背景（仅当style/layout/background 设置失效时才会起作用）
-    hilited_back_color: 0x2b8aed              #高亮输入编码背景色F7D6DC
-    preedit_back_color: 0xeeFEEBE9              #鍵入碼區底色
-    hilited_candidate_border_color: 0x99DEF9FA  #候选边框色
-    candidate_back_color: 0x000000            #非高亮候选文本底色
-    hilited_candidate_shadow_color: 0x000000  #高亮候选阴影E0E6FD
-
-  "preset_color_schemes/pornhub":
-    name: "pornhub"
-    back_color: 0x1b1b1b
-    border_color: 0x1B1B1B
-    candidate_text_color: 0xffffff
-    comment_text_color: 0x0199ff
-    hilited_back_color: 0x1B1B1B
-    hilited_candidate_back_color: 0x0199ff
-    hilited_candidate_label_color: 0xffffff
-    hilited_candidate_text_color: 0x000000
-    hilited_comment_text_color: 0xffffff
-    hilited_label_color: 0xFFFFFF
-    hilited_text_color: 0xFFFFFF
-    label_color: 0x0199ff
-    text_color: 0xffffff
-
-
-  style:
-    color_scheme: white               #配色方案 FZHKXT  HwxxkXT
-    font_point: 12                        #候选字号 hua wen hang kai
-    label_font_point: 8                  #控制序號 , Noto Color Emoji
-    comment_font_point: 12                #控制注释ITC Bodoni 12 Com BoldItalic ,
-    font_face: "HYZhengYuan" #"苹方-简,HYZhengYuan,TH-Tshyn-P2,Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
-    label_font_face: "HYZhengYuan" #"Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
-    comment_font_face: "HYZhengYuan" #"Alibaba PuHuiTi 2.0, PingFang SC Medium, 霞鹜文楷,"
+  style/+:
+    font_face: ".萍方-简" #"苹方-简,HYZhengYuan,TH-Tshyn-P2,Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
+    label_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
+    comment_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     display_tray_icon: false               #win右下角中英图标
     horizontal: true                     #水平模式
+    preedit_type: composition  #composition 编码 / input 输入码 / preview 首选 / preview_all 内嵌
+    label_format: "%s."
     inline_preedit: true
-    enhanced_position: false     #光標位置獲取失敗時於窗口左上角繪製候選框
-  #  mark_text: "🤍"  #文字垂直
-    blur_window: false
-    preedit_type: input  #composition 编码 / input 输入码 / preview 首选 / preview_all 内嵌
-    label_format: "%s."                   #编号规则 %s.
+    font_point: 13
+    label_font_point: 13
+    comment_font_point: 12
+    color_scheme: Win11light
+    mark_text: "|"  # ￨  ,￨
+
+    # 横排样式
     layout:
+      min_width: 10
+      margin_x: 16
+      margin_y: 8
+      border: 2
+      spacing: 20 #候选间距
+      candidate_spacing: 2
+      #hilite_spacing: 6
+      hilite_padding: 1
+      hilite_padding_x: 4
+      corner_radius: 10
+      round_corner: 8
+      shadow_radius: 8
       align_type: top           #"top" | "center" | "bottom"
-      border_width: 0                #边框宽度
-      candidate_spacing: 10          #候选间距
-      hilite_padding_x: 5              #候选底色向外扩展间距
-      hilite_padding_y: 5
-      hilite_spacing: 4              #序号与候选的间距
-      margin_x: 4
-      margin_y: 4
-      #spacing: 25                    #鍵入碼區与與候選項區之間的間距
-      #min_height: 0
-      #max_height: 380
-      min_width: 35
-      #max_width: 800
-      round_corner: 4                #候选底色框内圆角
-      corner_radius: 4             #悬浮窗外圆角
-      # shadow_radius: 1
-      # shadow_offset_x: 15
-      # shadow_offset_y: 15
-#    capture_type: none                    #提交前截图类型，none, highlighted, candidates
-  #   vertical_text_left_to_right: true
-  #   vertical_text_with_wrap: false   
+
+    # 竖排样式
+    # layout:
+    #   min_width: 10
+    #   margin_x: 12
+    #   margin_y: 2
+    #   border: 0
+    #   candidate_spacing: 2
+    #   hilite_spacing: 6
+    #   hilite_padding: 2
+    #   hilite_padding_x: 12
+    #   shadow_radius: 8
+    #   corner_radius: 8
+    #   shadow_offset_x: 5
+    #   shadow_offset_y: 5
 
 
-        
+    # 来自 xmjd 的 CatLight
+    CatLight:
+      name: Cat光明/CatLight
+      author: ProudCat
+      text_color: 0x000000
+      back_color: 0xf3f3f3
+      shadow_color: 0x00000000
+      border_color: 0x00e0e0e0
+      hilited_text_color: 0x000000
+      hilited_back_color: 0x00d4d4d4
+      hilited_shadow_color: 0x00000000
+      hilited_candidate_text_color: 0xffffff
+      hilited_candidate_back_color: 0xff571f
+      hilited_candidate_shadow_color: 0x00000000
+      candidate_text_color: 0x4b4b4b
+      candidate_back_color: 0xf3f3f3
+      candidate_shadow_color: 0x00000000
+      comment_text_color: 0x4b4b4b
+      hilited_comment_text_color: 0xc5c5c5
+      label_color: 0x4b4b4b
+      hilited_label_color: 0xc5c5c5
+
+    # 来自 xmjd 的 CatDark
+    CatDark:
+      name: Cat暗黑/CatDark
+      author: ProudCat
+      text_color: 0xe5ffffff
+      back_color: 0x242424
+      shadow_color: 0x00000000
+      border_color: 0x00e0e0e0
+      hilited_text_color: 0xe5ffffff
+      hilited_back_color: 0x00d4d4d4
+      hilited_shadow_color: 0x00000000
+      hilited_candidate_text_color: 0xe5ffffff
+      hilited_candidate_back_color: 0xfa3a0a
+      hilited_candidate_shadow_color: 0x00000000
+      candidate_text_color: 0x99ffffff
+      candidate_back_color: 0x242424
+      candidate_shadow_color: 0x00000000
+      comment_text_color: 0x55ffffff
+      hilited_comment_text_color: 0xc5c5c5
+      label_color: 0x85ffffff
+      hilited_label_color: 0xe5ffffff
+
+    win11light:
+      name: " Win11浅色 / Win11light"
+      text_color: 0x191919
+      label_color: 0x191919
+      hilited_label_color: 0x191919
+      back_color: 0xf9f9f9
+      border_color: 0x009e5a00
+      hilited_mark_color: 0xc06700
+      hilited_candidate_back_color: 0xf0f0f0
+      shadow_color: 0x20000000
+
+    Win11Dark:
+      name: "Win11暗色 / Win11Dark"
+      text_color: 0xf9f9f9
+      label_color: 0xf9f9f9
+      back_color: 0x2C2C2C
+      hilited_label_color: 0xf9f9f9
+      border_color: 0x002C2C2C
+      hilited_mark_color: 0xFFC24C
+      hilited_candidate_back_color: 0x383838
+      shadow_color: 0x20000000
+
+    mint_light_blue:
+      name: "蓝水鸭／Mint Light Blue"
+      author: Mintimate <"Mintimate's Blog">
+      translucency: true                     # 磨砂： false | true
+      mutual_exclusive: false                 # 色不叠加： false | true
+      shadow_size: 0                          # 阴影大小
+      line_spacing: 5                         # 行间距
+      # base_offset: 0                          # 字基高(Action版本鼠须管会崩溃)
+      alpha: 1                                # 透明度，0~1
+      spacing: 10                             # 拼音与候选项之间的距离 （inline_preedit: false）
+      back_color: 0xefefef                    # 底色
+      hilited_candidate_back_color: 0xed9564  # 选中底色
+      label_color: 0xcac9c8                   # 序号颜色
+      hilited_candidate_label_color: 0xefefef # 选中序号颜色
+      candidate_text_color: 0x424242          # 文字颜色
+      hilited_candidate_text_color: 0xefefef  # 选中文字颜色
+      comment_text_color: 0xcac9c8            # 注颜色
+      hilited_comment_text_color: 0xefefef    # 选中注颜色
+      text_color: 0x6495ed                    # 拼音颜色 （inline_preedit: false）
+      hilited_text_color: 0xed9564            # 选中拼音颜色 （inline_preedit: false）
+
+    mint_dark_blue:
+      name: 黑水鸭／Mint Dark Blue
+      author: Mintimate <"Mintimate's Blog">
+      translucency: true                     # 磨砂： false | true
+      mutual_exclusive: false                 # 色不叠加： false | true
+      shadow_size: 0                          # 阴影大小
+      #line_spacing: 5                         # 行间距
+      # base_offset: 0                          # 字基高(Action版本鼠须管会崩溃)
+      alpha: 1                                # 透明度，0~1
+      #spacing: 10                             # 拼音与候选项之间的距离 （inline_preedit: false）
+      back_color: 0x424242                    # 底色
+      hilited_candidate_back_color: 0xc6c01a  # 选中底色
+      label_color: 0xefefef                   # 序号颜色
+      hilited_candidate_label_color: 0xefefef # 选中序号颜色
+      candidate_text_color: 0xefefef          # 文字颜色
+      hilited_candidate_text_color: 0xefefef  # 选中文字颜色
+      comment_text_color: 0xefefef            # 注颜色
+      hilited_comment_text_color: 0xffffff    # 选中注颜色
+      text_color: 0x6495ed                    # 拼音颜色 （inline_preedit: false）
+      hilited_text_color: 0xc6c01a            # 选中拼音颜色 （inline_preedit: false）
+
+    white:
+      name: "白色 / white"
+      #悬浮窗口
+      #border_color: 0x000000                   #候选区边框色
+      label_color: 0x000000                    #候选序号字色
+      #候选项
+      back_color: 0xFFFFFF                      #候选区背景
+      hilited_label_color: 0x000000     #首选序号的颜色
+      hilited_candidate_back_color: 0x505050    #首选背景色
+      hilited_candidate_text_color: 0x000000      #首选文本字色
+      hilited_text_color: 0xFFFFFF              #首选编码字色
+      hilited_comment_text_color: 0xFFFFFF      #首选注释字色
+      comment_text_color: 0x000000              #候选项注释字色
+      candidate_text_color: 0x000000            #候选文本字色
+
+    black:
+      name: "黑色/black"
+      #color_format:  rgba  #defalt not set rgba or argb optional
+      #悬浮窗口
+      border_color: 0x000000                    #候选边框色
+      hilited_candidate_back_color: 0x2b8aed    #首选背景色
+      hilited_candidate_text_color: 0x000000    #首选文本字色
+      hilited_label_color: 0x000000             #首選序号字色
+      hilited_text_color: 0x000000              #首选编码字色
+      hilited_comment_text_color: 0xFFFFFF      #首选注释字色
+      label_color: 0xFFFFFF                     #次选序号字色
+      back_color: 0x000000                      #次选区背景色
+      comment_text_color: 0x2b8aed              #次选注释字色
+      candidate_text_color: 0xFFFFFF            #次选文本字色
+      text_color: 0x2b8aed                      #输入编码字色
+      text_back_color: 0x000000                 #编码区背景（仅当style/layout/background 设置失效时才会起作用）
+      hilited_back_color: 0x2b8aed              #高亮输入编码背景色F7D6DC
+      preedit_back_color: 0xeeFEEBE9              #鍵入碼區底色
+      hilited_candidate_border_color: 0x99DEF9FA  #候选边框色
+      candidate_back_color: 0x000000            #非高亮候选文本底色
+      hilited_candidate_shadow_color: 0x000000  #高亮候选阴影E0E6FD
+
+    pornhub:
+      name: "pornhub"
+      back_color: 0x1b1b1b
+      border_color: 0x1B1B1B
+      candidate_text_color: 0xffffff
+      comment_text_color: 0x0199ff
+      hilited_back_color: 0x1B1B1B
+      hilited_candidate_back_color: 0x0199ff
+      hilited_candidate_label_color: 0xffffff
+      hilited_candidate_text_color: 0x000000
+      hilited_comment_text_color: 0xffffff
+      hilited_label_color: 0xFFFFFF
+      hilited_text_color: 0xFFFFFF
+      label_color: 0x0199ff
+      text_color: 0xffffff
+
+    mac_green:
+      back_color: 0xFFFFFF
+      border_color: 0xFFFFFF
+      candidate_format: "%c %@ "
+      candidate_text_color: 0x3c3c3c
+      comment_text_color: 0x999999
+      hilited_candidate_back_color: 0x32A14C
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x999999
+      hilited_text_color: 0x999999
+      label_color: 0x999999
+      name: "Mac绿"
+      text_color: 0x424242
+
+    wechat_dark:
+      back_color: 0x2e2925
+      candidate_format: "%c %@ "
+      candidate_text_color: 0xe9e9ea
+      comment_text_color: 0x999999
+      hilited_candidate_back_color: 0x75B100
+      hilited_candidate_text_color: 0xFFFFFF
+      inline_preedit: true
+      label_color: 0x999999
+      name: "微信键盘深色"
+      text_color: 0x424242
+
+    wechat_light:
+      back_color: 0xFFFFFF
+      border_height: 0
+      border_width: 8
+      candidate_format: "%c %@ "
+      comment_text_color: 0x999999
+      hilited_candidate_back_color: 0x75B100
+      hilited_candidate_text_color: 0xFFFFFF
+      inline_preedit: true
+      name: "微信键盘浅色"
+      text_color: 0x424242
+
+    mac_blue:
+      back_color: 0xFFFFFF
+      border_color: 0xFFFFFF
+      candidate_format: "%c %@ "
+      candidate_text_color: 0x3c3c3c
+      comment_text_color: 0x999999
+      hilited_back_color: 0xF8AA4D
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x999999
+      hilited_text_color: 0x999999
+      label_color: 0x999999
+      name: "Mac浅蓝"
+      text_color: 0x424242
+
+    mac_dark:
+      back_color: 0x252a2e
+      border_color: 0x050505
+      candidate_format: "%c %@ "
+      candidate_text_color: 0xe9e9ea
+      comment_text_color: 0x999999
+      hilited_back_color: 0xD75A00
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x999999
+      hilited_text_color: 0x999999
+      label_color: 0x999999
+      name: "Mac深色"
+      text_color: 0x424242
+
+    mac_light:
+      back_color: 0xFFFFFF
+      border_color: 0xFFFFFF
+      candidate_format: "%c %@ "
+      candidate_text_color: 0x3c3c3c
+      comment_text_color: 0x999999
+      hilited_back_color: 0xD75A00
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x999999
+      hilited_text_color: 0x999999
+      label_color: 0x999999
+      name: "Mac浅色"
+      text_color: 0x424242
+
+    mac_orange:
+      back_color: 0xFFFFFF
+      border_color: 0xFFFFFF
+      candidate_format: "%c %@ "
+      candidate_text_color: 0x3c3c3c
+      comment_text_color: 0x999999
+      hilited_candidate_back_color: 0x0E6BD8
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x999999
+      hilited_text_color: 0x999999
+      label_color: 0x999999
+      name: "Mac橙"
+      text_color: 0x424242
+
+    macos12_dark:
+      author: "Lufs X <i@isteed.cc>"
+      back_color: 0x1E1F24
+      border_color: 0x1E1F24
+      candidate_text_color: 0xE8E8E8
+      comment_text_color: 0x3F000000
+      hilited_candidate_back_color: 0xDA6203
+      hilited_candidate_label_color: 0xFFE7D6
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x808080
+      hilited_text_color: 0xD8000000
+      label_color: 0x7C7C7C
+      name: "高仿暗色 macOS"
+      text_color: 0x3F000000
+
+    macos12_light:
+      author: "Lufs X <i@isteed.cc>"
+      back_color: 0xFFFFFF
+      border_color: 0xFFFFFF
+      candidate_text_color: 0xD8000000
+      comment_text_color: 0x3F000000
+      hilited_candidate_back_color: 0xD05925
+      hilited_candidate_label_color: 0xFFFFFF
+      hilited_candidate_text_color: 0xFFFFFF
+      hilited_comment_text_color: 0x808080
+      hilited_text_color: 0xD8000000
+      label_color: 0x7F7F7F
+      name: "高仿亮色 macOS"
+      text_color: 0x3F000000
+
+    milan:
+      back_color: 0xFFFFFF
+      candidate_format: "%c %@ "
+      comment_text_color: 0x999999
+      hilited_candidate_back_color: 0xF5803B
+      hilited_candidate_text_color: 0xFFFFFF
+      name: "米兰"
+      text_color: 0x424242
