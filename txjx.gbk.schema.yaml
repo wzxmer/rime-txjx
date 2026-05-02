@@ -4,48 +4,38 @@
 schema:
   schema_id: txjx.gbk
   name: 天行键GBK字集辅助方案·勿选
-  version: "2026年1月1日"
+  version: "2026年5月2日"
   author:
     - ProudCat
-  description: 
-    GBK字集辅助方案
+    - 浮生 <wzxmer@outlook.com>
+  description: |
+    仅用于部署 txjx.gbk 词典，供 GBK 反查与单字编码提示使用。
 
 engine:
   processors:
-    - ascii_composer
-    - recognizer
     - key_binder
     - speller
-    - punctuator
     - selector
     - navigator
     - express_editor
   segmentors:
-    - ascii_segmentor
-    - matcher
     - abc_segmentor
-    - punct_segmentor
-    - fallback_segmentor
   translators:
-    - punct_translator
     - table_translator
   filters:
-    - simplifier
     - uniquifier
 
 speller:
-  alphabet: zyxwvutsrqponmlkjihgfedcba
-  delimiter: " ;'"
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
+  initials: "abcdefghijklmnopqrstuvwxyz;'"
+  delimiter: " '"
 
 translator:
   dictionary: txjx.gbk
-
-
-punctuator:
-  import_preset: default
+  db_class: tabledb
+  enable_completion: false
+  enable_sentence: false
+  enable_user_dict: false
 
 key_binder:
-  import_preset: default
-
-recognizer:
   import_preset: default

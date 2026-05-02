@@ -1,17 +1,17 @@
 # Rime 天行键输入方案配置
 # encoding: utf-8
-# 版本: 2026年2月16日
+# 版本: 2026年5月1日
 # 作者: 大牛（吅吅大山）, 浮生 <wzxmer@outlook.com>
 
 schema:
   schema_id: txjx
   name: 天行键
   icon: "tian.ico"
-  version: "2026年2月16日"
+  version: "2026年5月1日"
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
-  dependencies: [txjx.cx, txjx.gbk, liangfen]
+  dependencies: [txjx.core, txjx.cx, txjx.danzi, txjx.gbk, liangfen]
 
 # ==================== 输入法核心配置 ====================
 engine:
@@ -30,7 +30,7 @@ engine:
     - ascii_segmentor      # 英文分段
     - matcher              # 模式匹配
     - affix_segmentor@jderfen    # 二分前缀
-    - affix_segmentor@txjxgbk    # GBK前缀
+    - affix_segmentor@gbk        # GBK前缀
     - abc_segmentor        # 字母分段
     - punct_segmentor      # 标点分段
     - fallback_segmentor   # 回退分段
@@ -42,18 +42,15 @@ engine:
     - reverse_lookup_translator  # 反查（万能符 `）
     - history_translator@repeat_history  # 历史记录
     - script_translator@jderfen  # 二分翻译
-    - script_translator@txjxgbk  # GBK翻译
+    - script_translator@gbk      # GBK翻译
 
   filters:
     - lua_filter@*txjx_completion
-    - reverse_lookup_filter@jderfen_lookup
-    - reverse_lookup_filter@gbk_lookup
     - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
     - simplifier@jffh
     - simplifier@emoji_cn
     - uniquifier
-    # - lua_filter@*txjx_embeded_cands  # 取消注释启用内嵌功能
 
 
 
@@ -85,9 +82,6 @@ switches:
 
   - name: sbb_hint        # 630提示
     states: [ 630提示关, 630提示开 ]
-
-  # - name: embeded_cands   # 内嵌候选；需同时取消 filters 中 txjx_embeded_cands 注释
-  #   states: [普通, 嵌入候选]
 
   - name: full_shape      # 全角半角
     states: [ 半角, 全角 ]
@@ -132,13 +126,10 @@ translator:
   dictionary: txjx.extended
   db_class: tabledb          # 强制只读，内存优化
   enable_charset_filter: false
-  enable_completion: true    # 启用提示
   enable_sentence: false     # 禁用整句
   enable_user_dict: false    # 禁用用户词典
-  encode_commit_history: true
   max_phrase_length: 6
   initial_quality: 0
-  # comment_format 数字过滤已移至 txjx_completion.lua 排序后处理
 
 # ==================== 特殊功能配置 ====================
 ## 重复历史记录
@@ -156,9 +147,10 @@ emoji_cn:
 jffh:
   opencc_config: s2g.json
   option_name: jffh
-  tags: [ abc, jderfen, txjxgbk, phrase, sentence, date, time, xiqy, jwql, "sjx/" ]
+  tags: [ abc, jderfen, gbk, phrase, sentence, date, time, xiqy, jwql, "sjx/" ]
 
-# ==================== 反查配置 ====================
+# ==================== 辅助词典配置 ====================
+dict_keywords: "txjx"   # 统一辅助词典关键字；可写多个，用空格或逗号分隔，按顺序回退
 
 # 1. 二分反查 (v) ------------------------------------------------
 # 翻译器：负责从 liangfen 词库中查词
@@ -170,58 +162,41 @@ jderfen:
   prefix: "v"
   tips: "〔二分〕"
 
-# 过滤器：负责给 v 模式的候选词添加[读音/编码]注释
-# 使用 txjx.cx (全拼库) 或 liangfen 自带注释进行格式化
+# 读音/编码展示配置，供 lua_filter@*txjx_reverse_hint 使用
 jderfen_lookup:
-  tags: [jderfen]
-  dictionary: txjx.cx
-  option_name: jderfen_lookup
-  overwrite_comment: true
-  comment_format:
-    - xform|^\(([^)]+)\) +|($1)★|   # 保护读音和分隔符
-    - xform| +|, |                  # 编码间分隔：空格变逗号
-    - xform#^\(([^)]+)\)★(.+)$#[$1 | $2]# # 恢复：有读音有编码
-    - xform|^\(([^)]+)\)(★)?$|[$1]|      # 恢复：只有读音
-    - xform|^([^\[].*)$|[$1]|            # 兜底：只有编码
+  dictionary: txjx.danzi
 
 # 2. GBK反查 (o) ------------------------------------------------
 # 翻译器：负责从 txjx.gbk 词库中查词
-txjxgbk:
-  tag: txjxgbk
+gbk:
+  tag: gbk
   dictionary: txjx.gbk
   enable_sentence: true
   enable_user_dict: false
   prefix: "o"
   # tips: "〔GBK〕" # 可选提示
 
-# 过滤器：负责给 o 模式的候选词添加注释并格式化
+# 读音/编码展示配置，供 lua_filter@*txjx_reverse_hint 使用
 gbk_lookup:
-  tags: [txjxgbk]
   dictionary: txjx.gbk
-  option_name: gbk_lookup
-  overwrite_comment: true
-  comment_format:
-    - xform|^\(([^)]+)\) +|($1)★|
-    - xform| +|, |
-    - xform#^\(([^)]+)\)★(.+)$#[$1 | $2]#
-    - xform|^\(([^)]+)\)(★)?$|[$1]|
-    - xform|^([^\[].*)$|[$1]|
 
 # 3. 万能符反查 (`) ---------------------------------------------
-# 翻译器：负责从 txjx.cx 词库中查词
-# 注意：此模式不挂载 Filter，直接由 Translator 输出以保证性能
+# 翻译器：负责从 txjx.danzi 纯编码词典中查词
+# 注释中的读音与编码展示统一由 txjx_reverse_hint 处理
 reverse_lookup:
   tags: [reverse_lookup] # 独立 Tag，不被 Filter 拦截
-  dictionary: txjx.cx
+  dictionary: txjx.danzi
   option_name: reverse_lookup
   enable_completion: false
   initial_quality: 0.5
   max_phrase_length: 6
   overwrite_comment: false
   comment_format:
-    - xform/^/[/
-    - xform/$/]/
+    - xform|^\(([^)]+)\) +||
     - xform/ /, /
+
+reverse_hint:
+  dictionary: txjx.cx
 
 # ==================== 快捷键配置 ====================
 key_binder:
@@ -240,7 +215,7 @@ recognizer:
     reverse_lookup: "[a-z`]*`+[a-z`]*"
     punct: "^/([0-9]0?|[a-z]+)$" 
     jderfen: "^v[a-z']*'?$"
-    txjxgbk: "^o[a-z]*?$"
+    gbk: "^o[a-z]*?$"
     jsq: "^=[^;']+$"
 
 # ==================== 顶功配置 ====================

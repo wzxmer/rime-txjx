@@ -2,14 +2,13 @@
 # encoding: utf-8
 
 schema:
-  schema_id: txjx.cx
-  name: 天行键读音提示辅助方案·勿选
+  schema_id: txjx.danzi
+  name: 天行键单字编码辅助方案·勿选
   version: "2026年5月2日"
   author:
-    - ProudCat
     - 浮生 <wzxmer@outlook.com>
   description: |
-    仅用于部署 txjx.cx 读音词典，供单字读音提示 ReverseLookup 使用。
+    仅用于部署 txjx.danzi 单字编码词典，供万能符反查与单字编码提示使用。
 
 engine:
   processors:
@@ -31,7 +30,7 @@ speller:
   delimiter: " '"
 
 translator:
-  dictionary: txjx.cx
+  dictionary: txjx.danzi
   db_class: tabledb
   enable_completion: false
   enable_sentence: false
