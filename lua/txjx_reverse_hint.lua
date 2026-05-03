@@ -200,13 +200,15 @@ local function ensure_any_reverse_handle(dict_names, retry_interval, force_retry
     return nil
 end
 
-local function lookup_value(dict_names, text, env)
+local function lookup_value(dict_names, text, env, cache_prefix, normalize)
     if not text or utf8.len(text) ~= 1 then
         return nil
     end
 
+    cache_prefix = cache_prefix or ""
+
     for _, dict_name in ipairs(dict_names or {}) do
-        local cache_key = dict_name .. "\0" .. text
+        local cache_key = cache_prefix .. dict_name .. "\0" .. text
         local cached = shared_lookup_cache[cache_key]
         if cached ~= nil then
             if cached then
@@ -222,13 +224,14 @@ local function lookup_value(dict_names, text, env)
                     close_shared_reverse_handle(dict_name)
                     shared_open_failed_at[dict_name] = os.clock()
                 else
+                    local normalized = normalize and normalize(value) or value
                     if shared_lookup_cache_count >= env._lookup_cache_limit then
                         clear_lookup_cache()
                     end
-                    shared_lookup_cache[cache_key] = value or false
+                    shared_lookup_cache[cache_key] = normalized or false
                     shared_lookup_cache_count = shared_lookup_cache_count + 1
-                    if value and value ~= "" then
-                        return value
+                    if normalized and normalized ~= "" then
+                        return normalized
                     end
                 end
             end
@@ -292,7 +295,7 @@ local function get_candidate_code(cand, env, mode)
         return normalize_code(cand.comment)
     end
     local code_dict_names = get_code_dict_names(env, mode)
-    return normalize_code(lookup_value(code_dict_names, cand.text, env))
+    return lookup_value(code_dict_names, cand.text, env, "code\0", normalize_code)
 end
 
 local function merge_comment(pron, code)
@@ -329,7 +332,7 @@ function M.func(input, env)
 
     for cand in input:iter() do
         if cand.text and utf8.len(cand.text) == 1 then
-            local pron = extract_pron(lookup_value(env.pron_dict_names, cand.text, env))
+            local pron = lookup_value(env.pron_dict_names, cand.text, env, "pron\0", extract_pron)
             local code = get_candidate_code(cand, env, mode)
             local merged = merge_comment(pron, code)
             if merged then
@@ -378,10 +381,14 @@ function M.init(env)
 
     env._lookup_cache_limit = lookup_cache_limit
     env._open_retry_interval = DEFAULT_OPEN_RETRY_INTERVAL
-    env.pron_dict_names = resolve_dict_names(config, "reverse_hint/dictionary", env.dict_keywords, DEFAULT_DICT_SUFFIX.pron)
-    env.reverse_code_dict_names = resolve_dict_names(config, "reverse_lookup/dictionary", env.dict_keywords, DEFAULT_DICT_SUFFIX.erfen)
-    env.erfen_code_dict_names = resolve_dict_names(config, "jderfen_lookup/dictionary", env.dict_keywords, DEFAULT_DICT_SUFFIX.erfen)
-    env.gbk_code_dict_names = resolve_dict_names(config, "gbk_lookup/dictionary", env.dict_keywords, DEFAULT_DICT_SUFFIX.gbk)
+    env.pron_dict_names = resolve_dict_names(config, "reverse_hint/dictionary", env.dict_keywords,
+        DEFAULT_DICT_SUFFIX.pron)
+    env.reverse_code_dict_names = resolve_dict_names(config, "reverse_lookup/dictionary", env.dict_keywords,
+        DEFAULT_DICT_SUFFIX.erfen)
+    env.erfen_code_dict_names = resolve_dict_names(config, "jderfen_lookup/dictionary", env.dict_keywords,
+        DEFAULT_DICT_SUFFIX.erfen)
+    env.gbk_code_dict_names = resolve_dict_names(config, "gbk_lookup/dictionary", env.dict_keywords,
+        DEFAULT_DICT_SUFFIX.gbk)
     env._last_mode = nil
     local ctx = env.engine.context
     env._update_conn = ctx.update_notifier:connect(function(context)
