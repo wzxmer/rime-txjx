@@ -1,0 +1,22 @@
+{
+  "name": "Simplified Chinese to Guji Chinese (ocd2 test)",
+  "segmentation": {
+    "type": "mmseg",
+    "dict": {
+      "type": "ocd2",
+      "file": "SGPhrases.ocd2"
+    }
+  },
+  "conversion_chain": [{
+    "dict": {
+      "type": "group",
+      "dicts": [{
+        "type": "ocd2",
+        "file": "SGPhrases.ocd2"
+      }, {
+        "type": "ocd2",
+        "file": "SGCharacters.ocd2"
+      }]
+    }
+  }]
+}
