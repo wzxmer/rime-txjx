@@ -1,6 +1,6 @@
 -- 补全候选过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-04-30
+-- 更新：2026-05-04
 local utf8_len = utf8.len
 local type = type
 

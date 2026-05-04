@@ -1,6 +1,6 @@
 -- 天行键过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-04-30
+-- 更新：2026-05-03
 
 local string_match = string.match
 local string_find = string.find
@@ -46,7 +46,6 @@ end
 
 local function release_hint_state(env, gc_step, close_handle)
     env.reverse_core = nil
-    clear_shared_hint_cache()
     if close_handle then
         close_shared_reverse_handle(env.core_dict_name)
         env.core_dict_name = nil
@@ -56,41 +55,8 @@ local function release_hint_state(env, gc_step, close_handle)
     end
 end
 
-local function open_reverse(env)
-    if env.core_dict_name then
-        local active = shared_reverse_handles[env.core_dict_name]
-        if active then
-            env.reverse_core = active
-            return
-        end
-    end
-
-    for _, dict_name in ipairs(env.core_dict_names or {}) do
-        local db = shared_reverse_handles[dict_name]
-        if not db then
-            local ok, opened = pcall(ReverseLookup, dict_name)
-            if ok and opened then
-                db = opened
-                shared_reverse_handles[dict_name] = db
-            end
-        end
-        if db then
-            env.core_dict_name = dict_name
-            env.reverse_core = db
-            return
-        end
-    end
-end
-
 local function startswith(str, start)
     return string_sub(str, 1, #start) == start
-end
-
-local function find_short(lookup, pattern)
-    return string_match(lookup, "^" .. pattern .. "%s") or
-        string_match(lookup, "%s" .. pattern .. "%s") or
-        string_match(lookup, "%s" .. pattern .. "$") or
-        string_match(lookup, "^" .. pattern .. "$")
 end
 
 local function get_first_config_string(config, keys)
@@ -180,6 +146,35 @@ local function resolve_core_dict_names(config, schema_id)
     return build_dict_names(keywords, CORE_DICT_SUFFIX)
 end
 
+local function open_reverse(env)
+    if env.core_dict_name then
+        local active = shared_reverse_handles[env.core_dict_name]
+        if active then
+            env.reverse_core = active
+            return
+        end
+    end
+
+    local config = env.engine.schema.config
+    local core_dict_names = resolve_core_dict_names(config, env.schema_id)
+
+    for _, dict_name in ipairs(core_dict_names or {}) do
+        local db = shared_reverse_handles[dict_name]
+        if not db then
+            local ok, opened = pcall(ReverseLookup, dict_name)
+            if ok and opened then
+                db = opened
+                shared_reverse_handles[dict_name] = db
+            end
+        end
+        if db then
+            env.core_dict_name = dict_name
+            env.reverse_core = db
+            return
+        end
+    end
+end
+
 local function segment_has_tag(seg, tag)
     if not seg or not tag or tag == "" then
         return false
@@ -208,25 +203,25 @@ local function process_hint(cand, env, input_text)
     if not reverse then return end
 
     local cache_key = (env.core_dict_name or "") .. "\0" .. text
-    local short = shared_hint_cache[cache_key]
-    if short == nil then
-        local lookup_result = reverse:lookup(text)
+    local lookup_result = shared_hint_cache[cache_key]
+    if lookup_result == nil then
+        lookup_result = reverse:lookup(text)
         if lookup_result and lookup_result ~= "" then
-            short = find_short(lookup_result, env.p1) or
-                find_short(lookup_result, env.p2) or
-                find_short(lookup_result, env.p3) or
-                find_short(lookup_result, env.p4) or
-                find_short(lookup_result, env.p5)
             if shared_hint_cache_count >= env._hint_cache_limit then
                 clear_shared_hint_cache()
             end
-            if short and short ~= "" then
-                shared_hint_cache[cache_key] = short
-                shared_hint_cache_count = shared_hint_cache_count + 1
-            end
+            shared_hint_cache[cache_key] = lookup_result
+            shared_hint_cache_count = shared_hint_cache_count + 1
         end
     end
-    if not short then return end
+    if not lookup_result then return end
+
+    local lookup = " " .. lookup_result .. " "
+    local short = string_match(lookup, env.p1) or
+                  string_match(lookup, env.p2) or
+                  string_match(lookup, env.p3) or
+                  string_match(lookup, env.p4) or
+                  string_match(lookup, env.p5)
 
     if short then
         local short_len = utf8_len(short)
@@ -268,15 +263,15 @@ local function update_lazy_reverse(env, context, input_text)
         end
 
         if not want_reverse then
-            local seg = context.composition and context.composition:back()
-            if seg then
+             local seg = context.composition and context.composition:back()
+             if seg then
                 if segment_has_tag(seg, "reverse_lookup")
                     or segment_has_tag(seg, env.gbk_tag)
                     or segment_has_tag(seg, env.erfen_tag)
                     or segment_has_tag(seg, "pinyin_simp") then
                     want_reverse = true
                 end
-            end
+             end
         end
     else
         env._reverse_sticky = false
@@ -384,20 +379,19 @@ local function init(env)
 
     env.reverse_core = nil
     env.core_dict_name = nil
-    env.core_dict_names = resolve_core_dict_names(config, env.schema_id)
 
     env.b = config:get_string("topup/topup_with") or ""
     env.s = config:get_string("topup/topup_this") or ""
     env.hint_text = config:get_string('hint_text') or '🚫'
 
     if env.s ~= "" and env.b ~= "" then
-        env.p1 = "([" .. env.s .. "][" .. env.b .. "]+)"
-        env.p2 = "([" .. env.b .. "][" .. env.b .. "])"
-        env.p3 = "([" .. env.s .. "][" .. env.s .. "][" .. env.b .. "])"
-        env.p4 = "([" .. env.b .. "][" .. env.b .. "][" .. env.b .. "])"
-        env.p5 = "([" .. env.s .. "][" .. env.s .. "])"
-        env.match_s_pattern = "^[" .. env.s .. "]+$"
-        env.match_b_pattern = "^[" .. env.b .. "]+$"
+        env.p1 = " ([" .. env.s .. "][" .. env.b .. "]+) "
+        env.p2 = " ([" .. env.b .. "][" .. env.b .. "]) "
+        env.p3 = " ([" .. env.s .. "][" .. env.s .. "][" .. env.b .. "]) "
+        env.p4 = " ([" .. env.b .. "][" .. env.b .. "][" .. env.b .. "]) "
+        env.p5 = " ([" .. env.s .. "][" .. env.s .. "]) "
+        env.match_s_pattern = "^["..env.s.."]+$"
+        env.match_b_pattern = "^["..env.b.."]+$"
     else
         env.p1, env.p2, env.p3, env.p4, env.p5 = "^$", "^$", "^$", "^$", "^$"
         env.match_s_pattern = "^$"
@@ -444,7 +438,6 @@ local function fini(env)
     env._hint_cache_limit = nil
     env._last_input_text = nil
     env._last_sbb_on = nil
-    env.core_dict_names = nil
     if active_filter_envs > 0 then
         active_filter_envs = active_filter_envs - 1
     end

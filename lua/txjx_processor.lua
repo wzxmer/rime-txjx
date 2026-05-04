@@ -1,6 +1,6 @@
 -- 天行键统一按键处理器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-04-30
+-- 更新：2026-05-04
 
 local string_sub = string.sub
 local string_byte = string.byte
@@ -335,6 +335,8 @@ local function fini(env)
     env._ks = nil
     env._alpha = nil
     env._tu_set = nil
+    -- 主动GC：释放资源后回收内存
+    collectgarbage("step", 200)
 end
 
 return { init = init, func = processor, fini = fini }

@@ -1,7 +1,7 @@
 -- 天行键低频扩展轻入口
 -- 精确触发时间/农历或计算器时加载 txjx_ext_core，用完即释放。
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-04-29
+-- 更新：2026-05-04
 
 local string_sub = string.sub
 
