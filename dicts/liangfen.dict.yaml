@@ -7,7 +7,7 @@
 #
 
 ---
-name: liangfen
+name: dicts/liangfen
 version: "4.0"
 sort: original
 use_preset_vocabulary: true

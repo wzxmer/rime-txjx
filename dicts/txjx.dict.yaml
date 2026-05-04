@@ -5,7 +5,7 @@
 # 请看txjx.extended.dict.yaml内容
 # 词组排列勿动，会影响功能使用
 ---
-name: txjx
+name: dicts/txjx
 version: "2026年5月4日"
 sort: by_weight
 ...

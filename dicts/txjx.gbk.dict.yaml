@@ -2,7 +2,7 @@
 # 键道6用户词库
 # 该文件以UTF-8编码保存
 ---
-name: txjx.gbk
+name: dicts/txjx.gbk
 version: "2026年5月4日"
 sort: by_weight
 import_tables:
