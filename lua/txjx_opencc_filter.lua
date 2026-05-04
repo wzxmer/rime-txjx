@@ -1,4 +1,4 @@
--- OpenCC 兼容过滤器
+-- 文本映射过滤器
 -- 参考万象（作者：https://amzxyz.github.io/） super_replacer 的核心实现
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-05-04
@@ -184,37 +184,6 @@ local function read_text_file(path)
     return content
 end
 
-local function is_ocd2_file(path)
-    return path and s_match(path, "%.ocd2$") ~= nil
-end
-
-local function config_uses_ocd2(content)
-    return content and s_match(content, '"file"%s*:%s*"[^"]+%.ocd2"') ~= nil
-end
-
-local function create_opencc_instance(config_path, resolved_path)
-    if not config_path or not Opencc then
-        return nil
-    end
-
-    local names = {
-        resolved_path,
-        config_path,
-        s_gsub(config_path, "^opencc[/\\]", ""),
-        s_gsub(config_path, "^lua[/\\]Data[/\\]", ""),
-    }
-    local tried = {}
-    for _, name in ipairs(names) do
-        if name and name ~= "" and not tried[name] then
-            tried[name] = true
-            local ok, inst = pcall(Opencc, name)
-            if ok and inst then
-                return inst
-            end
-        end
-    end
-    return nil
-end
 
 local function add_opencc_config_tasks(tasks, config_path, prefix, resolve_path)
     local resolved = resolve_path(config_path)
@@ -227,7 +196,6 @@ local function add_opencc_config_tasks(tasks, config_path, prefix, resolve_path)
     end
     local base_dir = dirname(config_path)
     local seen = {}
-    local has_ocd2 = config_uses_ocd2(content)
     for file_name in s_gmatch(content, '"file"%s*:%s*"([^"]+)"') do
         if file_name ~= "" and not seen[file_name] then
             seen[file_name] = true
@@ -236,12 +204,12 @@ local function add_opencc_config_tasks(tasks, config_path, prefix, resolve_path)
                 relative = base_dir .. relative
             end
             local p = resolve_path(relative)
-            if p and not is_ocd2_file(p) then
+            if p then
                 insert(tasks, { path = p, prefix = prefix })
             end
         end
     end
-    return has_ocd2
+    return true
 end
 
 local function rebuild(tasks, db, delimiter)
@@ -590,19 +558,13 @@ function M.init(env)
                         for j = 0, list_size(list) - 1 do
                             local config_path = config:get_string(d_path .. "/@" .. j)
                             if config_path then
-                                local resolved_config = resolve_path(config_path)
-                                if add_opencc_config_tasks(tasks, config_path, prefix, resolve_path) and not env.rules[#env.rules].opencc_instance then
-                                    env.rules[#env.rules].opencc_instance = create_opencc_instance(config_path, resolved_config)
-                                end
+                                add_opencc_config_tasks(tasks, config_path, prefix, resolve_path)
                             end
                         end
                     else
                         local config_path = config:get_string(d_path)
                         if config_path then
-                            local resolved_config = resolve_path(config_path)
-                            if add_opencc_config_tasks(tasks, config_path, prefix, resolve_path) and not env.rules[#env.rules].opencc_instance then
-                                env.rules[#env.rules].opencc_instance = create_opencc_instance(config_path, resolved_config)
-                            end
+                            add_opencc_config_tasks(tasks, config_path, prefix, resolve_path)
                         end
                     end
                 end
@@ -735,15 +697,6 @@ function M.func(input, env)
                     end
                     if seg_result ~= query_text then
                         val = seg_result
-                    end
-                end
-
-                if not val and rule.opencc_instance and not (rule.mode == "append" and rule.split_mode == "emoji") then
-                    local ok, converted = pcall(function()
-                        return rule.opencc_instance:convert(query_text)
-                    end)
-                    if ok and converted and converted ~= query_text then
-                        val = converted
                     end
                 end
 

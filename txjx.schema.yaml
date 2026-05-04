@@ -51,7 +51,7 @@ engine:
     - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
     - lua_filter@*txjx_opencc_filter
-    # 内置 OpenCC simplifier 与 Lua Opencc(...) 在全量重部署后均不能稳定回落。
+    # 内置 OpenCC simplifier 在全量重部署后不能稳定回落，改由 Lua 文本映射过滤器处理。
     # - simplifier@jffh
     # - simplifier@emoji_cn
     - uniquifier
@@ -151,12 +151,12 @@ emoji_cn:
 
 ## 简繁转换
 jffh:
-  opencc_config: lua/Data/s2g.ocd2.json
+  opencc_config: lua/Data/s2g.json
   option_name: jffh
   tips: none
   tags: [ abc, jderfen, gbk, phrase, sentence, date, time, xiqy, jwql, "sjx/" ]
 
-## OpenCC兼容替换器：读取 OpenCC json/txt，运行时用 LevelDb 查询以便内存回落
+## 文本映射过滤器：读取 OpenCC 风格 json/txt，运行时用 LevelDb 查询以便内存回落
 txjx_opencc_filter:
   db_name: lua/txjx_opencc_filter
   delimiter: "|"
@@ -177,7 +177,7 @@ txjx_opencc_filter:
       sentence: true
       tags: [ abc, jderfen, gbk, phrase, sentence, date, time, xiqy, jwql, "sjx/" ]
       prefix: "_s2g_"
-      opencc_config: lua/Data/s2g.ocd2.json
+      opencc_config: lua/Data/s2g.json
 
 # ==================== 辅助词典配置 ====================
 dict_keywords: "txjx"   # 统一辅助词典关键字；可写多个，用空格或逗号分隔，按顺序回退
