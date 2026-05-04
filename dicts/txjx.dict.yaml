@@ -1,6 +1,6 @@
 # Rime dict
 # encoding: utf-8
-# 
+#
 # 词库内容以外挂文件形式导入
 # 请看txjx.extended.dict.yaml内容
 # 词组排列勿动，会影响功能使用
@@ -84,7 +84,7 @@ sort: by_weight
 ←	;c
 ↑	;ce
 ↓	;cx
-、	;d 
+、	;d
 "	;e
 "	;r
 #@	;f

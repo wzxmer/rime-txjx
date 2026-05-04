@@ -587,7 +587,7 @@ local function GetNowTimeJq(date)
 	JQtable2=GetNextJQ(date)
 	if tonumber(string_sub(date,5,8))<322 then
 		JQtable1=GetNextJQ(tonumber(string_sub(date,1,4))-1 .. string_sub(date,5,8))
-		if tonumber(string_sub(date,5,8))<108 then 
+		if tonumber(string_sub(date,5,8))<108 then
 			for i=20,24 do table.insert(JQtable2,i-19,JQtable1[i]) end
 		elseif tonumber(string_sub(date,5,8))<122 then
 			for i=21,24 do table.insert(JQtable2,i-20,JQtable1[i]) end
@@ -1164,10 +1164,10 @@ local function CnDate_translator(y)
     local t,t2
     t=""
     -- 修改点：y.len(y) -> #y (获取长度更通用)
-    for i = 1, #y do 
+    for i = 1, #y do
         -- 修改点：y.sub -> string_sub (使用头部定义的局部变量，更快且安全)
         t2 = CN_DIGITS[tonumber(string_sub(y, i, i)) + 1]
-        
+
         -- 下面的逻辑保持不变
         if i==5 and t2 ~= "〇" then t2="年十" elseif i==5 and t2 == "〇" then t2="年"  end
         if i==6 and t2 ~= "〇" then t2 =t2 .. "月" elseif i==6 and t2 == "〇" then t2="月"  end
@@ -1208,7 +1208,7 @@ local function QueryLunarInfo(date)
 				else
 					glrq=string_gsub(glrq,"年","0","1")
 				end
-					local d=string_match(glrq,"月(.-)日") 
+					local d=string_match(glrq,"月(.-)日")
 				if #d==2 then
 					glrq=string_gsub(glrq,"月","","1")
 				else
@@ -1229,7 +1229,7 @@ local function QueryLunarInfo(date)
 					else
 						glrq=string_gsub(glrq,"年","0","1")
 					end
-						local d=string_match(glrq,"月(.-)日") 
+						local d=string_match(glrq,"月(.-)日")
 					if #d==2 then
 						glrq=string_gsub(glrq,"月","","1")
 					else
@@ -1362,7 +1362,7 @@ local function translator(input, seg)
     end
 
     -- 4. 未命中缓存，执行计算 (此时才加载大表)
-    
+
     -- 日期 (rq)
     if (input == "rq") then
         InitAstro() -- 加载天文表
@@ -1370,7 +1370,7 @@ local function translator(input, seg)
         pcall(function()
             local num_year = os_date("%j/")..IsLeap(os_date("%Y"))
             local ymd = os_date("%Y%m%d")
-            
+
             -- 将计算结果存入 data 表，而不是直接生成 Candidate
             table_insert(data, {os_date("%Y-%m-%d"), ""})
             table_insert(data, {os_date("%Y年%m月%d日"), ""})
@@ -1379,7 +1379,7 @@ local function translator(input, seg)
             table_insert(data, {Date2LunarDate(ymd) .. JQtest(ymd), num_year})
         end)
         FreeAstro() -- 释放天文表
-        
+
         -- 存入缓存并输出
         _G_CACHE.rq = data
         yield_cache(data, "date", seg)
@@ -1394,13 +1394,13 @@ local function translator(input, seg)
             local res1 = Date2LunarDate(ymd) .. JQtest(ymd)
             local res2 = lunarJzl(ymd..hour)
             local res3 = Date2LunarDate(ymd) .. GetLunarSichen(hour, 1)
-            
+
             table_insert(data, {res1, ""})
             table_insert(data, {res2, " "})
             table_insert(data, {res3, ""})
         end)
         FreeAstro()
-        
+
         _G_CACHE.nl = data
         yield_cache(data, "date", seg)
 
@@ -1426,7 +1426,7 @@ local function translator(input, seg)
             end
         end)
         FreeAstro()
-        
+
         _G_CACHE.jq = data
         yield_cache(data, "jwql", seg)
 
@@ -1489,7 +1489,7 @@ end
 -- calculator core ---------------------------------------------------------
 do
 -- Rime Script >https://github.com/baopaau/rime-lua-collection/blob/master/calculator_translator.lua
--- 计算器适配版，此版本经过二次优化 
+-- 计算器适配版，此版本经过二次优化
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-03-17
 -- 簡易計算器（執行任何Lua表達式）
@@ -1937,19 +1937,19 @@ local function calculator_translator(input, seg, env)
   local ctx = env and env.engine and env.engine.context
   if ctx and ctx.get_option and not ctx:get_option("jisuanqi") then return end
   if string.sub(input, 1, 1) ~= "=" then return end
-  
+
   -- 原有的 // 处理逻辑被移除，因为存在死代码问题且逻辑不明
 
   local expfin = greedy or string.sub(input, -1, -1) == ";"
   local exp = (greedy or not expfin) and string.sub(input, 2, -1) or string.sub(input, 2, -2)
-  
+
   exp = exp:gsub("#", " ")
-  
+
   if not expfin then return end
-  
+
   local expe = exp
   expe = expe:gsub("%$", " chain ")
-  
+
   -- lambda parser
   do
     local count
@@ -1957,7 +1957,7 @@ local function calculator_translator(input, seg, env)
       expe, count = expe:gsub("\\%s*([%a%d%s,_]-)%s*%.(.-)|", " (function (%1) return %2 end) ")
     until count == 0
   end
-  
+
   -- 按需加载微积分
   if expe:find("deriv") or expe:find("integ") or expe:find("rk4") then
     load_calculus()
@@ -1976,10 +1976,10 @@ local function calculator_translator(input, seg, env)
   end
 
   if not func then return end
-  
+
   local success, result = pcall(func)
   if not success or result == nil then return end
-  
+
   local resultStr = serialize(result)
   yield(Candidate("number", seg.start, seg._end, exp.."="..resultStr, "等式", "123"))
   yield(Candidate("number", seg.start, seg._end, resultStr, "答案"))

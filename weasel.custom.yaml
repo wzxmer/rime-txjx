@@ -56,7 +56,7 @@ patch:
       round_corner: 8
       shadow_radius: 8
       align_type: top           #"top" | "center" | "bottom"
-    
+
     # 竖排样式
     # layout:
     #   min_width: 10
@@ -94,7 +94,7 @@ patch:
       hilited_comment_text_color: 0xc5c5c5
       label_color: 0x4b4b4b
       hilited_label_color: 0xc5c5c5
- 
+
     # 来自 xmjd 的 CatDark
     CatDark:
       name: Cat暗黑/CatDark
@@ -130,7 +130,7 @@ patch:
 
     Win11Dark:
       name: "Win11暗色 / Win11Dark"
-      text_color: 0xf9f9f9 
+      text_color: 0xf9f9f9
       label_color: 0xf9f9f9
       back_color: 0x2C2C2C
       hilited_label_color: 0xf9f9f9
@@ -159,7 +159,7 @@ patch:
       hilited_comment_text_color: 0xefefef    # 选中注颜色
       text_color: 0x6495ed                    # 拼音颜色 （inline_preedit: false）
       hilited_text_color: 0xed9564            # 选中拼音颜色 （inline_preedit: false）
-      
+
     mint_dark_blue:
       name: 黑水鸭／Mint Dark Blue
       author: Mintimate <"Mintimate's Blog">
@@ -180,7 +180,7 @@ patch:
       hilited_comment_text_color: 0xffffff    # 选中注颜色
       text_color: 0x6495ed                    # 拼音颜色 （inline_preedit: false）
       hilited_text_color: 0xc6c01a            # 选中拼音颜色 （inline_preedit: false）
-      
+
     white:
       name: "白色 / white"
       #悬浮窗口
@@ -207,7 +207,7 @@ patch:
       hilited_text_color: 0x000000              #首选编码字色
       hilited_comment_text_color: 0xFFFFFF      #首选注释字色
       label_color: 0xFFFFFF                     #次选序号字色
-      back_color: 0x000000                      #次选区背景色     
+      back_color: 0x000000                      #次选区背景色
       comment_text_color: 0x2b8aed              #次选注释字色
       candidate_text_color: 0xFFFFFF            #次选文本字色
       text_color: 0x2b8aed                      #输入编码字色
@@ -234,7 +234,7 @@ patch:
       label_color: 0x0199ff
       text_color: 0xffffff
 
-    mac_green: 
+    mac_green:
       back_color: 0xFFFFFF
       border_color: 0xFFFFFF
       candidate_format: "%c %@ "

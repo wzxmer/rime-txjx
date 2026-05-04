@@ -5,7 +5,7 @@
 ---
 name: txjx.extended
 version: "2026年5月4日"
-sort: by_weight 
+sort: by_weight
 use_preset_vocabulary: false
 columns:
   - text
