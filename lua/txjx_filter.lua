@@ -276,7 +276,6 @@ local function update_lazy_reverse(env, context, input_text)
     else
         env._reverse_sticky = false
     end
-
     if context:get_option("reverse_lookup") ~= want_reverse then
         context:set_option("reverse_lookup", want_reverse)
         if context.is_composing and context:is_composing() then

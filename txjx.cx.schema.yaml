@@ -39,7 +39,7 @@ speller:
     - derive/^(.....).$/$1`/
 
 translator:
-  dictionary: dicts/txjx.cx
+  dictionary: txjx.cx
   db_class: tabledb
   enable_completion: false
   enable_sentence: false

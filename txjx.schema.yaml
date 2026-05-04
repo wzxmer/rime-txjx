@@ -94,7 +94,7 @@ switches:
 punctuator:
   digit_separator_action: commit
   #digit_separators: "./"
-  import_preset: dicts/txjx.symbols
+  import_preset: txjx.symbols
 
 # ==================== 拼写处理 ====================
 layout:
@@ -186,7 +186,7 @@ dict_keywords: "txjx"   # 统一辅助词典关键字；可写多个，用空格
 # 翻译器：负责从 liangfen 词库中查词
 jderfen:
   tag: jderfen
-  dictionary: dicts/liangfen
+  dictionary: liangfen
   enable_sentence: true
   enable_user_dict: false
   prefix: "v"
@@ -195,7 +195,7 @@ jderfen:
 # 读音/编码展示配置，供 lua_filter@*txjx_reverse_hint 使用
 jderfen_lookup:
   tags: [jderfen]
-  dictionary: dicts/txjx.cx
+  dictionary: txjx.cx
   option_name: jderfen_lookup
   overwrite_comment: true
   comment_format:
@@ -209,7 +209,7 @@ jderfen_lookup:
 # 翻译器：负责从 txjx.gbk 词库中查词
 gbk:
   tag: gbk
-  dictionary: dicts/txjx.gbk
+  dictionary: txjx.gbk
   enable_sentence: true
   enable_user_dict: false
   prefix: "o"
@@ -218,7 +218,7 @@ gbk:
 # 读音/编码展示配置，供 lua_filter@*txjx_reverse_hint 使用
 gbk_lookup:
   tags: [gbk]
-  dictionary: dicts/txjx.gbk
+  dictionary: txjx.gbk
   option_name: gbk_lookup
   overwrite_comment: true
   comment_format:
@@ -233,7 +233,7 @@ gbk_lookup:
 # 注释中的读音与编码展示统一由 txjx_reverse_hint 处理
 reverse_lookup:
   tags: [reverse_lookup] # 独立 Tag，不被 Filter 拦截
-  dictionary: dicts/txjx.danzi
+  dictionary: txjx.danzi
   option_name: reverse_lookup
   enable_completion: false
   initial_quality: 0.5
@@ -244,7 +244,7 @@ reverse_lookup:
     - xform/ /, /
 
 reverse_hint:
-  dictionary: dicts/txjx.cx
+  dictionary: txjx.cx
 
 # ==================== 快捷键配置 ====================
 key_binder:

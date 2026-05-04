@@ -31,7 +31,7 @@ speller:
   delimiter: " '"
 
 translator:
-  dictionary: dicts/txjx.gbk
+  dictionary: txjx.gbk
   db_class: tabledb
   enable_completion: false
   enable_sentence: false

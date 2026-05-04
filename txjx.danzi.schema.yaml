@@ -38,7 +38,7 @@ speller:
     - derive/^(.....).$/$1`/
 
 translator:
-  dictionary: dicts/txjx.danzi
+  dictionary: txjx.danzi
   db_class: tabledb
   enable_completion: false
   enable_sentence: false

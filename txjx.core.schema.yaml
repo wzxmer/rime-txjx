@@ -30,7 +30,7 @@ speller:
   delimiter: " '"
 
 translator:
-  dictionary: dicts/txjx.core
+  dictionary: txjx.core
   db_class: tabledb
   enable_completion: false
   enable_sentence: false
