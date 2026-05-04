@@ -6,7 +6,7 @@
 # 词组排列勿动，会影响功能使用
 ---
 name: txjx
-version: "2026年5月1日"
+version: "2026年5月4日"
 sort: by_weight
 ...
 
@@ -75,6 +75,40 @@ sort: by_weight
 玄	xt
 啧	ze
 #endregion <简字>
+
+#region <快符>
+;	;
+："	;;
+！	;a
+%	;b
+←	;c
+↑	;ce
+↓	;cx
+、	;d 
+"	;e
+"	;r
+#@	;f
+<	;g
+>	;h
+｜	;i
+@	;j
+·	;o
+「	;t
+（	;k
+）	;l
+《	;m
+》	;n
+——	;p
+~	;q
+……	;s
+^	;u
+=	;v
+？	;w
+→	;x
+」	;y
+```	;z
+
+#endregion <快符>
 
 #region <核心词组>
 别别别	bbb
@@ -3917,13 +3951,13 @@ sort: by_weight
 不负	bjfjvu
 不敷	bjfjvv
 不止	bjfk
+不知	bjfk
 补植	bjfko
 不值	bjfkv
 不治	bjfkva
 布置	bjfkvi
 不只	bjfkvo
 不支	bjfkvu
-不知	bjfkvu
 不至	bjfkvv
 捕捉	bjfl
 必经之路	bjflo
@@ -11201,6 +11235,9 @@ sort: by_weight
 曾多次	cdc
 凑凑	cdcd
 此订单	cdd
+菜单条	cdt
+凑头	cdtd
+猜得透	cdtu
 凑对	cddb
 凑得	cdde
 凑单	cddf
@@ -28111,9 +28148,11 @@ sort: by_weight
 受够	edgdu
 收个	edge
 收割	edgea
-首歌	edgeo
-首个	edgeoi
+首个	edgeo
+守个	edgeoi
+首歌	edgeov
 树大根深	edgev
+受个	edgeu
 手感	edgf
 手改	edgh
 受雇	edgj
@@ -31809,6 +31848,7 @@ sort: by_weight
 十数	ekeju
 柿树	ekejv
 事实	ekek
+时时	ekek
 湿湿	ekeka
 史诗	ekeki
 食屎	ekekia
@@ -32253,6 +32293,7 @@ sort: by_weight
 诗集	ekjkoi
 试剂	ekjkoo
 是几	ekjkou
+时机	ekjkov
 十级	ekjku
 十集	ekjkui
 失计	ekjkuo
@@ -59865,7 +59906,9 @@ sort: by_weight
 光买	gxmh
 光卖	gxmhi
 光幕	gxmj
-广漠	gxml
+光摸	gxml
+光模	gxmli
+广漠	gxmlo
 光面	gxmm
 光门	gxmn
 光芒	gxmp
@@ -96244,6 +96287,7 @@ sort: by_weight
 漏人	ldrna
 锒铛入狱	ldry
 漏色	ldse
+漏送	ldsy
 陋俗	ldsj
 楼丝	ldsk
 漏算	ldst
@@ -98504,7 +98548,8 @@ sort: by_weight
 炉缸	ljgpo
 撸管	ljgt
 炉罐	ljgto
-露给	ljgw
+录给	ljgw
+露给	ljgwv
 鲁光	ljgx
 逻辑关系	ljgxi
 路拱	ljgy
@@ -109596,8 +109641,9 @@ sort: by_weight
 魔爪	mlfz
 摩洛哥	mlg
 魔鬼	mlgb
-磨沟	mlgd
+摸够	mlgd
 喵了个咪的	mlgdo
+磨沟	mlgdoa
 摸个	mlge
 莫格	mlgei
 模格	mlgev
@@ -115584,8 +115630,11 @@ sort: by_weight
 你知	nkfkiu
 泥佛	nkfl
 你装	nkfm
-你方	nkfp
-你放	nkfpi
+你放	nkfp
+你方	nkfpi
+你防	nkfpia
+你仿	nkfpii
+你房	nkfpio
 你抓	nkfq
 逆风	nkfr
 泥封	nkfra
@@ -118715,6 +118764,7 @@ sort: by_weight
 那一个	nyga
 弄鬼	nygb
 弄个	nyge
+弄根	nygn
 难以割舍	nygea
 弄干	nygf
 浓绀	nygfa
@@ -133449,6 +133499,9 @@ sort: by_weight
 球虫	qqwy
 秋虫	qqwyu
 正确性	qqx
+丘疹性荨麻疹	qqxq
+求啊	qqxsv
+球下	qqxsvv
 求新	qqxb
 球心	qqxbv
 求小	qqxc
@@ -148121,7 +148174,9 @@ sort: by_weight
 天荒地老	thdlv
 太癫	thdm
 台电	thdma
+台垫	thdmai
 太颠	thdmv
+太典	thdmvi
 调和鼎鼐	thdno
 太当	thdp
 台灯	thdr
@@ -149455,9 +149510,13 @@ sort: by_weight
 提申	tkeni
 提审	tkenio
 替身	tkenv
-踢伤	tkep
-提上	tkepi
-踢上	tkepo
+提上	tkep
+题上	tkep
+踢伤	tkepo
+踢上	tkepoi
+梯上	tkepv
+体上	tkepi
+体商	tkepio
 提升	tker
 啼声	tkero
 蹄声	tkerov
@@ -165127,7 +165186,8 @@ sort: by_weight
 性本善	xbeo
 心上	xbep
 信上	xbepi
-心伤	xbepo
+新伤	xbepo
+心伤	xbepoi
 欣赏	xbepu
 心声	xber
 新生	xbero
@@ -177213,6 +177273,8 @@ sort: by_weight
 楦头	xttdv
 玄谈	xttf
 悬停	xttg
+选停	xttgu
+选听	xttguo
 碹胎	xtth
 选态	xtthu
 选图	xttj
@@ -187290,6 +187352,7 @@ sort: by_weight
 一摞	ykllvi
 尤克里里	ykllvu
 一连	yklm
+已练	yklm
 已连	yklma
 漪涟	yklmaa
 依恋	yklmi
@@ -198469,6 +198532,7 @@ sort: by_weight
 藏马熊	zmxi
 在某些情况下	zmxx
 怎么样	zmy
+怎么样吧	zmyb
 怎么样的	zmyd
 怎么一回事	zmye
 怎么样了	zmyl
@@ -200506,41 +200570,6 @@ sort: by_weight
 毅	yklu
 怡	ykxa
 #endregion <syxb单字>
-
-#region <特殊符号>
-;	;
-："	;;
-！	;a
-%	;b
-←	;c
-↑	;ce
-↓	;cx
-、	;d 
-"	;e
-"	;r
-#@	;f
-<	;g
->	;h
-｜	;i
-@	;j
-·	;o
-「	;t
-（	;k
-）	;l
-《	;m
-》	;n
-——	;p
-~	;q
-……	;s
-^	;u
-=	;v
-？	;w
-→	;x
-」	;y
-```	;z
-
-
-#endregion <特殊符号>
 
 #region <常用药>
 #感冒常用药

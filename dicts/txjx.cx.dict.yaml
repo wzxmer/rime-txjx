@@ -3,10 +3,10 @@
 # 单字读音来源：https://yuhao.forfudan.com/ 宇浩输入法
 ---
 name: txjx.cx
-version: "2026年1月1日"
+version: "2026年5月4日"
 sort: by_weight
 import_tables:
-  - txjx.danzi
+  - dicts/txjx.danzi
 ...
 #region <单字>
 〇	(líng_yuán_xīng)

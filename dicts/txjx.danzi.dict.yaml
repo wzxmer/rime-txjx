@@ -1,10 +1,10 @@
 # Rime dictionary
 # encoding: utf-8
 # 单字码表维护来源@雪松：https://github.com/amorphobia/rime-jiandao/tree/master/dicts
-# 2025年11月26日
+# 2026年5月4日
 ---
 name: txjx.danzi
-version: "2026年5月1日"
+version: "2026年5月4日"
 sort: by_weight
 ...
 
@@ -16564,6 +16564,8 @@ sort: by_weight
 橹	ljvua
 橹	ljvuai
 碌	ljvuav
+硵	ljvui
+硵	ljvuiv
 麓	ljvv
 琭	ljvva
 㯟	ljvvav
