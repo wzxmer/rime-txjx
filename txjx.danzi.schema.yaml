@@ -4,7 +4,7 @@
 schema:
   schema_id: txjx.danzi
   name: 天行键单字编码辅助方案·勿选
-  version: "2026年5月2日"
+  version: "2026年5月4日"
   author:
     - 浮生 <wzxmer@outlook.com>
   description: |
@@ -28,9 +28,17 @@ speller:
   alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
   delimiter: " '"
+  max_code_length: 6
+  algebra:
+    - derive/^.(.*)$/`$1/
+    - derive/^(.).(.*)$/$1`$2/
+    - derive/^(..).(.*)$/$1`$2/
+    - derive/^(...).(.*)$/$1`$2/
+    - derive/^(....).(.*)$/$1`$2/
+    - derive/^(.....).$/$1`/
 
 translator:
-  dictionary: txjx.danzi
+  dictionary: dicts/txjx.danzi
   db_class: tabledb
   enable_completion: false
   enable_sentence: false

@@ -4,8 +4,8 @@
 # 天行键 扩展词库控制
 ---
 name: txjx.extended
-version: "2026年1月1日"
-sort: by_weight
+version: "2026年5月4日"
+sort: by_weight 
 use_preset_vocabulary: false
 columns:
   - text
@@ -21,20 +21,20 @@ encoder:
 import_tables:
 # ---------------------------------------
 # 下列为扩展 可选码表内容：
-# 说明：内置词库在当前目录下
+# 说明：内置词库在 dicts/ 目录下
 # =======================================
 ### 内置词库@吅吅大山
 # ---------------------------------------
 ## 扩展：用户词库
-  - txjx.user
+  - dicts/txjx.user
 # =======================================
 # 扩展：词组
-  - txjx.core
-  - txjx.danzi
-  - txjx
+  - dicts/txjx.core
+  - dicts/txjx.danzi
+  - dicts/txjx
 # ---------------------------------------
 
 ## 自定义词库：自己做的词库，自己维护
 ## 扩展：附加词语
-  - txjx.fjcy
+  - dicts/txjx.fjcy
 ...

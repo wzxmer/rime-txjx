@@ -4,7 +4,7 @@
 schema:
   schema_id: txjx.gbk
   name: 天行键GBK字集辅助方案·勿选
-  version: "2026年5月2日"
+  version: "2026年5月4日"
   author:
     - ProudCat
     - 浮生 <wzxmer@outlook.com>
@@ -31,7 +31,7 @@ speller:
   delimiter: " '"
 
 translator:
-  dictionary: txjx.gbk
+  dictionary: dicts/txjx.gbk
   db_class: tabledb
   enable_completion: false
   enable_sentence: false
