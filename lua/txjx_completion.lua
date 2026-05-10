@@ -1,6 +1,6 @@
 -- 补全候选过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-05-04
+-- 更新：2026-05-05
 local utf8_len = utf8.len
 local type = type
 
@@ -43,7 +43,10 @@ return {
         local comp_count = 0
 
         for cand in input:iter() do
-            if cand.type == "completion" and not reverse_lookup then
+            if cand.type == "completion" then
+                if reverse_lookup then
+                    goto continue
+                end
                 if not enabled then break end
                 comp_count = comp_count + 1
                 if comp_count > 30 then break end
@@ -64,6 +67,7 @@ return {
                     end
                 end
             end
+            ::continue::
         end
 
         for i = 1, buffer_size do

@@ -1,7 +1,7 @@
 -- 天行键低频扩展轻入口
--- 精确触发时间/农历或计算器时加载 txjx_ext_core，用完即释放。
+-- 首次触发时加载 txjx_ext_core 并常驻，天文大表按需加载/释放。
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-05-04
+-- 更新：2026-05-09
 
 local string_sub = string.sub
 
@@ -32,9 +32,11 @@ local function is_time_input(input)
         or input == "nl"
         or input == "nylk"
         or input == "jq"
+        or input == "jdqk"
         or input == "eo"
         or input == "jkdm"
         or input == "xq"
+        or input == "xgqk"
         or is_calendar_input(input)
 end
 
@@ -44,15 +46,6 @@ local function is_calc_input(input, env)
     end
     local ctx = env and env.engine and env.engine.context
     return not (ctx and ctx.get_option and not ctx:get_option("jisuanqi"))
-end
-
-local function release_core(env)
-    if core and core.fini then
-        core.fini(env)
-    end
-    package.loaded["txjx_ext_core"] = nil
-    core = nil
-    collectgarbage("collect")
 end
 
 local function translator(input, seg, env)
@@ -65,11 +58,12 @@ local function translator(input, seg, env)
 
     core = core or require("txjx_ext_core")
     core.func(input, seg, env)
-    release_core(env)
 end
 
 local function fini(env)
-    release_core(env)
+    if core and core.fini then
+        core.fini(env)
+    end
 end
 
 return { func = translator, fini = fini }

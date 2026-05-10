@@ -2,7 +2,7 @@
 -- 合并时间/农历与计算器完整逻辑，由 txjx_core.lua 按需加载。
 -- 含有日历+计算器原作者未知
 -- 此版本作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-05-04
+-- 更新：2026-05-09
 
 local M = {}
 
@@ -773,9 +773,6 @@ end
 
 
 
-local jqB={ --节气表
-"立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至","小暑","大暑","立秋","处暑","白露",
-"秋分","寒露","霜降","立冬","小雪","大雪","冬至","小寒","大寒",}
 --天干
 local tiangan = {'甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'}
 
@@ -856,8 +853,6 @@ local function system(x,inPuttype,outputtype)
 	if (tonumber(inPuttype)==2) then
 		if (tonumber(outputtype) == 10) then  --2进制-->10进制
 			r= tonumber(tostring(x), 2)
-		elseif (tonumber(outputtype)==16) then  --2进制-->16进制
-			r= bin2hex(tostring(x))
 		end
 	elseif (tonumber(inPuttype)==10) then
 		if (tonumber(outputtype)==2) then   --10进制-->2进制
@@ -1330,34 +1325,76 @@ local function yield_cache(cache_data, type_tag, seg)
     end
 end
 
+local function refresh_time_cache(cache)
+    local curr_key = os_date("%Y%m%d%H%M")
+    if cache.key ~= curr_key then
+        cache.key = curr_key
+        cache.rq = nil
+        cache.nl = nil
+        cache.jq = nil
+    end
+end
+
+local JQ_NAMES = {
+    "冬至", "小寒", "大寒", "立春", "雨水", "惊蛰", "春分", "清明", "谷雨", "立夏", "小满", "芒种",
+    "夏至", "小暑", "大暑", "立秋", "处暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪"
+}
+
+local CUR_JQ_NAMES = {
+    "立春", "雨水", "惊蛰", "春分", "清明", "谷雨", "立夏", "小满", "芒种", "夏至", "小暑", "大暑",
+    "立秋", "处暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至", "小寒", "大寒"
+}
+
+local function build_jq_data()
+    InitAstro()
+    local data = {}
+    pcall(function()
+        local gz = GanZhiLi:new()
+        local idx = gz.curJq
+        if idx then
+            local name = CUR_JQ_NAMES[idx]
+            if name and name ~= "" then
+                local t = os_date("*t")
+                local today = string_format("%04d-%02d-%02d", t.year, t.month, t.day)
+                table_insert(data, {name, today})
+            end
+        end
+    end)
+    FreeAstro()
+    return data
+end
+
+local function get_cached_jq_data(cache)
+    refresh_time_cache(cache)
+    if not cache.jq then
+        cache.jq = build_jq_data()
+    end
+    return cache.jq
+end
+
+local function yield_jq_names(seg)
+    for _, name in ipairs(JQ_NAMES) do
+        yield(Candidate("jq", seg.start, seg._end, name, ""))
+    end
+end
+
 local function translator(input, seg)
-    -- 0. 极速前置判断：非触发词首字母直接返回，跳过 os_date 系统调用
     local b1 = string_byte(input, 1)
-    -- r=114(rq) n=110(nl/nylk) j=106(jq/jkdm) e=101(eo) x=120(xq) ==61(日历查询)
     if not b1 or not (b1==114 or b1==110 or b1==106 or b1==101 or b1==120 or b1==61) then
         return
     end
 
-    -- 1. 生成缓存键 (精确到分钟)
-    local curr_key = os_date("%Y%m%d%H%M")
+    local cache = _G_CACHE
+    refresh_time_cache(cache)
 
-    -- 2. 检查缓存是否过期
-    if _G_CACHE.key ~= curr_key then
-        _G_CACHE.key = curr_key
-        _G_CACHE.rq = nil
-        _G_CACHE.nl = nil
-        _G_CACHE.jq = nil
-    end
-
-    -- 3. 缓存命中直接返回 (内存 0 波动)
-    if input == "rq" and _G_CACHE.rq then
-        yield_cache(_G_CACHE.rq, "date", seg)
+    if input == "rq" and cache.rq then
+        yield_cache(cache.rq, "date", seg)
         return
-    elseif (input == "nl" or input == "nylk") and _G_CACHE.nl then
-        yield_cache(_G_CACHE.nl, "date", seg)
+    elseif (input == "nl" or input == "nylk") and cache.nl then
+        yield_cache(cache.nl, "date", seg)
         return
-    elseif input == "jq" and _G_CACHE.jq then
-        yield_cache(_G_CACHE.jq, "jwql", seg)
+    elseif input == "jdqk" and cache.jq then
+        yield_cache(cache.jq, "jdqk", seg)
         return
     end
 
@@ -1365,23 +1402,25 @@ local function translator(input, seg)
     
     -- 日期 (rq)
     if (input == "rq") then
-        InitAstro() -- 加载天文表
-        local data = {} -- 缓存容器
+        InitAstro()
+        local data = {}
         pcall(function()
-            local num_year = os_date("%j/")..IsLeap(os_date("%Y"))
-            local ymd = os_date("%Y%m%d")
-            
-            -- 将计算结果存入 data 表，而不是直接生成 Candidate
-            table_insert(data, {os_date("%Y-%m-%d"), ""})
-            table_insert(data, {os_date("%Y年%m月%d日"), ""})
-            table_insert(data, {os_date("%Y%m%d"), ""})
+            local t = os_date("*t")
+            local ymd = string_format("%04d%02d%02d", t.year, t.month, t.day)
+            local iso = string_format("%04d-%02d-%02d", t.year, t.month, t.day)
+            local chn = string_format("%04d年%02d月%02d日", t.year, t.month, t.day)
+            local num_year = t.yday .. "/" .. IsLeap(t.year)
+
+            table_insert(data, {iso, ""})
+            table_insert(data, {chn, ""})
+            table_insert(data, {ymd, ""})
             table_insert(data, {CnDate_translator(ymd), ""})
             table_insert(data, {Date2LunarDate(ymd) .. JQtest(ymd), num_year})
         end)
-        FreeAstro() -- 释放天文表
+        FreeAstro()
         
         -- 存入缓存并输出
-        _G_CACHE.rq = data
+        cache.rq = data
         yield_cache(data, "date", seg)
 
     -- 农历 (nl / nylk)
@@ -1389,66 +1428,51 @@ local function translator(input, seg)
         InitAstro()
         local data = {}
         pcall(function()
-            local ymd = os_date("%Y%m%d")
-            local hour = os_date("%H")
+            local t = os_date("*t")
+            local ymd = string_format("%04d%02d%02d", t.year, t.month, t.day)
+            local hour = string_format("%02d", t.hour)
             local res1 = Date2LunarDate(ymd) .. JQtest(ymd)
             local res2 = lunarJzl(ymd..hour)
             local res3 = Date2LunarDate(ymd) .. GetLunarSichen(hour, 1)
-            
+
             table_insert(data, {res1, ""})
             table_insert(data, {res2, " "})
             table_insert(data, {res3, ""})
         end)
         FreeAstro()
         
-        _G_CACHE.nl = data
+        cache.nl = data
         yield_cache(data, "date", seg)
 
-    -- 节气 (jq)
+    -- 节气列表 (jq)
     elseif (input == "jq") then
-        InitAstro()
-        local data = {}
-        pcall(function()
-            local ymd = os_date("%Y%m%d")
-            local jqs = GetNowTimeJq(ymd)
-            if jqs and jqs[1] and tonumber(diffDate(ymd,string_gsub(jqs[1]:sub(8,-1),"-",""))) > 7 then
-                local a = string_gsub(jqs[1]:sub(8,-1),"-","")
-                if a:sub(7,8) > "17" then a=tostring(tonumber(a)-17)
-                elseif a:sub(5,6) > "01" then a=tostring(tonumber(a)-100+13)
-                else a=tostring(tonumber(a)-10000+1100+13) end
-                a=tostring(a):sub(1,-3)
-                jqs=GetNowTimeJq(a)
-            end
-            for i = 1, #jqs do
-                if i <= 2 then
-                    table_insert(data, {jqs[i], ""})
-                end
-            end
-        end)
-        FreeAstro()
-        
-        _G_CACHE.jq = data
-        yield_cache(data, "jwql", seg)
+        yield_jq_names(seg)
 
-    -- 时间 (eo) - 秒针在变，不缓存
+    -- 当前节气 (jdqk)
+    elseif (input == "jdqk") then
+        local data = get_cached_jq_data(cache)
+        yield_cache(data, "jdqk", seg)
+
     elseif (input == "eo") then
-        local time_str = os_date("%H:%M:%S")
-        local time = string_gsub(time_str, "^0+", "")
-        yield(Candidate("date", seg.start, seg._end, os_date("%Y-%m-%d").." "..time, ""))
+        local t = os_date("*t")
+        local time = string_format("%d:%02d:%02d", t.hour, t.min, t.sec)
+        local iso = string_format("%04d-%02d-%02d", t.year, t.month, t.day)
+        yield(Candidate("date", seg.start, seg._end, iso.." "..time, ""))
         yield(Candidate("time", seg.start, seg._end, time, ""))
 
     -- 绝控代码 (jkdm)
     elseif (input == "jkdm") then
-        yield(Candidate("time", seg.start, seg._end, os_date("%H:%M:%S"), ""))
+        local t = os_date("*t")
+        yield(Candidate("time", seg.start, seg._end, string_format("%02d:%02d:%02d", t.hour, t.min, t.sec), ""))
 
-    -- 星期 (xq) - 计算极快，无需缓存
-    elseif (input == "xq") then
-        local wday = os_date("%w")
-        local num_weekday = os_date("第%W周")
-        yield(Candidate("xiqy", seg.start, seg._end, chinese_weekday(wday), num_weekday))
-        yield(Candidate("xiqy", seg.start, seg._end, chinese_weekday2(wday), num_weekday))
-        yield(Candidate("xiqy", seg.start, seg._end, os_date("%a"), num_weekday))
-        yield(Candidate("xiqy", seg.start, seg._end, os_date("%A"), num_weekday))
+    elseif (input == "xq" or input == "xgqk") then
+        local t = os_date("*t")
+        local wday = tostring(t.wday - 1)
+        local num_weekday = "第" .. tostring(math.ceil((t.yday + 6) / 7)) .. "周"
+        yield(Candidate("xgqk", seg.start, seg._end, chinese_weekday(wday), num_weekday))
+        yield(Candidate("xgqk", seg.start, seg._end, chinese_weekday2(wday), num_weekday))
+        yield(Candidate("xgqk", seg.start, seg._end, os_date("%a"), num_weekday))
+        yield(Candidate("xgqk", seg.start, seg._end, os_date("%A"), num_weekday))
 
     -- 日历查询 (=YYYYMMDD)
     elseif string.len(input) > 1 and string_sub(input, 1, 1) == "=" then
@@ -1484,6 +1508,9 @@ end
 
 M.time_func = translator
 M.time_fini = fini
+M.get_jq_data = function()
+    return get_cached_jq_data(_G_CACHE)
+end
 end
 
 -- calculator core ---------------------------------------------------------
@@ -2026,9 +2053,11 @@ local function is_calendar_input(input)
         or input == "nl"
         or input == "nylk"
         or input == "jq"
+        or input == "jdqk"
         or input == "eo"
         or input == "jkdm"
         or input == "xq"
+        or input == "xgqk"
         or is_calendar_query(input)
 end
 

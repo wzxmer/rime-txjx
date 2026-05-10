@@ -1,6 +1,6 @@
 -- 天行键过滤器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-05-03
+-- 更新：2026-05-09
 
 local string_match = string.match
 local string_find = string.find
@@ -19,6 +19,7 @@ local shared_hint_cache = {}
 local shared_hint_cache_count = 0
 local active_filter_envs = 0
 local shared_reverse_handles = {}
+local ext_core
 
 local function clear_shared_hint_cache()
     shared_hint_cache = {}
@@ -290,11 +291,19 @@ local function sync_reverse_core(env, on)
     end
 end
 
+local function should_skip_reverse_lookup_grave(cand, seg)
+    if not cand or cand.text ~= "`" then
+        return false
+    end
+    return segment_has_tag(seg, "reverse_lookup")
+end
+
 local function filter(input, env)
     local context = env.engine.context
     local input_text = context.input
     local input_len = #input_text
     local sbb_on = context:get_option("sbb_hint")
+    local current_seg = context.composition and context.composition:back()
 
     update_lazy_reverse(env, context, input_text)
 
@@ -341,6 +350,10 @@ local function filter(input, env)
     local reverse_opened = false
 
     for cand in input:iter() do
+        if should_skip_reverse_lookup_grave(cand, current_seg) then
+            goto continue
+        end
+
         if first then
             if show_commit_hint then commit_hint(cand, hint_text) end
             first = false
@@ -361,6 +374,7 @@ local function filter(input, env)
         end
 
         yield(cand)
+        ::continue::
     end
     if reverse_opened then
         env.reverse_core = nil
@@ -369,6 +383,9 @@ local function filter(input, env)
 end
 
 local function init(env)
+    if env._update_conn then env._update_conn:disconnect() end
+    if env._commit_conn then env._commit_conn:disconnect() end
+
     local config = env.engine.schema.config
     env.schema_id = env.engine.schema.schema_id
     env.is_xmjd = string_find(env.schema_id, "xmjd") ~= nil
