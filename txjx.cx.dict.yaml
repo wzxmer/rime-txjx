@@ -3,7 +3,7 @@
 # 单字读音来源：https://yuhao.forfudan.com/ 宇浩输入法
 ---
 name: txjx.cx
-version: "2026年5月4日"
+version: "2026年5月5日"
 sort: by_weight
 import_tables:
   - txjx.danzi

@@ -6,7 +6,7 @@
 # 词组排列勿动，会影响功能使用
 ---
 name: txjx
-version: "2026年5月4日"
+version: "2026年5月9日"
 sort: by_weight
 ...
 
@@ -57,6 +57,7 @@ sort: by_weight
 煎	jm
 剪	jm
 凉	lx
+佬	lz
 噗	pj
 屁	pk
 弃	qk
@@ -1206,7 +1207,7 @@ sort: by_weight
 不是这样的	beqd
 不胜其烦	beqf
 不是这个	beqg
-保持器	beqi
+报上去	beqi
 保税区	beqiu
 捕鼠器	beqiuo
 白手起家	beqj
@@ -9229,8 +9230,9 @@ sort: by_weight
 碑刻	bwkev
 被看	bwkf
 被砍	bwkfo
-北开	bwkh
-被开	bwkho
+被开	bwkh
+北开	bwkhi
+被揩	bwkho
 悲苦	bwkj
 背筐	bwkm
 被啃	bwkn
@@ -9396,7 +9398,8 @@ sort: by_weight
 悲情	bwqg
 被摘	bwqh
 背债	bwqhi
-保卫战	bwqi
+保持器	bwqi
+保卫战	bwqia
 把握住	bwqii
 保持着	bwqiio
 备注	bwqj
@@ -11716,7 +11719,8 @@ sort: by_weight
 残旧	cfjq
 残酒	cfjqv
 参加	cfjs
-掺加	cfjsi
+掺假	cfjsi
+掺加	cfjsia
 残卷	cfjt
 参军	cfjw
 残春	cfjwv
@@ -12227,9 +12231,9 @@ sort: by_weight
 采菊	chjlu
 才见	chjm
 踩践	chjmo
-裁减	chjmu
+裁剪	chjmu
 裁件	chjmui
-裁剪	chjmuo
+裁减	chjmuo
 采检	chjmuv
 才减	chjmv
 才建	chjmva
@@ -27334,7 +27338,8 @@ sort: by_weight
 谁和	ebheo
 谁喝	ebheoo
 水旱	ebhf
-水害	ebhh
+谁还	ebhh
+水害	ebhha
 睡不好	ebhi
 叔本华	ebhiv
 水壶	ebhj
@@ -46722,6 +46727,7 @@ sort: by_weight
 抓打	fqds
 夫妻店	fqdv
 执政地位	fqdw
+反其道而行	fqdx
 抓到	fqdz
 发展史	fqe
 发展商	fqea
@@ -53808,11 +53814,11 @@ sort: by_weight
 国防大学	gfdx
 感动	gfdy
 敢动	gfdya
-感到	gfdz
+干到	gfdz
 赶到	gfdzv
 干倒	gfdzvi
 干道	gfdzvo
-干到	gfdzvv
+感到	gfdzvv
 广州市	gfe
 干谁	gfeb
 敢睡	gfeba
@@ -55281,7 +55287,10 @@ sort: by_weight
 骨朵	gjdli
 古多	gjdlu
 古典	gjdm
-鼓点	gjdmv
+顾点	gjdmv
+鼓点	gjdmvi
+古店	gjdmu
+故典	gjdmui
 关键的	gjdo
 关键点	gjdoi
 高精度	gjdoo
@@ -62587,11 +62596,11 @@ sort: by_weight
 会意	hbykio
 悔意	hbyko
 灰衣	hbykv
-毁于	hbyl
-会与	hbyli
+会与	hbyl
+会于	hbyli
 回淤	hbylia
-会于	hbyliv
-秽语	hbylu
+毁于	hbylu
+秽语	hbyluv
 毁誉	hbyluo
 惠誉	hbylv
 虺蜮	hbylvi
@@ -65408,7 +65417,9 @@ sort: by_weight
 海阔	hhkl
 海况	hhkm
 还狂	hhkmv
-海康	hhkp
+还抗	hhkp
+还扛	hhkpv
+海康	hhkpa
 还夸	hhkq
 还卡	hhks
 海宽	hhkt
@@ -72548,6 +72559,9 @@ sort: by_weight
 好污	hzwjaa
 好恶	hzwjav
 好吃	hzwk
+好迟	hzwka
+好痴	hzwkao
+号池	hzwko
 皓齿	hzwku
 豪沃	hzwl
 号床	hzwm
@@ -88962,7 +88976,8 @@ sort: by_weight
 窘境	jyjg
 产业结构	jyjgo
 就业机会	jyjh
-柴油机	jyji
+见一见	jymi
+柴油机	jyjia
 尝一尝	jyjiv
 积忧成疾	jyjj
 加以解决	jyjja
@@ -92505,6 +92520,7 @@ sort: by_weight
 苦况	kjkx
 口出狂言	kjky
 看见了	kjl
+看见了吧	kjlb
 裤料	kjlc
 哭辽	kjlco
 骷髅	kjld
@@ -94719,7 +94735,8 @@ sort: by_weight
 空旷	kykx
 空空	kyky
 可以了	kyl
-孔林	kylb
+可以了吧	kylb
+孔林	kylba
 空聊	kylc
 空楼	kyld
 孔裂	kylda
@@ -96379,8 +96396,8 @@ sort: by_weight
 浪得虚名	ldxma
 楼下	ldxs
 漏下	ldxsa
-裂罅	ldxsv
-列下	ldxsvv
+列下	ldxsv
+裂罅	ldxsvu
 列选	ldxt
 垄断性	ldxv
 列项	ldxx
@@ -103059,7 +103076,8 @@ sort: by_weight
 拉斐	lsfwi
 蜡状	lsfx
 连锁反应	lsfy
-吝啬鬼	lsg
+两三个	lsg
+吝啬鬼	lsgo
 拉勾	lsgd
 拉沟	lsgdi
 拉钩	lsgdii
@@ -106900,6 +106918,8 @@ sort: by_weight
 玛莎拉蒂	meld
 麻省理工	melg
 默示录	meli
+迷上了	melo
+明事理	melov
 麻省理工学院	mely
 没什么	mem
 买什么	mema
@@ -157954,8 +157974,8 @@ sort: by_weight
 赤壁	wkbk
 池壁	wkbka
 持币	wkbki
-赤膊	wkbl
-吃播	wkblo
+吃播	wkbl
+赤膊	wkblv
 吃遍	wkbm
 池边	wkbma
 无可避免	wkbmv
@@ -162130,8 +162150,12 @@ sort: by_weight
 穿通	wttyo
 我替我	wtw
 传完	wtwf
+传晚	wtwfi
+穿完	wtwfo
 川外	wtwh
 传统文化	wtwhi
+床头吵床尾和	wtwho
+船外	wtwhu
 船坞	wtwj
 传武	wtwji
 船务	wtwju
@@ -165065,11 +165089,11 @@ sort: by_weight
 新北	xbbw
 心悲	xbbwo
 心被	xbbwoo
-新宝	xbbz
+新包	xbbz
 信报	xbbzi
-心包	xbbzo
-新报	xbbzoi
-新包	xbbzou
+新报	xbbzo
+新宝	xbbzoo
+心包	xbbzou
 下半辈子	xbbzv
 小白菜	xbc
 新翠	xbcb
@@ -174462,7 +174486,9 @@ sort: by_weight
 纤程	xmjrau
 县城	xmjri
 县丞	xmjria
-鲜橙	xmjru
+先成	xmjru
+先撑	xmjrui
+鲜橙	xmjruv
 现价	xmjs
 限价	xmjsa
 线夹	xmjsav
@@ -178653,12 +178679,12 @@ sort: by_weight
 响着	xxqeo
 向着	xxqeu
 巷战	xxqf
-想清	xxqg
+想请	xxqg
 乡情	xxqga
 详情	xxqgo
 响晴	xxqgoo
 香清	xxqgu
-想请	xxqgv
+想清	xxqgv
 相轻	xxqgvv
 相助	xxqj
 湘竹	xxqja
@@ -179930,6 +179956,8 @@ sort: by_weight
 隐带	ybdhav
 殷戴	ybdhu
 由不得	ybdi
+遇不到	ybdiv
+仪表灯	ybdivo
 印度	ybdj
 引渡	ybdja
 阴毒	ybdjav
@@ -182261,7 +182289,7 @@ sort: by_weight
 游乡	ydxxaa
 油箱	ydxxau
 邮箱	ydxxi
-幽香	ydxxia
+幽香	ydxxiu
 优享	ydxxio
 优香	ydxxiu
 诱降	ydxxo
@@ -192570,9 +192598,11 @@ sort: by_weight
 孕穗	ywsb
 一无所得	ywsd
 愠色	ywse
-云散	ywsf
-一无所知	ywsfv
-一问三不知	ywsfvo
+一问三不知	ywsf
+一无所知	ywsf
+运散	ywsfv
+运伞	ywsfvi
+云散	ywsfvv
 一无所获	ywsh
 云赛	ywshv
 匀速	ywsj
@@ -196031,6 +196061,9 @@ sort: by_weight
 再顶	zhdgv
 再带	zhdh
 再呆	zhdhv
+在带	zhdhvv
+再贷	zhdhvi
+再戴	zhdhvu
 再度	zhdj
 在读	zhdjv
 再赌	zhdjva
@@ -196172,6 +196205,8 @@ sort: by_weight
 在干	zhgfv
 再干	zhgfvv
 再改	zhgh
+在改	zhgh
+再盖	zhghvo
 在该	zhghv
 在古	zhgj
 再过	zhgl

@@ -4,7 +4,7 @@
 # 天行键 扩展词库控制
 ---
 name: txjx.extended
-version: "2026年5月4日"
+version: "2026年5月5日"
 sort: by_weight 
 use_preset_vocabulary: false
 columns:
