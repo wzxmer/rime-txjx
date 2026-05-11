@@ -582,7 +582,7 @@ local function append_split_items(out, raw_value, split_pat, split_mode, source_
     end
 end
 
-local function process_rules(cand, active_rules, split_pat, comment_fmt, is_chain)
+local function process_rules(cand, active_rules, split_pat, comment_fmt, is_chain, emoji_tail)
     clear_table(shared_results)
     local current_text = cand.text
     local show_main = true
@@ -593,6 +593,9 @@ local function process_rules(cand, active_rules, split_pat, comment_fmt, is_chai
     clear_table(shared_comments)
 
     for _, rule in ipairs(active_rules) do
+        if cand.type == "completion" and rule.split_mode == "emoji" then
+            goto continue_rule
+        end
 
         local query_text = is_chain and current_text or cand.text
         local val = provider_fetch(rule, query_text)
@@ -656,7 +659,19 @@ local function process_rules(cand, active_rules, split_pat, comment_fmt, is_chai
                 clear_table(shared_parts)
                 append_split_items(shared_parts, val, split_pat, rule.split_mode, cand.text)
                 for _, p in ipairs(shared_parts) do
-                    insert(shared_pending, { text = p, comment = rule_comment })
+                    if rule.split_mode == "emoji" then
+                        insert(emoji_tail, {
+                            cand_type = rule.cand_type or cand.type or "derived",
+                            start_pos = cand.start,
+                            end_pos = cand._end,
+                            text = p,
+                            comment = rule_comment,
+                            preedit = cand.preedit,
+                            quality = cand.quality,
+                        })
+                    else
+                        insert(shared_pending, { text = p, comment = rule_comment })
+                    end
                 end
             end
         end
@@ -876,6 +891,8 @@ function M.func(input, env)
     local seg = ctx.composition:back()
     local in_reverse_lookup = is_reverse_lookup_context(ctx)
     local active_rules = {}
+    local emoji_tail = {}
+    local completion_tail = {}
     for _, rule in ipairs(rules) do
         local skip_for_reverse = in_reverse_lookup and rule.split_mode == "emoji"
         if not skip_for_reverse and rule.provider and rule_is_active(rule, ctx, seg) then
@@ -893,10 +910,27 @@ function M.func(input, env)
     end
 
     for cand in input:iter() do
-        local processed = process_rules(cand, active_rules, split_pat, comment_fmt, is_chain)
-        for _, item in ipairs(processed) do
-            yield(item)
+        local processed = process_rules(cand, active_rules, split_pat, comment_fmt, is_chain, emoji_tail)
+        if cand.type == "completion" then
+            for _, item in ipairs(processed) do
+                insert(completion_tail, item)
+            end
+        else
+            for _, item in ipairs(processed) do
+                yield(item)
+            end
         end
+    end
+
+    for _, item in ipairs(emoji_tail) do
+        local nc = Candidate(item.cand_type, item.start_pos, item.end_pos, item.text, item.comment)
+        nc.preedit = item.preedit
+        nc.quality = item.quality
+        yield(nc)
+    end
+
+    for _, item in ipairs(completion_tail) do
+        yield(item)
     end
 end
 

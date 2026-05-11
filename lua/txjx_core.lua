@@ -52,6 +52,19 @@ local function translator(input, seg, env)
     if not input or input == "" then
         return
     end
+
+    if string_sub(input, 1, 1) == "=" then
+        local ctx = env and env.engine and env.engine.context
+        if ctx and ctx.get_option and not ctx:get_option("jisuanqi") then
+            return
+        end
+        core = core or require("txjx_ext_core")
+        if core.jisuanqi_func then
+            core.jisuanqi_func(input, seg, env)
+        end
+        return
+    end
+
     if not is_time_input(input) and not is_calc_input(input, env) then
         return
     end
