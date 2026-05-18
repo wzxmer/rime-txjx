@@ -158,6 +158,7 @@ local function _topup_flush_key(env, ctx)
     env._tu_pending_clean = nil
     env._tu_pending_kc = nil
     ctx:push_input(key)
+    env._af_seed = key
     return true
 end
 
@@ -189,6 +190,7 @@ local function _topup_push_key(env, ctx, key, clean_key, kc, input_len)
         _topup_queue_key(env, key, clean_key, kc)
     else
         ctx:push_input(key)
+        env._af_seed = key
     end
 end
 
@@ -466,9 +468,13 @@ local function processor(key_event, env)
         local current_input = ctx.input
         if #current_input >= 1 and ctx:get_selected_candidate() then
             if not (opts.direct_symbols and current_input == ";") then
+                local seeded = env._af_seed == current_input
+                env._af_seed = nil
                 ctx:push_input(key)
-                if ctx:get_selected_candidate() then return kAccepted end
+                if ctx:get_selected_candidate() or _has_menu_candidates(ctx) then return kAccepted end
+                if seeded and env._rx_prefix and env._rx_prefix[key] then return kAccepted end
                 ctx:pop_input(1); ctx:commit(); ctx:push_input(key)
+                env._af_seed = key
                 return kAccepted
             end
         end
@@ -526,11 +532,17 @@ local function init(env)
     env._tu_cmd = config:get_bool("topup/topup_command") or false
     env._tu_streaming = config:get_bool("translator/enable_sentence") or false
     env._tu_defer_key = _topup_defer_key()
+    env._rx_prefix = {}
+    local jderfen_prefix = config:get_string("jderfen/prefix")
+    if type(jderfen_prefix) == "string" and #jderfen_prefix == 1 then env._rx_prefix[jderfen_prefix] = true end
+    local gbk_prefix = config:get_string("gbk/prefix")
+    if type(gbk_prefix) == "string" and #gbk_prefix == 1 then env._rx_prefix[gbk_prefix] = true end
     env._tc = nil
     env._tc_pending = true
     env._tu_pending_key = nil
     env._tu_pending_clean = nil
     env._tu_pending_kc = nil
+    env._af_seed = nil
 
     local ctx = env.engine.context
     if env._option_handler and ctx.option_update_notifier then
@@ -561,6 +573,8 @@ local function fini(env)
     env._tu_pending_clean = nil
     env._tu_pending_kc = nil
     env._tu_defer_key = nil
+    env._rx_prefix = nil
+    env._af_seed = nil
     -- 主动GC：释放资源后回收内存
     collectgarbage("step", 200)
 end
