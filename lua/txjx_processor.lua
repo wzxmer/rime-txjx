@@ -1,11 +1,12 @@
 -- 天行键统一按键处理器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-05-04
+-- 更新：2026-05-18
 
 local string_sub = string.sub
 local string_byte = string.byte
 local string_match = string.match
 local string_find = string.find
+local string_lower = string.lower
 local floor = math.floor
 local type = type
 
@@ -158,6 +159,37 @@ local function _topup_flush_key(env, ctx)
     env._tu_pending_kc = nil
     ctx:push_input(key)
     return true
+end
+
+local function _rime_api_string(name)
+    if type(rime_api) ~= "table" then return "" end
+    local fn = rime_api[name]
+    if type(fn) ~= "function" then return "" end
+    local ok, value = pcall(fn)
+    if ok and type(value) == "string" then return string_lower(value) end
+    return ""
+end
+
+local function _topup_defer_key()
+    local code = _rime_api_string("get_distribution_code_name")
+    if string_find(code, "weasel", 1, true) then return true end
+    local name = _rime_api_string("get_distribution_name")
+    local dir = _rime_api_string("get_user_data_dir")
+    local marker = code .. " " .. name .. " " .. dir
+    if string_find(marker, "hamster", 1, true)
+        or string_find(marker, "trime", 1, true)
+        or string_find(marker, "irime", 1, true) then
+        return false
+    end
+    return true
+end
+
+local function _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+    if env._tu_defer_key and input_len >= 3 then
+        _topup_queue_key(env, key, clean_key, kc)
+    else
+        ctx:push_input(key)
+    end
 end
 
 local function _resolve_key(key_event, env)
@@ -458,19 +490,15 @@ local function processor(key_event, env)
              if not (opts.direct_symbols and input_len > 0 and string_byte(current_input, 1) == 59) then
                 if is_ptu and not is_tu then
                     _topup_exec(env)
-                    if input_len >= 3 then
-                        _topup_queue_key(env, key, clean_key, kc)
-                    else
-                        ctx:push_input(key)
-                    end
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 elseif not is_ptu and not is_tu and input_len >= min_len then
                     _topup_exec(env)
-                    _topup_queue_key(env, key, clean_key, kc)
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 elseif input_len >= env._tu_max then
                     _topup_exec(env)
-                    _topup_queue_key(env, key, clean_key, kc)
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 end
              end
@@ -497,6 +525,7 @@ local function init(env)
     env._tu_ac = config:get_bool("topup/auto_clear") or false
     env._tu_cmd = config:get_bool("topup/topup_command") or false
     env._tu_streaming = config:get_bool("translator/enable_sentence") or false
+    env._tu_defer_key = _topup_defer_key()
     env._tc = nil
     env._tc_pending = true
     env._tu_pending_key = nil
@@ -531,6 +560,7 @@ local function fini(env)
     env._tu_pending_key = nil
     env._tu_pending_clean = nil
     env._tu_pending_kc = nil
+    env._tu_defer_key = nil
     -- 主动GC：释放资源后回收内存
     collectgarbage("step", 200)
 end
