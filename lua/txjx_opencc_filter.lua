@@ -1,5 +1,4 @@
 -- 文本映射过滤器
--- 参考万象（作者：https://amzxyz.github.io/） super_replacer 的核心实现
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-05-10
 

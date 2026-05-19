@@ -17,8 +17,8 @@ schema:
 engine:
   processors:
     - ascii_composer
-    - recognizer
     - lua_processor@*txjx_processor
+    - recognizer
     - key_binder
     - speller
     - punctuator
@@ -50,7 +50,7 @@ engine:
     - reverse_lookup_filter@gbk_lookup
     - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
-    #原生OpenCC过滤器功能不够灵活，改用lua实现
+    # ephemeral 为即用即放，内存会回落
     - lua_filter@*txjx_opencc_filter
     - uniquifier
 
