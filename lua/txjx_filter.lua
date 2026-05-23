@@ -236,6 +236,18 @@ local function commit_hint(cand, hint_text)
     cand:get_genuine().comment = hint_text .. (cand.comment or "")
 end
 
+local function append_candidate_if_needed(cand, context, input_text, first)
+    if not first then return cand end
+    local source_input = context:get_property("_txjx_append_input")
+    local suffix = context:get_property("_txjx_append_suffix")
+    if source_input ~= input_text or not suffix or suffix == "" then return cand end
+    local text = (cand.text or "") .. suffix
+    local nc = Candidate(cand.type or "append", cand.start, cand._end, text, cand.comment or "")
+    nc.preedit = text
+    nc.quality = cand.quality
+    return nc
+end
+
 local function should_query_core_hint(cand)
     return cand.type == "table"
 end
@@ -309,6 +321,11 @@ local function filter(input, env)
 
     if input_text ~= env._last_input_text then
         env._last_input_text = input_text
+        if context:get_property("_txjx_append_input") ~= input_text then
+            context:set_property("_txjx_append_input", "")
+            context:set_property("_txjx_append_suffix", "")
+            context:set_option("_hide_candidate", false)
+        end
         if input_len == 0 then
             env._reverse_sticky = false
             release_hint_state(env, 48, true)
@@ -354,6 +371,7 @@ local function filter(input, env)
             goto continue
         end
 
+        local was_first = first
         if first then
             if show_commit_hint then commit_hint(cand, hint_text) end
             first = false
@@ -373,7 +391,7 @@ local function filter(input, env)
             end
         end
 
-        yield(cand)
+        yield(append_candidate_if_needed(cand, context, input_text, was_first))
         ::continue::
     end
     if reverse_opened then
@@ -435,6 +453,9 @@ local function init(env)
     env._commit_conn = ctx.commit_notifier:connect(function()
         env._last_input_text = ""
         env._reverse_sticky = false
+        ctx:set_property("_txjx_append_input", "")
+        ctx:set_property("_txjx_append_suffix", "")
+        ctx:set_option("_hide_candidate", false)
         release_hint_state(env, 32, true)
     end)
 
