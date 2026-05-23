@@ -476,7 +476,7 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
              if _tdc(_SymCN, kn, sf, env.engine, ctx) then env._dc = kn; return kAccepted end
         end
         
-        if not env._tu_streaming and ctx:has_menu() then
+        if not env._tu_streaming and ctx:has_menu() and not _is_alpha_key(env, kn, clean_key, key_event.keycode) then
             local seg = ctx.composition:back()
             if seg and seg.menu:get_candidate_at(0) and not seg.menu:get_candidate_at(1) then
                 local input = ctx.input
