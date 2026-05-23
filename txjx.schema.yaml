@@ -50,7 +50,6 @@ engine:
     - reverse_lookup_filter@gbk_lookup
     - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
-    # ephemeral 为即用即放，内存会回落
     - lua_filter@*txjx_opencc_filter
     - uniquifier
 
@@ -78,6 +77,8 @@ switches:
     states: [ 半角, 全角 ]
 
 ascii_composer:
+  # Shift/Caps 有编码时由 txjx_processor 接管，避免切换中英或提交候选；
+  # 这里保留无编码时的基础行为，勿改为全局 noop。
   switch_key:
     Caps_Lock: noop
     Shift_L: inline_ascii
