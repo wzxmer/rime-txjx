@@ -4,6 +4,22 @@ patch:
   app_options:
     excel.exe:
       ascii_mode: false
+    winword.exe:
+      ascii_mode: false
+    powerpnt.exe:
+      ascii_mode: false
+    outlook.exe:
+      ascii_mode: false
+    onenote.exe:
+      ascii_mode: false
+    msaccess.exe:
+      ascii_mode: false
+    mspub.exe:
+      ascii_mode: false
+    visio.exe:
+      ascii_mode: false
+    codex.exe:
+      ascii_mode: false
     msedge.exe:
       ascii_mode: false
     qq.exe:

@@ -11,6 +11,10 @@ patch:
       - ascii_mode
       - jffh
       - emoji_cn
+      - direct_symbols
+      - smarttwo
+      - jisuanqi
+      - auto_fallback
       - full_shape
       - sbb_hint
       - completion
