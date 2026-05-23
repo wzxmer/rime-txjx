@@ -328,6 +328,14 @@ local function _is_space_key(kc, clean_key, repr)
     return kc == 32 or clean_key == " " or repr_lower == "space"
 end
 
+local function _is_topup_cancel_key(clean_key, repr, kc)
+    if kc == 0xff08 or kc == 0xffff or kc == 0xff1b then return true end
+    local key = type(clean_key) == "string" and string_lower(clean_key) or ""
+    local raw = type(repr) == "string" and string_lower(repr) or ""
+    return key == "backspace" or key == "delete" or key == "escape"
+        or raw == "backspace" or raw == "delete" or raw == "escape"
+end
+
 local function _calc_candidate_key(kn, sf, kc, clean_key, repr, allow_space)
     if sf then return nil end
     local repr_lower = type(repr) == "string" and repr:lower() or ""
@@ -504,6 +512,12 @@ end
 local function processor(key_event, env)
     local kn, sf, clean_key, repr = _resolve_key(key_event, env)
     local ctx = env.engine.context
+    local kc = key_event.keycode
+    if _is_topup_cancel_key(clean_key, repr, kc) then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        return kNoop
+    end
     if ctx:get_option("ascii_mode") then return kNoop end
     local opts = {
         smarttwo = ctx:get_option("smarttwo"),
@@ -514,8 +528,6 @@ local function processor(key_event, env)
 
     local sm_result = _smart_process(key_event, env, kn, sf, clean_key, opts)
     if sm_result == kAccepted then return kAccepted end
-
-    local kc = key_event.keycode
 
     if key_event:release() then
         if _topup_handle_queued_release(env, ctx, clean_key, kc) then return kAccepted end
