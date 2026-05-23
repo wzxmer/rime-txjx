@@ -16,8 +16,8 @@ schema:
 # ============ 引擎 ============
 engine:
   processors:
-    - ascii_composer
     - lua_processor@*txjx_processor
+    - ascii_composer
     - recognizer
     - key_binder
     - speller
@@ -76,6 +76,12 @@ switches:
     states: [ 630提示关, 630提示开 ]
   - name: full_shape
     states: [ 半角, 全角 ]
+
+ascii_composer:
+  switch_key:
+    Caps_Lock: noop
+    Shift_L: inline_ascii
+    Shift_R: inline_ascii
 
 # ============ 拼写 ============
 speller:

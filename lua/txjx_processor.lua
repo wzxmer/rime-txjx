@@ -336,6 +336,30 @@ local function _is_topup_cancel_key(clean_key, repr, kc)
         or raw == "backspace" or raw == "delete" or raw == "escape"
 end
 
+local function _is_enter_key(clean_key, repr, kc)
+    if kc == 13 or kc == 0xff0d or kc == 0xff8d then return true end
+    local key = type(clean_key) == "string" and string_lower(clean_key) or ""
+    local raw = type(repr) == "string" and string_lower(repr) or ""
+    return key == "return" or key == "enter" or key == "kp_enter"
+        or raw == "return" or raw == "enter" or raw == "kp_enter"
+end
+
+local function _is_shift_key(clean_key, repr, kc)
+    if kc == 0xffe1 or kc == 0xffe2 then return true end
+    local key = type(clean_key) == "string" and string_lower(clean_key) or ""
+    local raw = type(repr) == "string" and string_lower(repr) or ""
+    return key == "shift_l" or key == "shift_r" or key == "shift"
+        or raw == "shift_l" or raw == "shift_r" or raw == "shift"
+end
+
+local function _uppercase_char(clean_key, kc)
+    if kc >= 65 and kc <= 90 then return CHAR_CACHE[kc] end
+    if type(clean_key) ~= "string" or #clean_key ~= 1 then return nil end
+    local b = string_byte(clean_key, 1)
+    if b >= 65 and b <= 90 then return clean_key end
+    return nil
+end
+
 local function _calc_candidate_key(kn, sf, kc, clean_key, repr, allow_space)
     if sf then return nil end
     local repr_lower = type(repr) == "string" and repr:lower() or ""
@@ -518,7 +542,34 @@ local function processor(key_event, env)
         env._af_seed = nil
         return kNoop
     end
-    if ctx:get_option("ascii_mode") then return kNoop end
+    if _is_enter_key(clean_key, repr, kc) then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        local input = ctx.input
+        if ctx:is_composing() and input and input ~= "" then
+            ctx:clear()
+            env.engine:commit_text(input)
+            return kAccepted
+        end
+        return kNoop
+    end
+    if _is_shift_key(clean_key, repr, kc) then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        return kNoop
+    end
+    local ascii_mode = ctx:get_option("ascii_mode")
+    local uppercase = (not ascii_mode and not sf and not key_event:ctrl()
+        and not key_event:alt() and not key_event:super()) and _uppercase_char(clean_key, kc) or nil
+    if uppercase then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        if key_event:release() then return kAccepted end
+        if ctx:is_composing() then ctx:commit() end
+        env.engine:commit_text(uppercase)
+        return kAccepted
+    end
+    if ascii_mode then return kNoop end
     local opts = {
         smarttwo = ctx:get_option("smarttwo"),
         direct_symbols = ctx:get_option("direct_symbols"),
