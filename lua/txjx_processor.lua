@@ -127,21 +127,33 @@ local function _tdc(map, kn, sf, engine, ctx)
     return true
 end
 
-local function _topup_exec(env)
+local function _topup_ready(env, ctx)
     if env._tc then
         env._tc = env._tc + 1
         if env._tc > 200 then env._tc = 81 end
     elseif env._tc_pending then
         env._tc_pending = false
-        local rv = env.engine.context:get_property("_rvk")
+        local rv = ctx:get_property("_rvk")
         if not rv or rv == "" then env._tc = 0 end
     end
-    
-    if not env.engine.context:get_selected_candidate() then
-        if env._tu_ac then env.engine.context:clear() end
-    else
-        env.engine.context:commit()
+
+    if env._tc and env._tc >= 80 then
+        if ctx:is_composing() then ctx:clear() end
+        return false
     end
+    return true
+end
+
+local function _topup_exec(env)
+    local ctx = env.engine.context
+    if not _topup_ready(env, ctx) then return false end
+    
+    if not ctx:get_selected_candidate() then
+        if env._tu_ac then ctx:clear() end
+    else
+        ctx:commit()
+    end
+    return true
 end
 
 local function _topup_queue_key(env, key, clean_key, kc)
@@ -206,13 +218,29 @@ local function _topup_handle_queued_release(env, ctx, clean_key, kc)
     return false
 end
 
+local function _topup_is_pending_key_event(env, key, kc)
+    return env._tu_pending_key and key == env._tu_pending_key and kc == env._tu_pending_kc
+end
+
+local function _topup_flush_plain_alpha_press(env, ctx, key_event, key, sf, caps_on)
+    if not env._tu_pending_key or key_event:release() or sf or caps_on then return false end
+    if key_event:ctrl() or key_event:alt() or key_event:super() then return false end
+    if type(key) ~= "string" or #key ~= 1 then return false end
+    local b = string_byte(key, 1)
+    if b < 97 or b > 122 or not (env._alpha and env._alpha[key]) then return false end
+    if _topup_is_pending_key_event(env, key, key_event.keycode) then return false end
+    _topup_flush_key(env, ctx)
+    ctx:push_input(key)
+    return true
+end
+
 local function _topup_handle_swap_key(env, ctx, key)
     if not (env._tu_swap_key and env._alpha[key]) then return false end
     local swap_key = env._tu_swap_key
     local swap_kc = env._tu_swap_kc
     _topup_clear_swap_key(env)
     if not env._tu_set[key] and ctx:get_selected_candidate() then
-        _topup_exec(env)
+        if not _topup_exec(env) then return true end
         ctx:push_input(key)
         ctx:push_input(swap_key)
         env._af_seed = key
@@ -424,6 +452,13 @@ local function _get_append_suffix(ctx)
     return suffix
 end
 
+local function _append_state_changed(ctx, source_input, suffix)
+    return not ctx:is_composing()
+        or ctx.input ~= source_input
+        or ctx:get_property("_txjx_append_input") ~= source_input
+        or ctx:get_property("_txjx_append_suffix") ~= suffix
+end
+
 local function _append_candidate_suffix(ctx, suffix)
     local current = _get_append_suffix(ctx)
     if not current or not suffix or suffix == "" then return false end
@@ -453,6 +488,8 @@ end
 local function _commit_append_candidate(ctx, engine)
     local suffix = _get_append_suffix(ctx)
     if not suffix then return false end
+    local source_input = ctx:get_property("_txjx_append_input")
+    if _append_state_changed(ctx, source_input, suffix) then return false end
     local cand = ctx:get_selected_candidate()
     if not cand then
         local comp = ctx.composition and ctx.composition:back()
@@ -465,6 +502,7 @@ local function _commit_append_candidate(ctx, engine)
         local ok, genuine = pcall(function() return cand:get_genuine() end)
         if ok and genuine and genuine.text then base = genuine.text end
     end
+    if _append_state_changed(ctx, source_input, suffix) then return false end
     if suffix ~= "" and string_sub(base, -#suffix) == suffix then
         base = string_sub(base, 1, -(#suffix + 1))
     end
@@ -515,8 +553,12 @@ local function _has_menu_candidates(ctx)
     if ctx:has_menu() then
         return true
     end
-    local comp = ctx.composition:back()
+    local comp = ctx.composition and ctx.composition:back()
     return comp and comp.menu and comp.menu:get_candidate_at(0) ~= nil
+end
+
+local function _has_selected_or_menu_candidate(ctx)
+    return ctx:get_selected_candidate() ~= nil or _has_menu_candidates(ctx)
 end
 
 local function _is_reverse_input(env, input)
@@ -544,6 +586,38 @@ local function _topup_should_hold_reverse_key(env, ctx, key, current_input)
     if not (env._tu_defer_key and env._rx_prefix and env._rx_prefix[key]) then return false end
     local prev = (current_input ~= "") and string_sub(current_input, -1) or ""
     return env._tu_set[prev] and ctx:get_selected_candidate()
+end
+
+local function _topup_auto_fallback(env, ctx, key, clean_key, kc, opts)
+    if env._tu_streaming or not opts.auto_fallback or not env._alpha[key] then return false end
+    local current_input = ctx.input
+    if _topup_should_hold_reverse_key(env, ctx, key, current_input) then
+        if not _topup_ready(env, ctx) then return true end
+        _topup_queue_swap_key(env, key, clean_key, kc)
+        return true
+    end
+    if #current_input < 1 or not ctx:get_selected_candidate() then return false end
+    if opts.direct_symbols and current_input == ";" then return false end
+    if not _topup_ready(env, ctx) then return true end
+
+    local seeded = env._af_seed == current_input
+    env._af_seed = nil
+    ctx:push_input(key)
+    if _has_selected_or_menu_candidate(ctx) then return true end
+    if seeded and env._rx_prefix and env._rx_prefix[key] then return true end
+
+    local pushed_input = ctx.input or ""
+    if #pushed_input <= #current_input or string_sub(pushed_input, 1, #current_input) ~= current_input then
+        return true
+    end
+
+    ctx:pop_input(1)
+    if (ctx.input or "") ~= current_input then return true end
+    if not _has_selected_or_menu_candidate(ctx) then return true end
+
+    ctx:commit()
+    _topup_push_key(env, ctx, key, clean_key, kc, #current_input)
+    return true
 end
 
 local function _commit_menu_index(ctx, engine, idx)
@@ -790,9 +864,12 @@ local function processor(key_event, env)
     if kc < 32 or kc >= 127 then return kNoop end
     
     local key = CHAR_CACHE[kc] or clean_key
+    if _topup_flush_plain_alpha_press(env, ctx, key_event, key, sf, caps_on) then
+        return kAccepted
+    end
     if _passthrough_alpha_key(env, ctx, sf, key, clean_key, kc) then return kNoop end
     if _topup_handle_swap_key(env, ctx, key) then return kAccepted end
-    if _topup_flush_key(env, ctx) and env._alpha[key] then
+    if not _topup_is_pending_key_event(env, key, kc) and _topup_flush_key(env, ctx) and env._alpha[key] then
         ctx:push_input(key)
         return kAccepted
     end
@@ -810,23 +887,8 @@ local function processor(key_event, env)
         return kAccepted
     end
 
-    if not env._tu_streaming and opts.auto_fallback and env._alpha[key] then
-        local current_input = ctx.input
-        if _topup_should_hold_reverse_key(env, ctx, key, current_input) then
-            _topup_queue_swap_key(env, key, clean_key, kc)
-            return kAccepted
-        end
-        if #current_input >= 1 and ctx:get_selected_candidate() then
-            if not (opts.direct_symbols and current_input == ";") then
-                local seeded = env._af_seed == current_input
-                env._af_seed = nil
-                ctx:push_input(key)
-                if ctx:get_selected_candidate() or _has_menu_candidates(ctx) then return kAccepted end
-                if seeded and env._rx_prefix and env._rx_prefix[key] then return kAccepted end
-                ctx:pop_input(1); ctx:commit(); _topup_push_key(env, ctx, key, clean_key, kc, #current_input)
-                return kAccepted
-            end
-        end
+    if _topup_auto_fallback(env, ctx, key, clean_key, kc, opts) then
+        return kAccepted
     end
 
     if not env._tu_streaming and env._alpha[key] then
@@ -844,15 +906,15 @@ local function processor(key_event, env)
         if not (env._tu_cmd and is_ftu) then
              if not (opts.direct_symbols and input_len > 0 and string_byte(current_input, 1) == 59) then
                 if is_ptu and not is_tu then
-                    _topup_exec(env)
+                    if not _topup_exec(env) then return kAccepted end
                     _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 elseif not is_ptu and not is_tu and input_len >= min_len then
-                    _topup_exec(env)
+                    if not _topup_exec(env) then return kAccepted end
                     _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 elseif input_len >= env._tu_max then
-                    _topup_exec(env)
+                    if not _topup_exec(env) then return kAccepted end
                     _topup_push_key(env, ctx, key, clean_key, kc, input_len)
                     return kAccepted
                 end
