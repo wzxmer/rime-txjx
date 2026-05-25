@@ -77,12 +77,10 @@ switches:
     states: [ 半角, 全角 ]
 
 ascii_composer:
-  # Shift/Caps 有编码时由 txjx_processor 接管，避免切换中英或提交候选；
-  # 这里保留无编码时的基础行为，勿改为全局 noop。
   switch_key:
     Caps_Lock: noop
-    Shift_L: inline_ascii
-    Shift_R: inline_ascii
+    Shift_L: commit_code
+    Shift_R: commit_code
 
 # ============ 拼写 ============
 speller:
