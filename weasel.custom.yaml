@@ -2,6 +2,11 @@
 patch:
   show_notifications: false
   app_options:
+    # Codex中使用顶功异常，顶功后下一词首字母可能被旧串携带上屏；仅在此应用启用延迟补键
+    # 其他软件若有遇到，也可在此添加相同配置启用延迟补键 txjx_topup_defer
+    codex.exe:
+      ascii_mode: false
+      txjx_topup_defer: true
     excel.exe:
       ascii_mode: false
     winword.exe:
@@ -18,8 +23,6 @@ patch:
       ascii_mode: false
     visio.exe:
       ascii_mode: false
-    codex.exe:
-      ascii_mode: false
     msedge.exe:
       ascii_mode: false
     qq.exe:
@@ -32,15 +35,7 @@ patch:
     #  ascii_mode: false
     telegram.exe:
       ascii_mode: false
-  ascii_composer: # 英文模式配置
-    good_old_caps_lock: false # 用`Caps Lock`切换英文模式时，是否激活大写锁定（默认关闭）
-    switch_key: # 英文模式切换键配置
-      Shift_L: commit_text # 按下左`Shift`时（默认上屏候选项）
-      Shift_R: commit_text # 按下右`Shift`时（默认上屏候选项）
-      Control_L: commit_code # 按下左`Control`时（默认上屏编码）
-      Control_R: commit_code # 按下右`Control`时（默认上屏编码）
-      #Caps_Lock: inline_ascii # 按下`Caps Lock`时（默认保留输入区）
-      Eisu_toggle: clear # 按下英数键（日文键盘）时（默认清空输入区）
+
 
   style/+:
     font_face: ".萍方-简" #"苹方-简,HYZhengYuan,TH-Tshyn-P2,Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
