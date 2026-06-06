@@ -5605,8 +5605,8 @@ sort: by_weight
 不可辱	bkr
 笔锐	bkrb
 比肉	bkrd
-碧柔	bkrdv
 鼻肉	bkrdu
+碧柔	bkrdv
 比热	bkre
 必然	bkrf
 毕冉	bkrfv
@@ -9960,10 +9960,10 @@ sort: by_weight
 备用机	byju
 白羽鸡	byjua
 不要急	byjv
-不远处	byjvv
 表演唱	byjva
 不夜城	byjvo
 不用急	byjvu
+不远处	byjvv
 不要接	byjvvi
 不遗巨细	byjx
 不愉快	byk
@@ -27463,8 +27463,6 @@ sort: by_weight
 水孔	ebkya
 谁考	ebkz
 受不了	ebl
-失败了	eblu
-升不了	ebluv
 水玻璃	ebla
 圣保罗	eblai
 水淋	eblb
@@ -27510,6 +27508,8 @@ sort: by_weight
 水拉	eblsai
 谁俩	eblso
 谁啦	eblsoo
+失败了	eblu
+升不了	ebluv
 水雷	eblw
 水轮	eblwa
 水量	eblx
@@ -41831,6 +41831,7 @@ sort: by_weight
 辐盾	fjdwv
 浙江大学	fjdx
 之间的关系	fjdxo
+奋辑笃行	fjdxv
 浮动	fjdy
 拂动	fjdyi
 副董	fjdyv
@@ -66726,6 +66727,7 @@ sort: by_weight
 航空兵	hkbu
 惶恐不安	hkbx
 虎口拔牙	hkby
+红口白牙	hkbya
 很快地	hkd
 很肯定	hkdu
 海口市	hke
@@ -67954,6 +67956,7 @@ sort: by_weight
 很爽	hnex
 很少	hnez
 很烧	hnezu
+回南风	hnf
 很烦	hnff
 很拽	hnfg
 很窄	hnfh
@@ -67967,6 +67970,7 @@ sort: by_weight
 很壮	hnfm
 很装	hnfmu
 很粉	hnfn
+很方	hnfp
 狠抓	hnfq
 患难夫妻	hnfqi
 很疯	hnfr
@@ -72409,6 +72413,7 @@ sort: by_weight
 好嘞	hzlwa
 好雷	hzlwav
 毫伦	hzlwo
+胡子拉碴	hzlwu
 郝蕾	hzlwv
 好量	hzlx
 好亮	hzlxa
@@ -77708,7 +77713,7 @@ sort: by_weight
 境内	jgnw
 京内	jgnwo
 精酿	jgnx
-超高频	jgp
+截个屏	jgp
 精品	jgpb
 敬聘	jgpbi
 竞聘	jgpbo
@@ -77733,6 +77738,8 @@ sort: by_weight
 炒股票	jgpo
 经棚	jgpr
 惊怕	jgps
+超高频	jgpv
+机关炮	jgpvo
 敬佩	jgpw
 晶胚	jgpwo
 惊跑	jgpz
@@ -77851,8 +77858,10 @@ sort: by_weight
 敬颂	jgsyi
 敬送	jgsyio
 警嫂	jgsz
-结构图	jgt
-结构体	jgta
+截个图	jgt
+结构图	jgta
+架构图	jgtav
+结构体	jgtavi
 惊退	jgtb
 静推	jgtbv
 荆条	jgtc
@@ -77896,6 +77905,8 @@ sort: by_weight
 结构调整	jgtq
 井塔	jgts
 经他	jgtsa
+几个团	jgtu
+几个厅	jgtui
 鲸吞	jgtw
 精通	jgty
 经痛	jgtya
@@ -86206,9 +86217,6 @@ sort: by_weight
 加葱	jscy
 减速到	jsd
 加速度	jsda
-集散地	jsdi
-减速带	jsdo
-减缩到	jsdoa
 加队	jsdb
 嫁对	jsdba
 假吊	jsdc
@@ -86230,6 +86238,7 @@ sort: by_weight
 嘉定	jsdgv
 夹带	jsdh
 价带	jsdhi
+集散地	jsdi
 假赌	jsdj
 假嘟	jsdji
 家底	jsdk
@@ -86245,6 +86254,8 @@ sort: by_weight
 家电	jsdmo
 家店	jsdmoo
 夹点	jsdmv
+减速带	jsdo
+减缩到	jsdoa
 家当	jsdp
 嘉当	jsdpv
 假丢	jsdq
@@ -91363,11 +91374,6 @@ sort: by_weight
 砍价	kfjsv
 开房间	kfjv
 看潮	kfjz
-快快快	kkk
-快看看	kkko
-空空空	kkkoo
-看看看	kkki
-卡卡卡	kkkii
 卡夫卡	kfk
 看客	kfke
 坎坷	kfkev
@@ -92870,8 +92876,13 @@ sort: by_weight
 慷慨解囊	kkjn
 慷慨激昂	kkjx
 慷慨就义	kkjy
+快快快	kkk
+看看看	kkki
+卡卡卡	kkkii
 坎坎坷坷	kkkk
 可口可乐	kkkl
+快看看	kkko
+空空空	kkkoo
 快哭了	kkl
 快快乐乐	kkll
 苦口良药	kkly
@@ -95751,7 +95762,9 @@ sort: by_weight
 林艳	lbyfv
 临颍	lbyg
 临颖	lbygi
-临月	lbyh
+礼崩乐坏	lbyh
+临月	lbyhi
+凛月	lbyho
 林跃	lbyhv
 林岳	lbyhvu
 临沂	lbyk
@@ -98294,7 +98307,10 @@ sort: by_weight
 联合政府	lhqfvi
 来请	lhqg
 略轻	lhqgi
-赖债	lhqh
+来摘	lhqh
+冷火清灰	lhqho
+来却	lhqhv
+赖债	lhqhvi
 略注	lhqj
 来住	lhqjv
 来气	lhqk
@@ -98315,7 +98331,8 @@ sort: by_weight
 赖账	lhqpv
 赖帐	lhqpvi
 来长	lhqpvu
-赖球	lhqq
+来球	lhqq
+赖球	lhqqv
 来争	lhqr
 来劝	lhqt
 来全	lhqtv
@@ -98325,6 +98342,7 @@ sort: by_weight
 连花清瘟	lhqw
 来抢	lhqx
 赖穷	lhqy
+冷火秋烟	lhqyo
 来找	lhqz
 老好人	lhr
 来揉	lhrd
@@ -102861,7 +102879,11 @@ sort: by_weight
 棱边	lrbm
 冷变	lrbmo
 冷拔	lrbs
-冷北	lrbw
+冷杯	lrbw
+令人不齿	lrbwi
+冷背	lrbwo
+冷北	lrbwoi
+冷被	lrbwoo
 冷萃	lrcb
 冷脆	lrcbo
 冷餐	lrcf
@@ -110529,6 +110551,7 @@ sort: by_weight
 免考	mmkzu
 慢慢来	mml
 面临	mmlb
+秣马厉兵	mmlbu
 面料	mmlc
 面聊	mmlcv
 免裂	mmld
@@ -127612,9 +127635,11 @@ sort: by_weight
 窄了	qhleo
 瘸了	qhleoa
 却令	qhlg
-缺略	qhlh
+却来	qhlh
+清灰冷火	qhlha
 摘来	qhlhi
-却来	qhlhv
+摘来	qhlhi
+缺略	qhlhu
 摘录	qhlj
 窄路	qhljo
 确立	qhlk
@@ -127629,7 +127654,9 @@ sort: by_weight
 缺粮	qhlx
 前后联系	qhlxo
 寨隆	qhly
-寨老	qhlz
+却老	qhlz
+清灰冷灶	qhlza
+寨老	qhlzo
 取货码	qhm
 张惠妹	qhma
 斋名	qhmg
@@ -140939,9 +140966,9 @@ sort: by_weight
 遂愿	sbyto
 碎云	sbyw
 随用	sbyy
-散兵游勇	sbyyv
 虽用	sbyyo
 虽勇	sbyyoa
+散兵游勇	sbyyv
 腮帮子	sbz
 碎嘴	sbzb
 虽则	sbze
@@ -147754,11 +147781,14 @@ sort: by_weight
 土肥圆	tfyvu
 逃之夭夭	tfyy
 炭窑	tfyz
+挺复杂	tfz
 贪嘴	tfzb
 弹奏	tfzd
 弹走	tfzda
 坦赞	tfzf
 瘫在	tfzh
+停放在	tfzi
+拖着走	tfzio
 碳族	tfzj
 摊子	tfzk
 探子	tfzki
@@ -147768,6 +147798,7 @@ sort: by_weight
 坛子	tfzkv
 瘫坐	tfzl
 贪赃	tfzp
+谈早	tfzz
 团干部	tgb
 停表	tgbc
 停板	tgbf
@@ -148697,6 +148728,8 @@ sort: by_weight
 太辣	thlsv
 泰拉	thlsvi
 太乱	thlt
+太坏了	thlv
+天好冷	thlva
 太累	thlw
 台轮	thlwa
 苔类	thlwi
@@ -151742,6 +151775,7 @@ sort: by_weight
 听其言而观其行	tqyx
 提前走	tqz
 台柱子	tqza
+拖着走	tqzi
 听其自然	tqzr
 天琴座	tqzv
 突然变	trb
@@ -156927,8 +156961,8 @@ sort: by_weight
 雾灯	wjdr
 钨灯	wjdri
 五等	wjdrv
-吾等	wjdrvu
 无灯	wjdrvo
+吾等	wjdrvu
 武打	wjds
 误打	wjdso
 乌达	wjdsu
@@ -177790,6 +177824,8 @@ sort: by_weight
 新闻中心	xwfx
 弦外之音	xwfy
 浔中	xwfya
+旬中	xwfyu
+行稳致远	xwfyuu
 寻找	xwfz
 新闻稿	xwg
 寻轨	xwgb
@@ -193093,10 +193129,10 @@ sort: by_weight
 英雄好汉	yxhh
 营销号	yxhi
 运行环境	yxhj
+烟熏火燎	yxhl
 月下花前	yxhq
 有些话	yxhv
 一席话	yxhvo
-烟熏火燎	yxhl
 以血还血	yxhx
 遥相呼应	yxhy
 游戏机	yxj
