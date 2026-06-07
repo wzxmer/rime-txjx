@@ -591,6 +591,16 @@ local function _space_guard_process(env, ctx, key_event, clean_key, repr, kc, no
         return nil
     end
 
+    local input_text = ctx and (ctx.input or "") or ""
+    if input_text ~= "" then
+        if string_find(input_text, "`", 1, true) then
+            return nil
+        end
+        if env._rx_prefix and env._rx_prefix[string_sub(input_text, 1, 1)] then
+            return nil
+        end
+    end
+
     if key_event:release() then
         local expected = env._space_guard_wait
         if not expected then return nil end
@@ -774,7 +784,7 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
 
     if not env._tu_streaming and not opts.smarttwo and not direct_symbols_off and not sf and kn == "semicolon" then
         local inp = ctx.input
-        if inp ~= "" and not string_find(inp, ";", 1, true) then
+        if inp ~= "" and not string_find(inp, ";", 1, true) then 
              if ctx:has_menu() and _selected_is_non_completion(ctx) then
                 _commit_selected_non_completion(ctx); ctx:push_input(";"); env._sw = kn; return kAccepted
              end
