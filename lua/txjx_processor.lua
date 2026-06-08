@@ -41,7 +41,7 @@ local _SymCN = {
     ["period"]     = { plain = "。", shift = "》" },
     ["grave"]      = { plain = "·", shift = "～" },
 }
-local _SmOff = { ["semicolon"] = { plain = ";", shift = "：" }, ["apostrophe"] = { plain = "'", shift = "\"" } }
+local _SmOff = { ["semicolon"] = { plain = ";", shift = "：" }, ["apostrophe"] = { plain = "'", shift = "“" } }
 local _JsOff = { ["equal"] = { plain = "=", shift = "+" } }
 
 local _KC_MAP = {
