@@ -838,6 +838,7 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
 
     if not opts.smarttwo then
         if kn == "semicolon" and not sf then return kNoop end
+        if kn == "apostrophe" then return kNoop end
         if _tdc(_SmOff, kn, sf, env.engine, ctx) then
             _guard_shift_symbol_release(env, sf)
             return kAccepted
