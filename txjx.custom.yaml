@@ -10,6 +10,7 @@ patch:
   translator/encode_commit_history: true # 历史上屏
   hint_text: ''                     # 顶功提示符（空表示无提示）
   menu/page_size: 5                 # 候选词显示数量
+  # txjx/semicolon_commit: false    # false：;开头快符改走顶功/空顶链路；默认 true 为唯一候选自动上屏
 
   # ==================== 功能开关默认状态 ====================
   # 说明：0=选择第一个状态，1=选择第二个状态

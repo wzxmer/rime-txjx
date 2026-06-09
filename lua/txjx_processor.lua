@@ -175,6 +175,20 @@ local function _commit_selected_candidate(ctx)
     return true
 end
 
+local function _is_direct_symbols_input(input)
+    return type(input) == "string" and #input > 1 and string_byte(input, 1) == 59
+end
+
+local function _is_direct_symbols_commit_key(env, kn, clean_key, kc)
+    if (kc >= 65 and kc <= 90) or (kc >= 97 and kc <= 122) then return true end
+    if kn == "semicolon" then return env._alpha and env._alpha[";"] or false end
+    if kn == "apostrophe" then return env._alpha and env._alpha["'"] or false end
+    if type(clean_key) == "string" and #clean_key == 1 then
+        return env._alpha and env._alpha[string_lower(clean_key)] or false
+    end
+    return false
+end
+
 local function _space_guard_clear(env)
     env._space_guard_input = nil
     env._space_guard_wait = nil
@@ -560,6 +574,41 @@ local function _has_non_completion_candidate(ctx)
     return ok and cand and not _is_completion_candidate(cand) or false
 end
 
+local function _commit_unique_non_completion_candidate(ctx, engine)
+    local comp = ctx and ctx.composition and ctx.composition:back()
+    local menu = comp and comp.menu
+    if not menu then return false end
+
+    local unique = nil
+    local idx = 0
+    while true do
+        local ok, cand = pcall(function() return menu:get_candidate_at(idx) end)
+        if not ok or not cand then break end
+        if not _is_completion_candidate(cand) then
+            if unique then return false end
+            unique = cand
+        end
+        idx = idx + 1
+    end
+
+    if not unique then return false end
+
+    local selected = _selected_candidate(ctx)
+    if selected and not _is_completion_candidate(selected) then
+        ctx:commit()
+        return true
+    end
+
+    if not engine then return false end
+    ctx:clear()
+    engine:commit_text(unique.text)
+    return true
+end
+
+local function _semicolon_unique_commit_enabled(env)
+    return env._semicolon_commit ~= false
+end
+
 local function _space_guard_selected_current(ctx, input_len)
     local cand = _selected_candidate(ctx)
     if not cand then return false end
@@ -675,7 +724,7 @@ local function _topup_auto_fallback(env, ctx, key, clean_key, kc, opts)
     if env._tu_streaming or not opts.auto_fallback or not env._alpha[key] then return false end
     local current_input = ctx.input
     if #current_input < 1 then return false end
-    if opts.direct_symbols and current_input == ";" then return false end
+    if opts.direct_symbols and _semicolon_unique_commit_enabled(env) and current_input == ";" then return false end
     if _topup_fixed_rule_would_commit(env, current_input, key, opts) then return false end
     if not _has_non_completion_candidate(ctx) then return false end
     if not _topup_ready(env, ctx) then return kAccepted end
@@ -760,7 +809,13 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
         
         if not direct_symbols_off then
             local input = ctx.input
-            if #input == 2 and string_byte(input, 1) == 59 then 
+            if _semicolon_unique_commit_enabled(env)
+                and _is_direct_symbols_commit_key(env, kn, clean_key, key_event.keycode)
+                and _is_direct_symbols_input(input)
+                and _commit_unique_non_completion_candidate(ctx, env.engine) then
+                return kAccepted
+            end
+            if _semicolon_unique_commit_enabled(env) and #input == 2 and string_byte(input, 1) == 59 then 
                 local b2 = string_byte(input, 2)
                 if b2 >= 97 and b2 <= 122 then
                     if ctx:has_menu() then
@@ -1010,8 +1065,9 @@ local function processor(key_event, env)
 
     if opts.direct_symbols and ctx.input == ";" and env._alpha[key] then
         _push_code_input(env, ctx, key)
+        if _semicolon_unique_commit_enabled(env) and _commit_unique_non_completion_candidate(ctx, env.engine) then return kAccepted end
         
-        if ctx:has_menu() then
+        if _semicolon_unique_commit_enabled(env) and ctx:has_menu() then
             local seg = ctx.composition:back()
             if seg and seg.menu:get_candidate_at(0) and not seg.menu:get_candidate_at(1) then
                 _commit_selected_non_completion(ctx)
@@ -1038,7 +1094,7 @@ local function processor(key_event, env)
         local is_ftu = env._tu_set[first]
 
         if not (env._tu_cmd and is_ftu) then
-             if not (opts.direct_symbols and input_len > 0 and string_byte(current_input, 1) == 59) then
+             if not (opts.direct_symbols and _semicolon_unique_commit_enabled(env) and input_len > 0 and string_byte(current_input, 1) == 59) then
                 if is_ptu and not is_tu then
                     if not _topup_exec(env) then return kAccepted end
                     _topup_push_key(env, ctx, key, clean_key, kc, input_len)
@@ -1089,6 +1145,9 @@ local function init(env)
     env._tc_pending = true
     env._cold_code_guard = true
     env._space_guard_enabled = config:get_string("txjx/space_guard") ~= "off"
+    local semicolon_commit = config:get_bool("txjx/semicolon_commit")
+    if semicolon_commit == nil then semicolon_commit = true end
+    env._semicolon_commit = semicolon_commit
     _space_guard_clear(env)
     _topup_clear_queued_keys(env)
     env._af_seed = nil
@@ -1127,6 +1186,7 @@ local function fini(env)
     env._af_seed = nil
     env._cold_code_guard = nil
     env._space_guard_enabled = nil
+    env._semicolon_commit = nil
     _space_guard_clear(env)
     env._caps_blocked = nil
     env._shift_symbol_release_guard = nil
