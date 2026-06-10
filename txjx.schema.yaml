@@ -222,9 +222,6 @@ topup:
   auto_clear: true
   topup_command: false
 
-txjx:
-  semicolon_commit: true
-
 layout:
   algebra:
     - derive/^[bcdefghjklmnpqrstwxyz;]([bcdefghjklmnpqrstwxyz;][avuio].*)$/`$1/
