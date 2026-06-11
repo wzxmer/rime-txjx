@@ -808,7 +808,6 @@ local function _topup_auto_fallback(env, ctx, key, clean_key, kc, opts)
     local current_input = ctx.input
     local eval = _topup_eval_input(current_input, opts)
     if eval.raw_len < 1 then return false end
-    if eval.semicolon_input then return false end
     if _topup_fixed_rule_would_commit(env, current_input, key, opts) then return false end
     if not _has_non_completion_candidate(ctx) then return false end
     if not _topup_ready(env, ctx) then return kAccepted end
