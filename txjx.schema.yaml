@@ -40,7 +40,6 @@ engine:
     - table_translator
     - reverse_lookup_translator
     - punct_translator
-    - history_translator@repeat_history
     - script_translator@jderfen
     - script_translator@gbk
 
