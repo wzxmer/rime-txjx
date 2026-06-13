@@ -28,8 +28,9 @@ return {
         local ctx = env.engine and env.engine.context
         local input_text = ctx and ctx.input or ""
         local input_len = #input_text
+        local direct_symbols_input = input_text:sub(1, 1) == ";"
         local enabled = ctx and ctx:get_option("completion") or false
-        local allow_completion = enabled and input_len <= COMPLETION_MAX_CODE_LEN
+        local allow_completion = enabled and (direct_symbols_input or input_len <= COMPLETION_MAX_CODE_LEN)
         local danzi = env._danzi_first
         local reverse_lookup = nil
         local buffer = {}
@@ -39,6 +40,10 @@ return {
         local comp_count = 0
 
         for cand in input:iter() do
+            if cand.type == "history" then
+                yield(cand)
+                goto continue
+            end
             if cand.type == "completion" then
                 if reverse_lookup == nil then
                     reverse_lookup = is_reverse_lookup_context(ctx, env)

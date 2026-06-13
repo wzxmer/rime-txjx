@@ -6,6 +6,7 @@
 -- 更新：2026-06-03
 
 local M = {}
+local registry = require("txjx_cache_registry")
 
 -- Rime Script >https://github.com/baopaau/rime-lua-collection/blob/master/calculator_translator.lua
 -- 计算器适配版，此版本经过二次优化 
@@ -510,6 +511,11 @@ local function calculator_translator(input, seg, env)
   end
 end
 
+function M.money_text(value)
+  local speakMoney = load_money_functions()
+  return speakMoney(tostring(value or ""))
+end
+
 local function fini(env)
   speakMoney_cached = nil
 end
@@ -518,5 +524,10 @@ end
 
 M.func = calculator_translator
 M.fini = fini
+
+registry.register("calculator", function()
+  fini()
+  return true
+end)
 
 return M

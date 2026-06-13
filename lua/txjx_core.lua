@@ -27,6 +27,9 @@ local function is_calendar_input(input)
     if not n or not (n:match("^19%d%d") or n:match("^20%d%d") or n:match("^21%d%d")) then
         return false
     end
+    if #n > 8 then
+        return false
+    end
     if #n >= 6 then
         local month = tonumber(string_sub(n, 5, 6))
         if not month or month < 1 or month > 12 then
@@ -66,6 +69,13 @@ end
 local function translator(input, seg, env)
     if not input or input == "" then
         return
+    end
+
+    if string_sub(input, 1, 1) == "i" then
+        core = core or require(ext_core_module(env))
+        if core.history_func and core.history_func(input, seg, env) then
+            return
+        end
     end
 
     if string_sub(input, 1, 1) == "=" then

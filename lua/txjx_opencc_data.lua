@@ -4,6 +4,7 @@
 -- 更新：2026-05-29
 
 local M = {}
+local registry = require("txjx_cache_registry")
 
 local PHRASE_SHARD_CACHE_LIMIT = 16
 
@@ -333,6 +334,15 @@ function M.set_context(base_dir, schema_id)
     shared_static.schema_id = schema_id
 end
 
+function M.clear_cache()
+    clear_map(shared_static.datasets)
+    clear_map(shared_static.path_cache)
+    clear_map(shared_static.phrase_shards)
+    clear_table(shared_static.phrase_usage)
+    shared_static.project_dirs = nil
+    return true
+end
+
 function M.create_provider(dataset_name, value_mode)
     return {
         dataset_name = dataset_name,
@@ -377,5 +387,9 @@ function M.release_all()
     clear_map(shared_static.phrase_shards)
     clear_table(shared_static.phrase_usage)
 end
+
+registry.register("opencc_data", function()
+    return M.clear_cache()
+end)
 
 return M

@@ -4,6 +4,7 @@
 -- 更新：2026-06-03
 
 local M = {}
+local registry = require("txjx_cache_registry")
 
 local DEFAULT_CACHE_LIMIT = 256
 local MIN_CACHE_LIMIT = 64
@@ -338,5 +339,19 @@ end
 function M.clear_hint_cache()
     clear_hint_cache()
 end
+
+function M.clear_all()
+    for dict_name in pairs(handles) do
+        close_entry(dict_name)
+    end
+    clear_pron_cache()
+    clear_hint_cache()
+    clear_core_hint_maps()
+    return true
+end
+
+registry.register("reverse", function()
+    return M.clear_all()
+end)
 
 return M

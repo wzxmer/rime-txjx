@@ -6,49 +6,10 @@
 local M = {}
 
 local type = type
-local string_find = string.find
-local string_lower = string.lower
 local string_match = string.match
 
-function M.rime_api_string(name)
-    if type(rime_api) ~= "table" then return "" end
-    local fn = rime_api[name]
-    if type(fn) ~= "function" then return "" end
-    local ok, value = pcall(fn)
-    if ok and type(value) == "string" then return string_lower(value) end
-    return ""
-end
-
-function M.detect()
-    local code = M.rime_api_string("get_distribution_code_name")
-    local name = M.rime_api_string("get_distribution_name")
-    local dir = M.rime_api_string("get_user_data_dir")
-    local marker = code .. " " .. name .. " " .. dir
-    local platform = {
-        code = code,
-        name = name,
-        user_data_dir = dir,
-        marker = marker,
-    }
-
-    if string_find(marker, "weasel", 1, true) then
-        platform.kind = "weasel"
-    elseif string_find(marker, "squirrel", 1, true) then
-        platform.kind = "squirrel"
-    elseif string_find(marker, "fcitx", 1, true) then
-        platform.kind = "fcitx"
-    elseif string_find(marker, "ibus", 1, true) then
-        platform.kind = "ibus"
-    else
-        platform.kind = "unknown"
-    end
-    return platform
-end
-
-function M.should_defer_topup(config, ctx)
+function M.should_defer_topup(_, ctx)
     if ctx and ctx:get_option("txjx_topup_defer") then return true end
-    local override = config and config:get_string("txjx/platform/topup_defer")
-    if override == "always" then return true end
     return false
 end
 

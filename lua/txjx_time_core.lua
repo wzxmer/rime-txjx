@@ -5,6 +5,7 @@
 -- 更新：2026-05-29
 
 local M = {}
+local registry = require("txjx_cache_registry")
 
 
 local math_floor = math.floor
@@ -1510,5 +1511,10 @@ M.fini = fini
 M.get_jq_data = function()
     return get_cached_jq_data(_G_CACHE)
 end
+
+registry.register("time", function()
+    fini()
+    return true
+end)
 
 return M

@@ -5,6 +5,7 @@
 local M = {}
 local config_util = require("txjx_config")
 local opencc_data = require("txjx_opencc_data")
+local registry = require("txjx_cache_registry")
 local list_size = config_util.list_size
 
 local DEFAULT_DELIMITER = "|"
@@ -74,6 +75,11 @@ local function reset_runtime_tables(clear_fmm)
     clear_table(shared_results)
     clear_table(shared_parts)
 end
+
+registry.register("opencc_filter", function()
+    reset_runtime_tables(true)
+    return true
+end)
 
 local function module_namespace(env)
     local ns = env.name_space or ""

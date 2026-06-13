@@ -7,11 +7,20 @@ local platform = require("txjx_platform")
 local candidate_util = require("txjx_candidate")
 local reverse = require("txjx_reverse")
 local state = require("txjx_state")
+local registry = require("txjx_cache_registry")
 
 local string_match = string.match
 local string_find = string.find
 local string_sub = string.sub
 local utf8_len = utf8.len
+local ext_core
+
+local function load_ext_core()
+    if not ext_core then
+        ext_core = require("txjx_ext_core")
+    end
+    return ext_core
+end
 
 local function release_hint_state(env, gc_step, close_handle)
     local had_state = env.core_dict_name ~= nil
@@ -296,7 +305,14 @@ local function init(env)
                 release_hint_state_for_context(env, context, 24)
             end
         end)
-        env._commit_conn = platform.safe_connect(ctx.commit_notifier, function()
+        env._commit_conn = platform.safe_connect(ctx.commit_notifier, function(context)
+            context = context or ctx
+            if context and context.get_commit_text then
+                local ok, text = pcall(function()
+                    return context:get_commit_text()
+                end)
+                if ok then load_ext_core().history_record(text, env._last_input_text) end
+            end
             env._last_input_text = ""
             env._reverse_sticky = false
             env._reverse_refresh_key = nil
@@ -304,6 +320,12 @@ local function init(env)
             release_hint_state_for_context(env, ctx, 32)
         end)
     end
+
+    registry.register("filter", function()
+        env._hint_input_cache = {}
+        release_hint_state(env, 0, true)
+        return true
+    end)
 
     ctx:set_property("_rvk", tostring(os.time()))
 end
