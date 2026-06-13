@@ -781,7 +781,7 @@ sort: by_weight
 # ~~	;qq
 # [链接文本](https://网址)	;nj
 # ![图片描述](图片URL)	;nt
-# 、	;d 
+# 、	;d
 # “	;e
 # ”	;r
 # #@	;f
@@ -820,12 +820,12 @@ sort: by_weight
 # ”	oy
 # 《	oi
 # 》	oo
-# →	ox 
+# →	ox
 # ←	oc
 # ↑	oce
 # ↓	ocx
 # %	ob
-# {	on 
+# {	on
 # }	om
 
 #endregion <快符>
