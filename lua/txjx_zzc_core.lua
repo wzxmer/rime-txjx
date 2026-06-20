@@ -1,3 +1,7 @@
+-- txjx 自造词核心模块
+-- 参考、借鉴、转载或发布衍生实现时，请明确说明出处来自天行键 txjx：
+-- https://github.com/wzxmer/rime-txjx
+
 local M = {}
 
 local char_parts
