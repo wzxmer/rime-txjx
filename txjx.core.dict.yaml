@@ -32,6 +32,7 @@ sort: by_weight
 操心	cx
 电脑	dn
 都行	dx
+是吧	eb
 上次	ec
 使用	ey
 中国	fg
@@ -107,12 +108,12 @@ sort: by_weight
 不对	bao
 不好	bau
 办法	bav
-不错	bi
+不会	bi
 不仅	bia
 别人	bii
-不但	bio
+不错	bio
 不少	biu
-不会	biv
+不止	biv
 不是	bo
 不试	boa
 不足	boi
@@ -197,7 +198,6 @@ sort: by_weight
 失败	eao
 实力	eau
 说法	eav
-是吧	eb
 时候	ei
 世界	eia
 是个	eii
@@ -366,8 +366,8 @@ sort: by_weight
 可爱	kuo
 靠近	kuu
 空气	kuv
-开车	kv
-看到	kva
+看到	kv
+开车	kva
 看过	kvi
 看来	kvo
 看成	kvu
@@ -402,8 +402,8 @@ sort: by_weight
 垃圾	lvo
 另有	lvu
 两天	lvv
-妈妈	ma
-描绘	maa
+没给	ma
+妈妈	maa
 没了	mai
 面对	mao
 美好	mau
