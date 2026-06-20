@@ -1,3 +1,7 @@
+-- txjx 自造词过滤模块
+-- 参考、借鉴、转载或发布衍生实现时，请明确说明出处来自天行键 txjx：
+-- https://github.com/wzxmer/rime-txjx
+
 local core = require("txjx_zzc_core")
 
 local length_inputs = {
@@ -174,7 +178,7 @@ local function yield_code_choice_candidates(ctx, code)
         local word, choice_code = line:match("^([^\t]+)\t([^\t%s]+)")
         if word and choice_code then
             idx = idx + 1
-            local cand = Candidate("zzc_code_choice", 0, #code, word, choice_code)
+            local cand = Candidate("zzc_code_choice", 0, #code, word .. " " .. choice_code, "选编码")
             cand.quality = 10080 - idx
             yield(cand)
             yielded = true

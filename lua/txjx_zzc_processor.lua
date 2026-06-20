@@ -1,3 +1,6 @@
+-- txjx 自造词处理模块
+-- 参考、借鉴、转载或发布衍生实现时，请明确说明出处来自天行键 txjx：
+-- https://github.com/wzxmer/rime-txjx
 local core = require("txjx_zzc_core")
 
 local kAccepted = 1
@@ -573,12 +576,31 @@ local function startswith(text, prefix)
     return type(text) == "string" and type(prefix) == "string" and text:sub(1, #prefix) == prefix
 end
 
+local function key_digit(key, ch)
+    local digit = tonumber(ch)
+    if digit and digit >= 1 and digit <= 9 then return digit end
+    if type(key) ~= "string" then return nil end
+    local clean = key:match("^[Ss]hift%+(.*)") or key
+    local matched = clean:match("^[Kk][Pp]_([1-9])$") or clean:match("^([1-9])$")
+    return matched and tonumber(matched) or nil
+end
+
 local function resolve_length_key(key, ch)
+    local digit = key_digit(key, ch)
+    if digit and digit >= 3 and digit <= 6 then return digit end
     return length_keys[ch or ""] or length_keys[key or ""]
 end
 
 local function resolve_index_key(key, ch)
-    return index_keys[ch or ""] or index_keys[key or ""]
+    local digit = key_digit(key, ch)
+    return digit or index_keys[ch or ""] or index_keys[key or ""]
+end
+
+local function waiting_length_confirm(ctx)
+    if state.stage ~= "collect" or state.mode == "replace" then return false end
+    if (ctx and ctx.input or "") ~= "\\" then return false end
+    recover_collect_items(ctx)
+    return state.items and #state.items >= 2
 end
 
 local function default_length_for_items(items)
@@ -749,7 +771,7 @@ local function processor(key_event, env)
     end
     local key = key_event:repr()
     local ch = event_char(key_event)
-    local code_char = resolve_code_char(key, ch)
+        local code_char = resolve_code_char(key, ch)
     local direct_len = resolve_length_key(key, ch)
     local current_input = ctx and ctx.input or ""
 
@@ -868,6 +890,20 @@ local function processor(key_event, env)
             if is_backspace(key) or key == "Escape" or key == "escape" then
                 set_pending_trigger(ctx, false)
                 if ctx then ctx:clear() end
+                return kAccepted
+            end
+            if is_minus_key(key, ch) then
+                set_pending_trigger(ctx, false)
+                state.active = true
+                state.stage = "command_wait"
+                state.items = {}
+                state.mode = "undo"
+                state.target_code = ""
+                state.display_word = ""
+                state.replaced_word = ""
+                state.command_candidates = {}
+                sync_state(ctx)
+                refresh_context(ctx)
                 return kAccepted
             end
             if code_char then
@@ -1023,6 +1059,13 @@ local function processor(key_event, env)
     end
 
     if state.stage == "collect" and (ctx.input or "") == "\\" and ch and ch ~= "" and not is_trigger(key, ch) then
+        local idx = resolve_index_key(key, ch)
+        if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
+            if direct_len then
+                return finalize_with_length(ctx, direct_len, env)
+            end
+            return kAccepted
+        end
         ctx:clear()
         return kNoop
     end
@@ -1062,12 +1105,17 @@ local function processor(key_event, env)
 
     if state.stage == "collect" then
         local idx = resolve_index_key(key, ch)
+        if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
+            if direct_len then
+                return finalize_with_length(ctx, direct_len, env)
+            end
+            return kAccepted
+        end
         if idx and idx >= 1 and idx <= 9 then
             capture_candidate_at(ctx, idx)
             return kAccepted
         end
     end
-
     if direct_len and state.mode ~= "replace" then
         return finalize_with_length(ctx, direct_len, env)
     end
