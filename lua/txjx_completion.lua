@@ -35,8 +35,10 @@ return {
         local reverse_lookup = nil
         local buffer = {}
         local buffer_size = 0
-        local completion_buffer = {}
-        local completion_buffer_size = 0
+        local completion_single_buffer = {}
+        local completion_single_size = 0
+        local completion_multi_buffer = {}
+        local completion_multi_size = 0
         local comp_count = 0
 
         for cand in input:iter() do
@@ -54,8 +56,13 @@ return {
                 if not allow_completion then break end
                 if comp_count >= COMPLETION_LIMIT then break end
                 comp_count = comp_count + 1
-                completion_buffer_size = completion_buffer_size + 1
-                completion_buffer[completion_buffer_size] = cand
+                if candidate_util.utf8_len(cand.text) == 1 then
+                    completion_single_size = completion_single_size + 1
+                    completion_single_buffer[completion_single_size] = cand
+                else
+                    completion_multi_size = completion_multi_size + 1
+                    completion_multi_buffer[completion_multi_size] = cand
+                end
                 goto continue
             end
             if not danzi then
@@ -80,8 +87,11 @@ return {
         for i = 1, buffer_size do
             yield(buffer[i])
         end
-        for i = 1, completion_buffer_size do
-            yield(completion_buffer[i])
+        for i = 1, completion_single_size do
+            yield(completion_single_buffer[i])
+        end
+        for i = 1, completion_multi_size do
+            yield(completion_multi_buffer[i])
         end
     end,
 

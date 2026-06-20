@@ -589,6 +589,17 @@ local function _is_caps_on(key_event)
     return ok and value == true
 end
 
+local function _repr_has_lock(repr)
+    return type(repr) == "string" and string_find(repr, "Lock+", 1, true) ~= nil
+end
+
+local function _effective_caps_on(env, key_event)
+    local repr = key_event and key_event:repr() or nil
+    if _repr_has_lock(repr) or _is_caps_on(key_event) then return true end
+    if env and env._caps_lock_on ~= nil then return env._caps_lock_on end
+    return false
+end
+
 local function _clear_append_candidate(env, ctx)
     state.clear_append(env, ctx)
 end
@@ -633,6 +644,19 @@ local function _ascii_append_char(kn, sf, caps_on, kc, clean_key, repr)
         end
     end
     return nil
+end
+
+local function _ascii_symbol_char(kn, sf, caps_on, kc, clean_key, repr)
+    if not (sf or caps_on) then return nil end
+    local key_name = kn
+    if not key_name or key_name == "" then
+        key_name = _KC[kc]
+            or _KC_MAP[kc]
+            or _KA[type(clean_key) == "string" and clean_key:lower() or clean_key]
+            or _KA[type(repr) == "string" and repr:lower() or repr]
+    end
+    if not key_name then return nil end
+    return sf and _CalcShiftKey[key_name] or _CalcKey[key_name]
 end
 
 local function _calc_candidate_key(kn, sf, kc, clean_key, repr, allow_space)
@@ -698,25 +722,6 @@ local function _has_direct_symbols_candidate(env, ctx)
     return ok and _is_direct_symbols_candidate(env, ctx, cand) or false
 end
 
-local function _unique_non_completion_candidate(ctx)
-    local comp = ctx and ctx.composition and ctx.composition:back()
-    local menu = comp and comp.menu
-    if not menu then return nil end
-
-    local unique = nil
-    local idx = 0
-    while true do
-        local ok, cand = pcall(function() return menu:get_candidate_at(idx) end)
-        if not ok or not cand then break end
-        if not _is_completion_candidate(cand) then
-            if unique then return nil end
-            unique = cand
-        end
-        idx = idx + 1
-    end
-    return unique
-end
-
 local function _first_direct_symbols_candidate(env, ctx)
     local comp = ctx and ctx.composition and ctx.composition:back()
     local menu = comp and comp.menu
@@ -732,22 +737,6 @@ local function _first_direct_symbols_candidate(env, ctx)
         idx = idx + 1
     end
     return nil
-end
-
-local function _commit_unique_non_completion_candidate(ctx, engine)
-    local unique = _unique_non_completion_candidate(ctx)
-    if not unique then return false end
-
-    local selected = _selected_candidate(ctx)
-    if selected and not _is_completion_candidate(selected) then
-        ctx:commit()
-        return true
-    end
-
-    if not engine then return false end
-    ctx:clear()
-    engine:commit_text(unique.text)
-    return true
 end
 
 local function _commit_first_direct_symbols_candidate(env, ctx, engine)
@@ -1204,6 +1193,11 @@ local function processor(key_event, env)
         _topup_clear_queued_keys(env)
         env._af_seed = nil
         _space_guard_clear(env)
+        if _repr_has_lock(repr) then
+            env._caps_lock_on = true
+        elseif key_event:release() then
+            env._caps_lock_on = false
+        end
         if env._caps_blocked then
             if key_event:release() then env._caps_blocked = nil end
             if ctx:is_composing() then return kAccepted end
@@ -1218,10 +1212,11 @@ local function processor(key_event, env)
     end
     local ascii_mode = ctx:get_option("ascii_mode")
     local no_modifier = not key_event:ctrl() and not key_event:alt() and not key_event:super()
-    local caps_on = _is_caps_on(key_event)
+    local caps_on = _effective_caps_on(env, key_event)
     if not ascii_mode and no_modifier and ctx:is_composing() and _get_append_suffix(env, ctx) then
         if key_event:release() then return kAccepted end
         local ch = _ascii_append_char(kn, sf, caps_on, kc, clean_key, repr)
+            or (caps_on and _ascii_symbol_char(kn, false, true, kc, clean_key, repr) or nil)
         if ch and _append_candidate_suffix(env, ctx, ch) then return kAccepted end
     end
     local append_alpha = nil
@@ -1232,12 +1227,16 @@ local function processor(key_event, env)
             append_alpha = _uppercase_char(clean_key, kc)
         end
     end
-    if append_alpha then
+    local append_suffix = append_alpha
+    if not append_suffix and not ascii_mode and no_modifier and ctx:is_composing() and caps_on then
+        append_suffix = _ascii_symbol_char(kn, false, true, kc, clean_key, repr)
+    end
+    if append_suffix then
         _topup_clear_queued_keys(env)
         env._af_seed = nil
         _space_guard_clear(env)
         if key_event:release() then return kAccepted end
-        if _set_append_candidate(env, ctx, append_alpha) then return kAccepted end
+        if _set_append_candidate(env, ctx, append_suffix) then return kAccepted end
     end
     local uppercase = (not ascii_mode and not sf and no_modifier and caps_on) and _uppercase_char(clean_key, kc) or nil
     if uppercase then
@@ -1247,6 +1246,17 @@ local function processor(key_event, env)
         if key_event:release() then return kAccepted end
         if ctx:is_composing() then ctx:commit() end
         env.engine:commit_text(uppercase)
+        return kAccepted
+    end
+    local caps_symbol = (not ascii_mode and no_modifier and caps_on)
+        and _ascii_symbol_char(kn, sf, caps_on, kc, clean_key, repr) or nil
+    if caps_symbol then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        _space_guard_clear(env)
+        if key_event:release() then return kAccepted end
+        if ctx:is_composing() then ctx:commit() end
+        env.engine:commit_text(caps_symbol)
         return kAccepted
     end
     if ascii_mode then
@@ -1400,6 +1410,7 @@ local function init(env)
     _topup_clear_queued_keys(env)
     env._af_seed = nil
     env._caps_blocked = nil
+    env._caps_lock_on = nil
     env._shift_symbol_release_guard = nil
     env._calc_equal_allow_next = nil
 
@@ -1409,6 +1420,7 @@ local function init(env)
         _topup_clear_queued_keys(env)
         env._af_seed = nil
         env._calc_equal_allow_next = nil
+        env._caps_lock_on = nil
         return true
     end)
 
@@ -1429,6 +1441,7 @@ local function fini(env)
     env._direct_symbols_fast_leaf = nil
     _space_guard_clear(env)
     env._caps_blocked = nil
+    env._caps_lock_on = nil
     env._shift_symbol_release_guard = nil
     env._calc_equal_allow_next = nil
     -- 主动GC：释放资源后回收内存

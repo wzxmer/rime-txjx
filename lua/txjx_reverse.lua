@@ -17,6 +17,7 @@ local hint_cache = {}
 local hint_cache_count = 0
 local core_hint_maps = {}
 local active_envs = 0
+local core_hint_module_name
 
 local function trim_trailing_sep(path)
     return (path or ""):gsub("[/\\]+$", "")
@@ -171,10 +172,16 @@ local function clear_hint_cache()
 end
 
 local function clear_core_hint_maps()
+    for dict_name in pairs(core_hint_maps) do
+        local module_name = core_hint_module_name(dict_name)
+        if module_name and package and package.loaded then
+            package.loaded[module_name] = nil
+        end
+    end
     core_hint_maps = {}
 end
 
-local function core_hint_module_name(dict_name)
+core_hint_module_name = function(dict_name)
     local module_name = (dict_name or ""):gsub("[^%w_]", "_")
     if module_name == "" then return nil end
     return module_name .. "_hint_data"
@@ -200,21 +207,23 @@ local function load_core_hint_map(dict_name)
         return cached, true
     end
 
+    local path = find_existing_path(core_dict_candidates(dict_name))
+    if path then
+        local map = parse_core_hint_dict(path)
+        if map then
+            core_hint_maps[dict_name] = map
+            return map, true
+        end
+    end
+
     local module_map, module_available = load_core_hint_module(dict_name)
     if module_available then
         core_hint_maps[dict_name] = module_map
         return module_map, true
     end
 
-    local path = find_existing_path(core_dict_candidates(dict_name))
-    if not path then
-        core_hint_maps[dict_name] = false
-        return nil, false
-    end
-
-    local map = parse_core_hint_dict(path)
-    core_hint_maps[dict_name] = map or false
-    return map, map ~= nil
+    core_hint_maps[dict_name] = false
+    return nil, false
 end
 
 function M.acquire()

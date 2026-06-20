@@ -1508,9 +1508,6 @@ end
 
 M.func = translator
 M.fini = fini
-M.get_jq_data = function()
-    return get_cached_jq_data(_G_CACHE)
-end
 
 registry.register("time", function()
     fini()

@@ -14,12 +14,13 @@ local floor = math.floor
 local random = math.random
 local randomseed = math.randomseed
 local registry = require("txjx_cache_registry")
+local utf8_codes = utf8.codes
+local utf8_char = utf8.char
 
 local time_core
 local calculator_core
 local module_prefix
 local history_slots = {}
-local pending_tools = {}
 local history_size = 3
 local seeded = false
 local password_len_min = 8
@@ -28,6 +29,38 @@ local default_password_len = 16
 local alpha_num_chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 local symbol_chars = "!@#$%^&*()-_=+[]{}:,.?/"
 local strong_chars = alpha_num_chars .. symbol_chars
+
+local function is_cjk_codepoint(code)
+    return (code >= 0x3400 and code <= 0x4DBF) or
+           (code >= 0x4E00 and code <= 0x9FFF) or
+           (code >= 0xF900 and code <= 0xFAFF)
+end
+
+local function normalize_history_text(text)
+    local has_cjk = false
+    for _, code in utf8_codes(text) do
+        if is_cjk_codepoint(code) then
+            has_cjk = true
+            break
+        end
+    end
+
+    if not has_cjk then
+        if match(text, "[%w]") then return text end
+        return nil
+    end
+
+    local parts = {}
+    for _, code in utf8_codes(text) do
+        if is_cjk_codepoint(code) or
+           (code >= 48 and code <= 57) or
+           (code >= 65 and code <= 90) or
+           (code >= 97 and code <= 122) then
+            parts[#parts + 1] = utf8_char(code)
+        end
+    end
+    return table.concat(parts)
+end
 
 local function get_module_prefix(env)
     if module_prefix then
@@ -87,18 +120,12 @@ function M.history_set_size(size)
     end
 end
 
-function M.history_mark_tool(text, kind)
-    if type(text) ~= "string" or text == "" then return false end
-    if kind ~= "password" and kind ~= "uuid" then return false end
-    pending_tools[text] = true
-    return true
-end
-
 function M.history_record(text, source_input)
     if type(text) ~= "string" or text == "" then return false end
     if source_input == "=mem" or source_input == "=mem!" then return false end
     if type(source_input) == "string" and string_sub(source_input, 1, 1) == "i" then return false end
-    pending_tools[text] = nil
+    text = normalize_history_text(text)
+    if type(text) ~= "string" or text == "" then return false end
     return history_put(text)
 end
 
@@ -237,8 +264,6 @@ local function tools_func(input, seg, env)
     if input == "=uuid" then
         local lower = uuid_v4()
         local upper = string.upper(lower)
-        M.history_mark_tool(lower, "uuid")
-        M.history_mark_tool(upper, "uuid")
         yield(Candidate("uuid", seg.start, seg._end, lower, tip("UUID v4 小写")))
         yield(Candidate("uuid", seg.start, seg._end, upper, tip("UUID v4 大写")))
         return true
@@ -273,8 +298,6 @@ local function tools_func(input, seg, env)
         end
         local strong = random_password(len, strong_chars)
         local alnum = random_password(len, alpha_num_chars)
-        M.history_mark_tool(strong, "password")
-        M.history_mark_tool(alnum, "password")
         yield(Candidate("password", seg.start, seg._end, strong, password_tip(len .. "·含符号")))
         yield(Candidate("password", seg.start, seg._end, alnum, password_tip(len .. "·字母数字")))
         return true
@@ -306,14 +329,6 @@ function M.time_fini(env)
     if time_core and time_core.fini then
         time_core.fini(env)
     end
-end
-
-function M.get_jq_data()
-    local core = load_time_core()
-    if core.get_jq_data then
-        return core.get_jq_data()
-    end
-    return nil
 end
 
 function M.jisuanqi_func(input, seg, env)
