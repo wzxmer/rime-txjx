@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import shutil
 import sys
 from time import perf_counter
 from datetime import datetime
@@ -49,6 +48,13 @@ def write_text(path: Path, text: str) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8", newline="\n")
     tmp.replace(path)
+
+
+def keep_only_latest_backup(pattern: str, latest: Path) -> None:
+    for backup in latest.parent.glob(pattern):
+        if backup == latest:
+            continue
+        backup.unlink()
 
 
 def ops_header() -> str:
@@ -464,8 +470,6 @@ def merge_into_real_dicts(snapshot_rows: list[dict[str, str]], keep_rows: list[t
         if not path.exists():
             continue
         path_t0 = perf_counter()
-        backup = path.with_name(path.name + f".bak-{stamp}")
-        shutil.copy2(path, backup)
         kept: list[str] = []
         removed = 0
         for line in read_text(path).splitlines():
@@ -478,7 +482,7 @@ def merge_into_real_dicts(snapshot_rows: list[dict[str, str]], keep_rows: list[t
             kept.append(line)
         kept = reorder_dict_lines(kept, order_map)
         write_text(path, "\n".join(kept) + "\n")
-        print(f"已备份并清理：{path.name} -> {backup.name}")
+        print(f"已清理：{path.name}")
         print(f"[perf] merge_dict file={path.name} elapsed={perf_counter() - path_t0:.3f}s kept={len(kept)} removed={removed}")
     target = TARGET_DICTS[0]
     if target.exists() and keep_rows:
@@ -518,6 +522,7 @@ def backup_and_clear_ops() -> None:
         if any(parse_ops_line(line) for line in text.splitlines()):
             backup = ROOT / f"txjx.zzc-{stamp}.dict.yaml"
             write_text(backup, text if text.endswith("\n") else text + "\n")
+            keep_only_latest_backup("txjx.zzc-*.dict.yaml", backup)
             print(f"已备份 ops：{OPS.name} -> {backup.relative_to(ROOT)}")
             backed_up = True
         write_text(OPS, ops_header())
