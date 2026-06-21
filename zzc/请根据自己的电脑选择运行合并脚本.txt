@@ -1,0 +1,34 @@
+天行键 zzc 目录说明
+
+普通用户只需要按自己的电脑系统运行对应脚本。
+
+Windows:
+- Win_词库合并.exe
+- Win_撤回合并.exe
+- Windows 只需要双击 exe，不需要 Python。
+
+Mac:
+- Mac_词库合并.py
+- Mac_撤回合并.py
+- 交给有 Mac 环境的人打包成无扩展可执行文件后使用。
+
+Linux:
+- Linux_词库合并.py
+- Linux_撤回合并.py
+- 需要电脑已安装 Python 3。
+
+重要文件:
+- ../txjx.zzc.dict.yaml
+  自造词操作记录，也是临时 zzc 码表。
+- char_parts.tsv
+  单字拆分索引，合并脚本会自动重建。
+- runtime_exact.tsv / index.tsv / group_*.tsv
+  输入法运行时快照，合并后会清空重建。
+- 撤回合并/logs/
+  合并前自动备份目录，只保留最近 3 份。
+
+撤回合并:
+- 每次合并前，脚本会备份正式码表和 zzc 文件。
+- 需要反悔时，运行对应平台的撤回合并工具。
+- 撤回脚本会显示最近 3 份备份，手动选择恢复哪一份。
+- 撤回是整文件恢复，不做复杂 diff。
