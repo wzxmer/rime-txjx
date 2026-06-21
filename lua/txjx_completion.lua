@@ -46,6 +46,10 @@ return {
                 yield(cand)
                 goto continue
             end
+            if type(cand.type) == "string" and cand.type:match("^zzc_") then
+                yield(cand)
+                goto continue
+            end
             if cand.type == "completion" then
                 if reverse_lookup == nil then
                     reverse_lookup = is_reverse_lookup_context(ctx, env)

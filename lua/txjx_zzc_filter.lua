@@ -1,8 +1,6 @@
--- txjx 自造词过滤模块
--- 参考、借鉴、转载或发布衍生实现时，请明确说明出处来自天行键 txjx：
--- https://github.com/wzxmer/rime-txjx
-
 local core = require("txjx_zzc_core")
+local zzc_candidate = require("txjx_zzc_candidate")
+local COLLECT_CANDIDATE_LIMIT = 30
 
 local length_inputs = {
     ["3"] = 3, ["4"] = 4, ["5"] = 5, ["6"] = 6,
@@ -27,26 +25,13 @@ local function is_cjk_text(text)
     return text and text:match("[\228-\233][\128-\191][\128-\191]") ~= nil
 end
 
-local function candidate_type(cand)
-    if not cand then return nil end
-    local cand_type = cand.type
-    if cand.get_genuine then
-        local ok, genuine = pcall(function() return cand:get_genuine() end)
-        if ok and genuine and genuine.type then cand_type = genuine.type end
-    end
-    return cand_type
-end
+local is_real_candidate = zzc_candidate.is_real_candidate
 
-local function is_real_candidate(cand)
-    local cand_type = candidate_type(cand)
+local function is_collect_candidate(cand)
     return cand
         and cand.text
         and cand.text ~= ""
         and cand.text:sub(1, 1) ~= "~"
-        and cand_type ~= "completion"
-        and cand_type ~= "zzc_state"
-        and cand_type ~= "zzc_make_word"
-        and cand_type ~= "punct"
 end
 
 local function maybe_finalize_from_input(ctx, input_text, env, input)
@@ -69,15 +54,24 @@ local function maybe_finalize_from_input(ctx, input_text, env, input)
     if prefix and prefix ~= "" then
         local current = core.buffer_word() or ""
         if current == "" or prefix:sub(1, #current) ~= current then
-            if not input then return false end
-            local first
-            for cand in input:iter() do
-                first = cand
-                break
+            if is_cjk_text(prefix) and not prefix:match("^[A-Za-z;']+$") then
+                local items, err = core.items_from_text(prefix)
+                if not items and err and tostring(err):match("^ambiguous_char:") then
+                    items = core.raw_items_from_text(prefix)
+                end
+                if not items then return false end
+                core.set_state_items(items)
+            else
+                if not input then return false end
+                local first
+                for cand in input:iter() do
+                    first = cand
+                    break
+                end
+                if not is_real_candidate(first) or not is_cjk_text(first.text) then return false end
+                local ok = core.append_candidate_text(first.text, nil)
+                if not ok then return false end
             end
-            if not is_real_candidate(first) or not is_cjk_text(first.text) then return false end
-            local ok = core.append_candidate_text(first.text, nil)
-            if not ok then return false end
         end
     end
     local word = core.buffer_word() or ""
@@ -89,7 +83,13 @@ local function maybe_finalize_from_input(ctx, input_text, env, input)
         end
     end
     if word == "" then return false end
-    local code = core.enqueue_pending(core.state_items or {}, len)
+    local direct_code = prefix and prefix:match("^[A-Za-z;']+$") and prefix or nil
+    local code
+    if direct_code and #direct_code == len then
+        code = core.save_word_at_code(core.state_items or {}, direct_code)
+    else
+        code = core.enqueue_pending(core.state_items or {}, len)
+    end
     if not code then
         local choices = core.code_choices_for_text(word, len, 9)
         if choices and choices[1] then
@@ -135,18 +135,29 @@ local function state_candidate(ctx, code)
     local prop_items = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_items") or ""
     if core.current_stage() == "off" and prop_stage == "" and prop_word == "" then return nil end
     local word = core.buffer_word()
+    local pending_code = ""
+    if prop_stage == "collect" and code and code ~= "" and code ~= "\\" then
+        pending_code = code:sub(1, 1) == "\\" and code:sub(2) or code
+        if pending_code and not pending_code:match("^[A-Za-z;']+$") then
+            pending_code = ""
+        end
+    end
     if (prop_mode == "delete" or prop_mode == "promote") and prop_stage == "command_wait" and prop_target ~= "" then
         word = prop_target
     elseif prop_mode == "undo" and prop_stage == "command_wait" then
         word = prop_display ~= "" and prop_display or "-"
     elseif prop_mode == "shorten" and prop_display ~= "" and prop_stage == "shorten_wait" then
         word = prop_display
+    elseif prop_stage == "resolve_notice" and prop_display ~= "" then
+        word = prop_display
+    elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
+        word = prop_word
     elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
         word = prop_display
     elseif word == "" then
         word = prop_word
     end
-    if not word or word == "" then return nil end
+    if (not word or word == "") and not (prop_mode == "append" and prop_target ~= "" and prop_stage == "collect") then return nil end
     local text
     if prop_mode == "delete" and prop_stage == "command_wait" and prop_target ~= "" then
         text = prop_target .. "\\-" .. (prop_display or "")
@@ -156,14 +167,31 @@ local function state_candidate(ctx, code)
         text = "\\-" .. (prop_display or "")
     elseif prop_mode == "shorten" and prop_display ~= "" and prop_stage == "shorten_wait" then
         text = word .. "\\<"
+    elseif prop_stage == "resolve_notice" then
+        text = word
+    elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
+        text = prop_target .. "\\+" .. (word or "")
     elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
         text = word .. "\\"
+    elseif prop_stage == "collect" and pending_code ~= "" then
+        text = "\\" .. word .. pending_code
     else
         text = "\\" .. word
     end
     local end_pos = #code
     if end_pos < 1 then end_pos = 1 end
-    local cand = Candidate("zzc_state", 0, end_pos, text, "自造词ing")
+    local comment = "自造词ing"
+    if prop_stage == "resolve_notice" and prop_target ~= "" then
+        comment = "已选编码 " .. prop_target
+    end
+    local cand_text = text
+    if prop_stage == "collect" and pending_code ~= "" then
+        cand_text = word
+    end
+    local cand = Candidate("zzc_state", 0, end_pos, cand_text, comment)
+    if cand_text ~= text then
+        cand.preedit = text
+    end
     cand.quality = 10000
     return cand
 end
@@ -174,11 +202,16 @@ local function yield_code_choice_candidates(ctx, code)
     local rows_text = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_cmd_candidates") or ""
     local idx = 0
     local yielded = false
+    local zero_width_space = string.char(0xE2, 0x80, 0x8B)
     for line in rows_text:gmatch("[^\n]+") do
         local word, choice_code = line:match("^([^\t]+)\t([^\t%s]+)")
         if word and choice_code then
             idx = idx + 1
-            local cand = Candidate("zzc_code_choice", 0, #code, word .. " " .. choice_code, "选编码")
+            local display_word = word
+            if idx > 1 then
+                display_word = word .. zero_width_space:rep(idx - 1)
+            end
+            local cand = Candidate("zzc_code_choice", 0, #code, display_word, choice_code)
             cand.quality = 10080 - idx
             yield(cand)
             yielded = true
@@ -187,51 +220,118 @@ local function yield_code_choice_candidates(ctx, code)
     return yielded
 end
 
-local function yield_saved_candidates(input_text)
+local function with_preedit(cand, preedit_text)
+    if not cand or not preedit_text or preedit_text == "" then return cand end
+    local ok, nc = pcall(Candidate, cand.type or "derived", cand.start, cand._end, cand.text or "", cand.comment or "")
+    if not ok or not nc then
+        cand.preedit = preedit_text
+        cand._txjx_zzc_preedit_only = true
+        return cand
+    end
+    nc.preedit = preedit_text
+    nc.quality = cand.quality
+    nc._txjx_zzc_preedit_only = true
+    return nc
+end
+
+local function yield_saved_candidates(input_text, preedit_text)
     local found = core.candidates_for_input(input_text)
     if not found or not found.rows or not found.rows[1] then return false end
     local rows = found.has_exact and found.exact_rows or found.rows
+    local first = true
     for _, row in ipairs(rows) do
         local cand = Candidate("zzc_saved", 0, #input_text, row.word, "自造词")
         cand.quality = found.has_exact and 10050 or 9000
+        if first then
+            cand.preedit = preedit_text or cand.preedit
+            first = false
+        end
         yield(cand)
     end
     return true
 end
 
-local function yield_zzc_cover_candidates(input_text, cover)
+local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
     cover = cover or core.zzc_cover_for_input(input_text)
     if not cover then return nil end
+    local first = true
     if cover.rows then
         for _, row in ipairs(cover.rows) do
             local cand = Candidate("zzc_cover", 0, #input_text, row.word, "自造词")
             cand.quality = 10060
+            if first then
+                cand.preedit = preedit_text or cand.preedit
+                first = false
+            end
             yield(cand)
         end
     end
     return cover
 end
 
-local function yield_input_candidates(input, skip_first, real_only)
+local function yield_append_candidates(input_text, cover)
+    if not cover or not cover.append_rows then return false end
+    local yielded = false
+    for _, row in ipairs(cover.append_rows) do
+        local cand = Candidate("zzc_append", 0, #input_text, row.word, "自造词")
+        cand.quality = 8000
+        yield(cand)
+        yielded = true
+    end
+    return yielded
+end
+
+local function yield_input_candidates(input, skip_first, real_only, preedit_text)
     local skipped = false
+    local first = true
     for cand in input:iter() do
         if not real_only or is_real_candidate(cand) then
             if skip_first and not skipped then
                 skipped = true
             else
-                yield(cand)
+                if first then
+                    yield(with_preedit(cand, preedit_text))
+                    first = false
+                else
+                    yield(cand)
+                end
             end
         end
     end
 end
 
-local function yield_filtered_input_candidates(input, cover)
+local function yield_limited_collect_candidates(input, limit, preedit_text)
+    local yielded = 0
+    local first = true
+    limit = limit or 9
+    for cand in input:iter() do
+        if is_collect_candidate(cand) then
+            yielded = yielded + 1
+            if first then
+                yield(with_preedit(cand, preedit_text))
+                first = false
+            else
+                yield(cand)
+            end
+            if yielded >= limit then return yielded end
+        end
+    end
+    return yielded
+end
+
+local function yield_filtered_input_candidates(input, cover, preedit_text)
+    local first = true
     for cand in input:iter() do
         if is_real_candidate(cand)
             and (not cover
             or not cand.text
             or (not cover.keep_words[cand.text] and not cover.hide_words[cand.text])) then
-            yield(cand)
+            if first then
+                yield(with_preedit(cand, preedit_text))
+                first = false
+            else
+                yield(cand)
+            end
         end
     end
 end
@@ -249,6 +349,11 @@ local function filter(input, env)
         return
     end
     local state_cand = state_candidate(ctx, code)
+    local collect_with_code = state_cand
+        and prop_stage == "collect"
+        and code ~= ""
+        and code ~= "\\"
+    local collect_preedit = collect_with_code and state_cand.preedit or nil
     if yield_code_choice_candidates(ctx, code) then
         return
     end
@@ -268,25 +373,35 @@ local function filter(input, env)
         yield(state_cand)
         return
     end
+    if state_cand and prop_stage == "resolve_notice" then
+        yield(state_cand)
+        return
+    end
     if state_cand and prop_mode == "replace" and prop_stage == "replace_wait" then
         yield(state_cand)
         return
     end
-    if code ~= "" and not state_cand then
+    if collect_with_code then
+        yield_limited_collect_candidates(input, COLLECT_CANDIDATE_LIMIT, collect_preedit)
+        return
+    end
+    if code ~= "" and (not state_cand or collect_with_code) then
         local cover = core.zzc_order_for_input and core.zzc_order_for_input(code) or core.zzc_cover_for_input(code)
         if cover and cover.has_order then
-            yield_zzc_cover_candidates(code, cover)
-            yield_filtered_input_candidates(input, cover)
+            yield_zzc_cover_candidates(code, cover, collect_preedit)
+            yield_filtered_input_candidates(input, cover, collect_preedit)
             return
         end
-        local has_runtime = yield_saved_candidates(code)
+        local has_runtime = yield_saved_candidates(code, collect_preedit)
         if has_runtime then
-            yield_input_candidates(input, true, true)
+            yield_input_candidates(input, true, true, collect_preedit)
+            yield_append_candidates(code, cover)
             return
         end
-        cover = yield_zzc_cover_candidates(code, cover)
+        cover = yield_zzc_cover_candidates(code, cover, collect_preedit)
         if cover then
-            yield_filtered_input_candidates(input, cover)
+            yield_filtered_input_candidates(input, cover, collect_preedit)
+            yield_append_candidates(code, cover)
             return
         end
     end
@@ -295,7 +410,7 @@ local function filter(input, env)
         for cand in input:iter() do yield(cand) end
         return
     end
-    for cand in input:iter() do yield(cand) end
+    yield_input_candidates(input, false, false, collect_preedit)
 end
 
 return filter

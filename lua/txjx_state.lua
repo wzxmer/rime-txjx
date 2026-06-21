@@ -152,6 +152,7 @@ end
 function M.wrap_append_if_needed(cand, env, ctx, input_text, first)
     if not first then return cand end
     if not ctx then return cand end
+    if cand and cand._txjx_zzc_preedit_only then return cand end
     local source_input = ctx:get_property(M.append_input_key(env))
     local suffix = ctx:get_property(M.append_suffix_key(env))
     if source_input ~= input_text or not suffix or suffix == "" then return cand end

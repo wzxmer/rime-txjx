@@ -12,6 +12,7 @@ local config_util = require("txjx_config")
 local platform = require("txjx_platform")
 local state = require("txjx_state")
 local registry = require("txjx_cache_registry")
+local zzc_processor = require("txjx_zzc_processor")
 
 local kAccepted = 1
 local kNoop = 2
@@ -319,11 +320,19 @@ end
 local function _topup_exec(env)
     local ctx = env.engine.context
     if not _topup_ready(env, ctx) then return false end
-    
+
+    if zzc_processor and zzc_processor.is_active and zzc_processor.is_active(ctx) then
+        local next_input = env._txjx_zzc_follow_key
+        env._txjx_zzc_follow_key = nil
+        if zzc_processor.capture_current_candidate and zzc_processor.capture_current_candidate(ctx, next_input) then
+            return true, next_input ~= nil
+        end
+    end
+
     if not _commit_selected_non_completion(ctx) then
         if env._tu_ac then ctx:clear() end
     end
-    return true
+    return true, false
 end
 
 local function _topup_queue_key(env, ctx, key, clean_key, kc)
@@ -1097,6 +1106,8 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
         if kn == "period" and not sf then return kNoop end
         if not (kn == "equal" and not sf and opts.jisuanqi) then
              if _tdc(_SymCN, kn, sf, env.engine, ctx) then
+                local sym_cfg = _SymCN[kn]
+                local sym = sym_cfg and (sf and sym_cfg.shift or sym_cfg.plain) or nil
                 _guard_shift_symbol_release(env, sf)
                 env._dc = kn
                 return kAccepted
@@ -1354,16 +1365,31 @@ local function processor(key_event, env)
 
         if not eval.semicolon_input and not (env._tu_cmd and is_ftu) then
             if is_ptu and not is_tu then
-                if not _topup_exec(env) then return kAccepted end
-                _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                env._txjx_zzc_follow_key = key
+                local executed, consumed_follow = _topup_exec(env)
+                if not executed then return kAccepted end
+                env._txjx_zzc_follow_key = nil
+                if not consumed_follow then
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                end
                 return kAccepted
             elseif not is_ptu and not is_tu and input_len >= min_len then
-                if not _topup_exec(env) then return kAccepted end
-                _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                env._txjx_zzc_follow_key = key
+                local executed, consumed_follow = _topup_exec(env)
+                if not executed then return kAccepted end
+                env._txjx_zzc_follow_key = nil
+                if not consumed_follow then
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                end
                 return kAccepted
             elseif input_len >= env._tu_max then
-                if not _topup_exec(env) then return kAccepted end
-                _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                env._txjx_zzc_follow_key = key
+                local executed, consumed_follow = _topup_exec(env)
+                if not executed then return kAccepted end
+                env._txjx_zzc_follow_key = nil
+                if not consumed_follow then
+                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
+                end
                 return kAccepted
             end
         end
