@@ -51,7 +51,7 @@ runtime_exact.tsv / index.tsv / group_*.tsv
 - 输入法运行时快照。
 - 合并后会清空重建。
 
-撤回合并/logs/
+撤回合并/
 - 合并前自动备份目录。
 - 只保留最近 3 份。
 
@@ -73,5 +73,3 @@ runtime_exact.tsv / index.tsv / group_*.tsv
 - Win_词库合并.exe / Win_撤回合并.exe
 - Mac_词库合并.py / Mac_撤回合并.py
 - Linux_词库合并.py / Linux_撤回合并.py
-
-旧版 apply_zzc.py 已不再作为发布入口。

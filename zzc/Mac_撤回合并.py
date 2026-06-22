@@ -8,9 +8,10 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 
-ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
+ROOT = SCRIPT_PATH.parents[1]
 ZZC_DIR = ROOT / "zzc"
-ROLLBACK_LOGS = ZZC_DIR / "撤回合并" / "logs"
+ROLLBACK_DIR = ZZC_DIR / "撤回合并"
 
 
 def read_manifest(path: Path) -> dict[str, str]:
@@ -26,9 +27,9 @@ def read_manifest(path: Path) -> dict[str, str]:
 
 
 def latest_logs() -> list[Path]:
-    if not ROLLBACK_LOGS.exists():
+    if not ROLLBACK_DIR.exists():
         return []
-    return sorted([p for p in ROLLBACK_LOGS.iterdir() if p.is_dir()], key=lambda p: p.name, reverse=True)[:3]
+    return sorted([p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"], key=lambda p: p.name, reverse=True)[:3]
 
 
 def choose_log(logs: list[Path]) -> Path | None:

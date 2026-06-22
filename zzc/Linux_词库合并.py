@@ -10,10 +10,10 @@ from time import perf_counter
 sys.dont_write_bytecode = True
 
 
-ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
+ROOT = SCRIPT_PATH.parents[1]
 ZZC_DIR = ROOT / "zzc"
 ROLLBACK_DIR = ZZC_DIR / "撤回合并"
-ROLLBACK_LOGS = ROLLBACK_DIR / "logs"
 INDEX = ZZC_DIR / "index.tsv"
 CHAR_PARTS = ZZC_DIR / "char_parts.tsv"
 CACHE_VERSION = ZZC_DIR / "cache_version.txt"
@@ -33,7 +33,8 @@ CHAR_DICT = ROOT / f"{SCHEMA}.danzi.dict.yaml"
 LEGACY_ROOT_OPS = ROOT / f"{SCHEMA}.zzc.ops.tsv"
 LEGACY_OPS = ZZC_DIR / "ops.tsv"
 LEGACY_PENDING = ZZC_DIR / "pending.tsv"
-TARGET_DICTS = [ROOT / f"{SCHEMA}.dict.yaml", ROOT / f"{SCHEMA}.fjcy.dict.yaml"]
+PRIMARY_DICT = ROOT / f"{SCHEMA}.cizu.dict.yaml" if (ROOT / f"{SCHEMA}.cizu.dict.yaml").exists() else ROOT / f"{SCHEMA}.dict.yaml"
+TARGET_DICTS = [PRIMARY_DICT, ROOT / f"{SCHEMA}.fjcy.dict.yaml"]
 
 CHAR_PARTS_CACHE: dict[str, list[dict[str, str]]] | None = None
 
@@ -288,17 +289,79 @@ def reorder_dict_lines(lines: list[str], order_map: dict[str, list[str]]) -> lis
     return out
 
 
+def build_code_locations(paths: list[Path]) -> dict[str, tuple[Path, int]]:
+    locations: dict[str, tuple[Path, int]] = {}
+    for path in paths:
+        if not path.exists():
+            continue
+        for index, line in enumerate(read_text(path).splitlines()):
+            row = parse_dict_row(line)
+            if not row:
+                continue
+            code = row[1]
+            locations.setdefault(code, (path, index))
+    return locations
+
+
+def is_zzc_code(code: str) -> bool:
+    return 3 <= len(code) <= 6 and code.isalpha() and code.islower()
+
+
+def find_insert_index(lines: list[str], code: str) -> int:
+    previous_index = -1
+    for index, line in enumerate(lines):
+        row = parse_dict_row(line)
+        if not row:
+            continue
+        row_code = row[1]
+        if not is_zzc_code(row_code):
+            continue
+        if row_code == code:
+            return index
+        if row_code > code:
+            return previous_index + 1 if previous_index >= 0 else index
+        previous_index = index
+    if previous_index >= 0:
+        return previous_index + 1
+    return len(lines)
+
+
+def insert_rows_by_code(
+    dict_lines: dict[Path, list[str]],
+    keep_rows: list[tuple[str, str]],
+    code_locations: dict[str, tuple[Path, int]],
+) -> dict[Path, int]:
+    inserted_by_path: dict[Path, int] = {}
+    rows_by_path: dict[Path, list[tuple[str, str]]] = {}
+    fallback = TARGET_DICTS[0]
+    for word, code in keep_rows:
+        path = code_locations.get(code, (fallback, 0))[0]
+        rows_by_path.setdefault(path, []).append((word, code))
+
+    for path, rows in rows_by_path.items():
+        lines = dict_lines.setdefault(path, [])
+        rows_by_code: dict[str, list[str]] = {}
+        for word, code in rows:
+            rows_by_code.setdefault(code, []).append(f"{word}\t{code}")
+        for code in sorted(rows_by_code.keys(), reverse=True):
+            insert_at = find_insert_index(lines, code)
+            for row_line in reversed(rows_by_code[code]):
+                lines.insert(insert_at, row_line)
+                inserted_by_path[path] = inserted_by_path.get(path, 0) + 1
+    return inserted_by_path
+
+
 def prune_rollback_logs() -> None:
-    if not ROLLBACK_LOGS.exists():
+    if not ROLLBACK_DIR.exists():
         return
-    logs = sorted([p for p in ROLLBACK_LOGS.iterdir() if p.is_dir()], key=lambda p: p.name, reverse=True)
+    logs = sorted([p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"], key=lambda p: p.name, reverse=True)
     for old in logs[KEEP_ROLLBACKS:]:
         shutil.rmtree(old, ignore_errors=True)
 
 
 def create_rollback_log(ops_count: int, keep_count: int) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_dir = ROLLBACK_LOGS / stamp
+    log_dir = ROLLBACK_DIR / stamp
     dict_dir = log_dir / "dicts"
     dict_dir.mkdir(parents=True, exist_ok=True)
 
@@ -326,6 +389,8 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
 def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, str]], order_map: dict[str, list[str]]) -> None:
     words_to_remove = {row["word"] for row in ops if row["mark"] in {"+", "-"} and not row.get("append")}
     exact_to_remove = {(row["word"], row["code"]) for row in ops if row["mark"] == "!"}
+    code_locations = build_code_locations(TARGET_DICTS)
+    dict_lines: dict[Path, list[str]] = {}
     for path in TARGET_DICTS:
         if not path.exists():
             continue
@@ -340,14 +405,15 @@ def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, 
                     continue
             kept.append(line)
         kept = reorder_dict_lines(kept, order_map)
-        write_text(path, "\n".join(kept) + "\n")
+        dict_lines[path] = kept
         print(f"已整理：{path.name}，移除 {removed} 条")
-    target = TARGET_DICTS[0]
-    if target.exists() and keep_rows:
-        with target.open("a", encoding="utf-8", newline="\n") as f:
-            for word, code in keep_rows:
-                f.write(f"{word}\t{code}\n")
-        print(f"已写入最终 zzc 词条：{target.name}，{len(keep_rows)} 条")
+    inserted_by_path = insert_rows_by_code(dict_lines, keep_rows, code_locations)
+    for path, lines in dict_lines.items():
+        write_text(path, "\n".join(lines) + "\n")
+    for path in TARGET_DICTS:
+        count = inserted_by_path.get(path, 0)
+        if count:
+            print(f"已按编码插入最终 zzc 词条：{path.name}，{count} 条")
 
 
 def touch_cache_version() -> None:
