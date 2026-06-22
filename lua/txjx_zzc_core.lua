@@ -912,7 +912,9 @@ local function enqueue_snapshot(snapshot)
     local first_code, first_word
     local runtime_records = {}
     local ok, err = append_ops_records(snapshot or {})
-    if not ok then return nil, err end
+    if not ok then
+        return nil, err
+    end
     for _, record in ipairs(snapshot or {}) do
         if (record.mark == "+" or record.mark == "-") and not record.append then
             runtime_records[#runtime_records + 1] = record
@@ -1093,7 +1095,9 @@ function M.append_word_at_code(items, target_code)
     if not word or word == "" then return nil, "missing_word" end
     local snapshot = { { mark = "+", append = true, word = word, code = target_code } }
     local _, err = enqueue_snapshot(snapshot)
-    if err then return nil, err end
+    if err then
+        return nil, err
+    end
     return target_code, word
 end
 
