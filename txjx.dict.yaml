@@ -2792,10 +2792,10 @@ sort: by_weight
 拜把	bhbs
 百倍	bhbw
 败北	bhbwa
-百宝	bhbz
-白报	bhbzu
-白堡	bhbzui
-百暴	bhbzv
+白报	bhbz
+白包	bhbzu
+百宝	bhbzv
+百暴	bhbzvo
 不会错	bhc
 白盒测试	bhce
 白菜	bhch
@@ -7692,8 +7692,9 @@ sort: by_weight
 帮我	bpwl
 棒疮	bpwm
 榜文	bpwn
-邦威	bpww
-榜尾	bpwwv
+帮喂	bpww
+邦威	bpwwv
+榜尾	bpwwva
 棒疮	bpwx
 保平安	bpx
 帮信	bpxb
@@ -10834,8 +10835,9 @@ sort: by_weight
 暴亡	bzwpo
 豹王	bzwpu
 不足为奇	bzwq
-宝刹	bzws
-抱娃	bzwsi
+抱娃	bzws
+宝刹	bzwso
+宝娃	bzwsoa
 保穿	bzwt
 宝船	bzwto
 宝钏	bzwtoi
@@ -11930,11 +11932,16 @@ sort: by_weight
 猜吧	chbsu
 才被	chbw
 彩贝	chbwu
-财宝	chbz
-财报	chbza
+财报	chbz
+财宝	chbza
 财保	chbzai
+菜包	chbzi
+踩爆	chbzo
 彩报	chbzu
 才报	chbzv
+才抱	chbzvi
+才爆	chbzvo
+才饱	chbzvu
 猜测	chce
 猜猜	chch
 菜菜	chchi
@@ -14605,6 +14612,7 @@ sort: by_weight
 从第	cydk
 从低	cydki
 从多	cydl
+从易到难	cydn
 曾一度	cydo
 葱等	cydr
 从大	cyds
@@ -15651,7 +15659,8 @@ sort: by_weight
 都不用	dbyuv
 都不愿	dbyuvv
 大本营	dbyv
-大不一样	dbyy
+都不一样	dbyy
+大不一样	dbyyv
 代表作	dbz
 对嘴	dbzb
 对在	dbzh
@@ -18307,8 +18316,9 @@ sort: by_weight
 定榜	dgbp
 顶棒	dgbpv
 顶帮	dgbpvv
-丁坝	dgbs
-顶吧	dgbsv
+定吧	dgbs
+丁坝	dgbsv
+顶吧	dgbsvo
 顶饱	dgbz
 订报	dgbzo
 顶包	dgbzv
@@ -44183,9 +44193,9 @@ sort: by_weight
 只抓	fkqqoi
 直球	fkqqu
 知秋	fkqquu
-执政	fkqr
+指正	fkqr
 治政	fkqra
-指正	fkqri
+执政	fkqri
 指证	fkqrio
 之争	fkqro
 之证	fkqroo
@@ -62798,7 +62808,6 @@ sort: by_weight
 好端端	hdda
 后队	hddb
 后对	hddbu
-后调	hddc
 后爹	hddd
 猴痘	hdddu
 后窦	hddduo
@@ -63214,7 +63223,9 @@ sort: by_weight
 红地毯	hdta
 后退	hdtb
 后腿	hdtbu
-后跳	hdtc
+后调	hdtc
+后跳	hdtcu
+后挑	hdtcui
 后头	hdtd
 喉头	hdtdo
 后贴	hdtdu
@@ -75820,6 +75831,9 @@ sort: by_weight
 解题	jdtkuo
 解脱	jdtl
 皆甜	jdtm
+戒糖	jdtp
+接糖	jdtpi
+接汤	jdtpia
 姐疼	jdtr
 接她	jdts
 接他	jdtsi
@@ -77922,9 +77936,9 @@ sort: by_weight
 精武	jgwjov
 静物	jgwjv
 精赤	jgwk
-静卧	jgwl
-经我	jgwla
-井窝	jgwlv
+经我	jgwl
+静卧	jgwlv
+井窝	jgwlvo
 经幢	jgwm
 经文	jgwn
 景文	jgwno
@@ -96768,9 +96782,8 @@ sort: by_weight
 肋排	lephui
 乐普	lepj
 勒庞	lepp
-刘少奇	leq
+流水账	leq
 梁实秋	leqa
-流水账	leqaa
 乐桥	leqc
 乐着	leqe
 流觞曲水	leqea
@@ -96781,6 +96794,9 @@ sort: by_weight
 乐趣	leql
 历史证明	leqm
 庐山真面目	leqmo
+刘少奇	leqo
+论述者	leqov
+离石区	leqovv
 了账	leqp
 李时珍的皮	leqpv
 乐正	leqr
@@ -99950,8 +99966,8 @@ sort: by_weight
 离台	lkth
 李太	lkthv
 丽台	lkthva
-力图	lktj
-例图	lktji
+例图	lktj
+力图	lktja
 立体	lktk
 隶体	lktka
 例题	lktki
@@ -100266,6 +100282,7 @@ sort: by_weight
 来历不明	llbmv
 来路不明	llbmvo
 裸奔	llbn
+绿本	llbna
 罗本	llbni
 氯苯	llbnu
 落榜	llbp
@@ -113404,6 +113421,7 @@ sort: by_weight
 贸易中心	myfxu
 没有这样	myfy
 没有反应	myfya
+没一个	myg
 每一个	myg
 没有过	myga
 绵阳高中	mygf
@@ -123995,8 +124013,9 @@ sort: by_weight
 泡儿	pzxj
 跑线	pzxm
 袍袖	pzxq
-抛下	pzxs
-跑下	pzxso
+跑下	pzxs
+抛下	pzxsi
+抛啊	pzxsio
 跑啊	pzxsoo
 泡漩	pzxt
 跑向	pzxx
@@ -130939,7 +130958,6 @@ sort: by_weight
 前队	qmdb
 钱队	qmdbi
 迁调	qmdc
-前调	qmdco
 这么大的	qmdd
 浅碟	qmdda
 钱都	qmddi
@@ -131574,6 +131592,7 @@ sort: by_weight
 欠条	qmtc
 铅条	qmtci
 前条	qmtco
+前调	qmtcoo
 签条	qmtcu
 千条	qmtcuu
 前头	qmtd
@@ -144410,6 +144429,8 @@ sort: by_weight
 飒沓	ssts
 萨塔	sstsi
 酸酸甜甜	sstt
+三四五六	sswl
+萨沃	sswli
 撒网	sswp
 萨瓦	ssws
 散散心	ssx
@@ -157193,7 +157214,8 @@ sort: by_weight
 五感	wjgfvv
 无怪	wjgg
 勿怪	wjggu
-唔该	wjgh
+误改	wjgh
+唔该	wjgho
 无盖	wjghv
 无故	wjgj
 物故	wjgju
@@ -163133,6 +163155,8 @@ sort: by_weight
 违抗	wwkp
 卫康	wwkpa
 微坑	wwkr
+微卡	wwks
+维卡	wwksa
 尾款	wwkt
 位宽	wwkti
 围困	wwkw
@@ -164320,6 +164344,8 @@ sort: by_weight
 冲沟	wygdo
 冲个	wyge
 充个	wygeo
+重改	wygh
+万应甘和	wyghv
 五一国际劳动节	wygj
 冲过	wygl
 物业管理	wyglu
@@ -167614,9 +167640,9 @@ sort: by_weight
 许多东西	xddx
 笑掉大牙	xddy
 谢东	xddyo
-写道	xddz
+写到	xddz
 斜道	xddzi
-写到	xddzo
+写道	xddzo
 邪道	xddzv
 行动上	xde
 写谁	xdeb
@@ -178207,10 +178233,11 @@ sort: by_weight
 阿尔巴尼亚	xxbya
 小学毕业	xxbyi
 唏嘘不已	xxbyo
-箱包	xxbz
+想报	xxbz
 信心不足	xxbzi
-香包	xxbzu
-想报	xxbzv
+箱包	xxbzu
+香包	xxbzuu
+想包	xxbzv
 想抱	xxbzvi
 香脆	xxcb
 阿尔茨海默病	xxcba
@@ -185898,9 +185925,9 @@ sort: by_weight
 乐感	yhgf
 引吭高歌	yhgg
 有何贵干	yhggv
-阅改	yhgh
+越改	yhgh
 约改	yhgha
-越改	yhghv
+阅改	yhgho
 月骨	yhgj
 越过	yhgl
 约过	yhgla
@@ -186317,9 +186344,11 @@ sort: by_weight
 越嫌	yhxmv
 越闲	yhxmvo
 越咸	yhxmvv
-粤绣	yhxq
-月休	yhxqu
+越修	yhxq
+粤绣	yhxqu
+月休	yhxqui
 一哄而起	yhxqv
+越休	yhxqvi
 越秀	yhxqvu
 月下	yhxs
 约下	yhxsa
@@ -194117,6 +194146,7 @@ sort: by_weight
 瑶鼻	yzbkv
 要播	yzbl
 一字不漏	yzblv
+要波	yzblva
 要变	yzbm
 窑变	yzbmo
 要编	yzbmv
@@ -201073,3 +201103,4 @@ https://github.com/wzxmer/rime-txjx	txj
 # an(g) en(g) u(n)都是[aeu]开头	fwjma
 # 特殊:ao与e是赖子,找顺手即可	fwjma
 #endregion <私货>
+
