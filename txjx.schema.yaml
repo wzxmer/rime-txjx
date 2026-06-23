@@ -16,7 +16,7 @@ schema:
 # ============ 引擎 ============
 engine:
   processors:
-    - lua_processor@*txjx_zzc_processor
+    - lua_processor@*zzc.txjx_zzc_processor
     - lua_processor@*txjx_processor
     - ascii_composer
     - recognizer
@@ -45,7 +45,7 @@ engine:
     - script_translator@gbk
 
   filters:
-    - lua_filter@*txjx_zzc_filter
+    - lua_filter@*zzc.txjx_zzc_filter
     - lua_filter@*txjx_completion
     - reverse_lookup_filter@jderfen_lookup
     - reverse_lookup_filter@gbk_lookup

@@ -1,5 +1,4 @@
-local core = require("txjx_zzc_core")
-local zzc_candidate = require("txjx_zzc_candidate")
+local core = require("zzc.txjx_zzc_core")
 local COLLECT_CANDIDATE_LIMIT = 30
 
 local length_inputs = {
@@ -25,7 +24,7 @@ local function is_cjk_text(text)
     return text and text:match("[\228-\233][\128-\191][\128-\191]") ~= nil
 end
 
-local is_real_candidate = zzc_candidate.is_real_candidate
+local is_real_candidate = core.is_real_candidate
 
 local function is_collect_candidate(cand)
     return cand
@@ -39,7 +38,13 @@ local function maybe_finalize_from_input(ctx, input_text, env, input)
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_word = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_word") or ""
     local prop_items = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_items") or ""
-    if not len or (core.current_stage() == "off" and prop_stage == "" and prop_word == "") then return false end
+    local literal_prefix = prefix or ""
+    local has_literal_trigger = literal_prefix:sub(1, 1) == "\\"
+    if has_literal_trigger then
+        literal_prefix = literal_prefix:sub(2)
+    end
+    local literal_length_input = has_literal_trigger and literal_prefix ~= "" and is_cjk_text(literal_prefix) and not literal_prefix:match("^[A-Za-z;']+$")
+    if not len or (core.current_stage() == "off" and prop_stage == "" and prop_word == "" and not literal_length_input) then return false end
     if ctx and ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
     if (not core.state_items or #core.state_items == 0) and prop_items ~= "" then
         local items = core.deserialize_items(prop_items)
@@ -142,7 +147,7 @@ local function state_candidate(ctx, code)
             pending_code = ""
         end
     end
-    if (prop_mode == "delete" or prop_mode == "promote") and prop_stage == "command_wait" and prop_target ~= "" then
+    if (prop_mode == "delete" or prop_mode == "promote" or prop_mode == "restore") and prop_stage == "command_wait" and prop_target ~= "" then
         word = prop_target
     elseif prop_mode == "undo" and prop_stage == "command_wait" then
         word = prop_display ~= "" and prop_display or "-"
@@ -161,10 +166,18 @@ local function state_candidate(ctx, code)
     local text
     if prop_mode == "delete" and prop_stage == "command_wait" and prop_target ~= "" then
         text = prop_target .. "\\-" .. (prop_display or "")
+    elseif prop_mode == "restore" and prop_stage == "command_wait" and prop_target ~= "" then
+        text = prop_target .. "\\++" .. (prop_display or "")
     elseif prop_mode == "promote" and prop_stage == "command_wait" and prop_target ~= "" then
         text = prop_target .. "\\" .. (prop_display or "")
     elseif prop_mode == "undo" and prop_stage == "command_wait" then
-        text = "\\-" .. (prop_display or "")
+        local display = prop_display or ""
+        local prefix = prop_target ~= "" and (prop_target .. "\\") or "\\"
+        if display:match("^[!！]+$") then
+            text = prefix .. display
+        else
+            text = prefix .. "-" .. display
+        end
     elseif prop_mode == "shorten" and prop_display ~= "" and prop_stage == "shorten_wait" then
         text = word .. "\\<"
     elseif prop_stage == "resolve_notice" then
@@ -194,6 +207,23 @@ local function state_candidate(ctx, code)
     end
     cand.quality = 10000
     return cand
+end
+
+local function yield_restore_candidates(ctx, code)
+    local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
+    local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
+    if prop_stage ~= "command_wait" or prop_mode ~= "restore" then return false end
+    local rows_text = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_cmd_candidates") or ""
+    local idx = 0
+    local yielded = false
+    for line in rows_text:gmatch("[^\n]+") do
+        idx = idx + 1
+        local cand = Candidate("zzc_restore", 0, #code, line, "恢复")
+        cand.quality = 10070 - idx
+        yield(cand)
+        yielded = true
+    end
+    return yielded
 end
 
 local function yield_code_choice_candidates(ctx, code)
@@ -234,23 +264,6 @@ local function with_preedit(cand, preedit_text)
     return nc
 end
 
-local function yield_saved_candidates(input_text, preedit_text)
-    local found = core.candidates_for_input(input_text)
-    if not found or not found.rows or not found.rows[1] then return false end
-    local rows = found.has_exact and found.exact_rows or found.rows
-    local first = true
-    for _, row in ipairs(rows) do
-        local cand = Candidate("zzc_saved", 0, #input_text, row.word, "自造词")
-        cand.quality = found.has_exact and 10050 or 9000
-        if first then
-            cand.preedit = preedit_text or cand.preedit
-            first = false
-        end
-        yield(cand)
-    end
-    return true
-end
-
 local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
     cover = cover or core.zzc_cover_for_input(input_text)
     if not cover then return nil end
@@ -281,6 +294,9 @@ local function yield_append_candidates(input_text, cover)
     return yielded
 end
 
+local function cover_diag(ctx, label, code, cover)
+end
+
 local function yield_input_candidates(input, skip_first, real_only, preedit_text)
     local skipped = false
     local first = true
@@ -300,38 +316,22 @@ local function yield_input_candidates(input, skip_first, real_only, preedit_text
     end
 end
 
-local function yield_limited_collect_candidates(input, limit, preedit_text)
-    local yielded = 0
-    local first = true
-    limit = limit or 9
-    for cand in input:iter() do
-        if is_collect_candidate(cand) then
-            yielded = yielded + 1
-            if first then
-                yield(with_preedit(cand, preedit_text))
-                first = false
-            else
-                yield(cand)
-            end
-            if yielded >= limit then return yielded end
-        end
-    end
-    return yielded
-end
-
 local function yield_filtered_input_candidates(input, cover, preedit_text)
     local first = true
     for cand in input:iter() do
-        if is_real_candidate(cand)
-            and (not cover
-            or not cand.text
-            or (not cover.keep_words[cand.text] and not cover.hide_words[cand.text])) then
-            if first then
-                yield(with_preedit(cand, preedit_text))
-                first = false
-            else
-                yield(cand)
+        if is_real_candidate(cand) then
+            if not cover
+                or not cand.text
+                or (not cover.keep_words[cand.text] and not cover.hide_words[cand.text]) then
+                if first then
+                    yield(with_preedit(cand, preedit_text))
+                    first = false
+                else
+                    yield(cand)
+                end
             end
+        else
+            yield(cand)
         end
     end
 end
@@ -341,11 +341,13 @@ local function filter(input, env)
         yield_input_candidates(input, false)
         return
     end
+    local perf_start = core.perf_enabled and core.perf_enabled() and os.clock() or nil
     local ctx = env.engine.context
     local code = ctx and ctx.input or ""
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
     if maybe_finalize_from_input(ctx, code, env, input) then
+        core.perf_log("filter", "maybe_finalize", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     local state_cand = state_candidate(ctx, code)
@@ -355,62 +357,73 @@ local function filter(input, env)
         and code ~= "\\"
     local collect_preedit = collect_with_code and state_cand.preedit or nil
     if yield_code_choice_candidates(ctx, code) then
+        core.perf_log("filter", "code_choice", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and code == "" then
         yield(state_cand)
+        core.perf_log("filter", "state_empty", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if code == "\\" and state_cand then
         yield(state_cand)
+        core.perf_log("filter", "state_trigger", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        return
+    end
+    if state_cand and prop_mode == "restore" and prop_stage == "command_wait" then
+        yield(state_cand)
+        yield_restore_candidates(ctx, code)
+        core.perf_log("filter", "restore_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and (prop_mode == "delete" or prop_mode == "promote" or prop_mode == "undo") and prop_stage == "command_wait" then
         yield(state_cand)
+        core.perf_log("filter", "command_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and prop_mode == "shorten" and prop_stage == "shorten_wait" then
         yield(state_cand)
+        core.perf_log("filter", "shorten_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and prop_stage == "resolve_notice" then
         yield(state_cand)
+        core.perf_log("filter", "resolve_notice", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and prop_mode == "replace" and prop_stage == "replace_wait" then
         yield(state_cand)
-        return
-    end
-    if collect_with_code then
-        yield_limited_collect_candidates(input, COLLECT_CANDIDATE_LIMIT, collect_preedit)
+        core.perf_log("filter", "replace_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if code ~= "" and (not state_cand or collect_with_code) then
         local cover = core.zzc_order_for_input and core.zzc_order_for_input(code) or core.zzc_cover_for_input(code)
+        cover_diag(ctx, "filter_cover_loaded", code, cover)
         if cover and cover.has_order then
             yield_zzc_cover_candidates(code, cover, collect_preedit)
-            yield_filtered_input_candidates(input, cover, collect_preedit)
-            return
-        end
-        local has_runtime = yield_saved_candidates(code, collect_preedit)
-        if has_runtime then
-            yield_input_candidates(input, true, true, collect_preedit)
             yield_append_candidates(code, cover)
+            yield_filtered_input_candidates(input, cover, collect_preedit)
+            core.perf_log("filter", "cover_order", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
             return
         end
         cover = yield_zzc_cover_candidates(code, cover, collect_preedit)
         if cover then
-            yield_filtered_input_candidates(input, cover, collect_preedit)
+            cover_diag(ctx, "filter_cover_branch", code, cover)
             yield_append_candidates(code, cover)
+            yield_filtered_input_candidates(input, cover, collect_preedit)
+            core.perf_log("filter", "cover", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
             return
         end
     end
     if code == "" then
         if state_cand then yield(state_cand) end
         for cand in input:iter() do yield(cand) end
+        core.perf_log("filter", "empty_passthrough", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     yield_input_candidates(input, false, false, collect_preedit)
+    core.perf_log("filter", "passthrough", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
 end
 
 return filter
+

@@ -3,9 +3,9 @@
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-06-04
 
-local config = require("txjx_config")
-local platform = require("txjx_platform")
-local candidate = require("txjx_candidate")
+local config = require("common.txjx_config")
+local platform = require("common.txjx_platform")
+local candidate = require("common.txjx_candidate")
 
 local M = {}
 

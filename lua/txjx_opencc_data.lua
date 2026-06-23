@@ -4,7 +4,7 @@
 -- 更新：2026-05-29
 
 local M = {}
-local registry = require("txjx_cache_registry")
+local registry = require("common.txjx_cache_registry")
 
 local PHRASE_SHARD_CACHE_LIMIT = 16
 

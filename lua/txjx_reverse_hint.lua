@@ -3,9 +3,9 @@
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-05-29
 
-local config_util = require("txjx_config")
-local candidate_util = require("txjx_candidate")
-local reverse = require("txjx_reverse")
+local config_util = require("common.txjx_config")
+local candidate_util = require("common.txjx_candidate")
+local reverse = require("common.txjx_reverse")
 
 local M = {}
 

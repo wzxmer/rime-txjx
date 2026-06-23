@@ -2,12 +2,12 @@
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-06-03
 
-local config_util = require("txjx_config")
-local platform = require("txjx_platform")
-local candidate_util = require("txjx_candidate")
-local reverse = require("txjx_reverse")
-local state = require("txjx_state")
-local registry = require("txjx_cache_registry")
+local config_util = require("common.txjx_config")
+local platform = require("common.txjx_platform")
+local candidate_util = require("common.txjx_candidate")
+local reverse = require("common.txjx_reverse")
+local state = require("common.txjx_state")
+local registry = require("common.txjx_cache_registry")
 
 local string_match = string.match
 local string_find = string.find
@@ -355,3 +355,4 @@ local function fini(env)
 end
 
 return { init = init, func = filter, fini = fini }
+

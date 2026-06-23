@@ -3,9 +3,9 @@
 -- 更新：2026-06-03
 
 local M = {}
-local config_util = require("txjx_config")
+local config_util = require("common.txjx_config")
 local opencc_data = require("txjx_opencc_data")
-local registry = require("txjx_cache_registry")
+local registry = require("common.txjx_cache_registry")
 local list_size = config_util.list_size
 
 local DEFAULT_DELIMITER = "|"
@@ -722,3 +722,4 @@ function M.func(input, env)
 end
 
 return M
+

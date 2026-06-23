@@ -2,8 +2,9 @@
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-05-29
 
-local config_util = require("txjx_config")
-local candidate_util = require("txjx_candidate")
+local config_util = require("common.txjx_config")
+local candidate_util = require("common.txjx_candidate")
+local zzc_core = require("zzc.txjx_zzc_core")
 
 local type = type
 local COMPLETION_LIMIT = 30
@@ -11,6 +12,86 @@ local COMPLETION_MAX_CODE_LEN = 5
 
 local function is_reverse_lookup_context(ctx, env)
     return config_util.is_reverse_context(ctx, env and env._reverse_tags, env and env._reverse_prefixes)
+end
+
+local function zzc_completion_visible(cover, text)
+    if not text or text == "" then return true end
+    if not cover then return true end
+    return not cover.keep_words[text] and not cover.hide_words[text]
+end
+
+local function completion_remaining(cand, input_text)
+    local comment = cand and cand.comment or ""
+    if type(comment) == "string" then
+        local rest = comment:match("^~(.+)$")
+        if rest then return rest end
+    end
+    local text = cand and cand.text or ""
+    return text:sub(#(input_text or "") + 1)
+end
+
+local function push_completion(buffer, cand, input_text, source_rank, ordinal, sort_code)
+    local text_len = candidate_util.utf8_len(cand.text)
+    local rest = completion_remaining(cand, input_text)
+    local code = sort_code
+    if not code or code == "" then
+        code = (input_text or "") .. (rest or "")
+    end
+    buffer[#buffer + 1] = {
+        cand = cand,
+        text_len = text_len or 999,
+        code = code,
+        code_len = #(code or ""),
+        rest_len = #(rest or ""),
+        source_rank = source_rank or 2,
+        ordinal = ordinal or #buffer + 1,
+    }
+end
+
+local function sort_completion_buffer(buffer)
+    table.sort(buffer, function(left, right)
+        if left.code_len ~= right.code_len then return left.code_len < right.code_len end
+        local left_single = left.text_len == 1
+        local right_single = right.text_len == 1
+        if left_single ~= right_single then return left_single end
+        if left.code ~= right.code then return (left.code or "") < (right.code or "") end
+        if left.source_rank ~= right.source_rank then return left.source_rank < right.source_rank end
+        if left.text_len ~= right.text_len then return left.text_len < right.text_len end
+        return left.ordinal < right.ordinal
+    end)
+end
+
+local function push_zzc_completion_rows(rows, input_text, buffer, seen, limit)
+    if not rows or not rows[1] or not input_text or input_text == "" then return end
+    local pushed = 0
+    for _, row in ipairs(rows) do
+        if pushed >= limit then break end
+        local word = row.word
+        local code = row.code
+        if word and word ~= "" and code and code:sub(1, #input_text) == input_text and not seen[word] then
+            local remaining = code:sub(#input_text + 1)
+            local comment = remaining ~= "" and ("~" .. remaining) or "自造词"
+            local cand = Candidate("completion", 0, #input_text, word, comment)
+            cand.quality = 10055 - #code
+            push_completion(buffer, cand, input_text, 1, #buffer + 1, code)
+            seen[word] = true
+            pushed = pushed + 1
+        end
+    end
+end
+
+local function zzc_completion_count(buffer)
+    local count = 0
+    for _, item in ipairs(buffer or {}) do
+        local cand_type = item.cand and item.cand.type
+        if item.source_rank == 1
+            or cand_type == "zzc_completion"
+            or cand_type == "zzc_cover"
+            or cand_type == "zzc_append" then
+            count = count + 1
+        end
+    end
+    return count
 end
 
 return {
@@ -35,11 +116,23 @@ return {
         local reverse_lookup = nil
         local buffer = {}
         local buffer_size = 0
-        local completion_single_buffer = {}
-        local completion_single_size = 0
-        local completion_multi_buffer = {}
-        local completion_multi_size = 0
+        local completion_buffer = {}
         local comp_count = 0
+        local zzc_cover = input_text ~= "" and zzc_core.zzc_cover_for_input(input_text) or nil
+        local zzc_completion_rows = nil
+        if allow_completion then
+            zzc_completion_rows = zzc_core.zzc_completion_rows_for_prefix(input_text, COMPLETION_LIMIT)
+        end
+        local zzc_completion_seen = {}
+        push_zzc_completion_rows(
+            zzc_completion_rows,
+            input_text,
+            completion_buffer,
+            zzc_completion_seen,
+            COMPLETION_LIMIT
+        )
+        local remaining_completion_limit = COMPLETION_LIMIT - zzc_completion_count(completion_buffer)
+        if remaining_completion_limit < 0 then remaining_completion_limit = 0 end
 
         for cand in input:iter() do
             if cand.type == "history" then
@@ -51,6 +144,12 @@ return {
                 goto continue
             end
             if cand.type == "completion" then
+                if zzc_completion_seen[cand.text] then
+                    goto continue
+                end
+                if not zzc_completion_visible(zzc_cover, cand.text) then
+                    goto continue
+                end
                 if reverse_lookup == nil then
                     reverse_lookup = is_reverse_lookup_context(ctx, env)
                 end
@@ -58,15 +157,9 @@ return {
                     break
                 end
                 if not allow_completion then break end
-                if comp_count >= COMPLETION_LIMIT then break end
+                if comp_count >= remaining_completion_limit then break end
                 comp_count = comp_count + 1
-                if candidate_util.utf8_len(cand.text) == 1 then
-                    completion_single_size = completion_single_size + 1
-                    completion_single_buffer[completion_single_size] = cand
-                else
-                    completion_multi_size = completion_multi_size + 1
-                    completion_multi_buffer[completion_multi_size] = cand
-                end
+                push_completion(completion_buffer, cand, input_text, 2, comp_count)
                 goto continue
             end
             if not danzi then
@@ -91,11 +184,9 @@ return {
         for i = 1, buffer_size do
             yield(buffer[i])
         end
-        for i = 1, completion_single_size do
-            yield(completion_single_buffer[i])
-        end
-        for i = 1, completion_multi_size do
-            yield(completion_multi_buffer[i])
+        sort_completion_buffer(completion_buffer)
+        for i = 1, #completion_buffer do
+            yield(completion_buffer[i].cand)
         end
     end,
 

@@ -4,7 +4,7 @@
 -- 更新：2026-06-03
 
 local M = {}
-local registry = require("txjx_cache_registry")
+local registry = require("common.txjx_cache_registry")
 
 local DEFAULT_CACHE_LIMIT = 256
 local MIN_CACHE_LIMIT = 64

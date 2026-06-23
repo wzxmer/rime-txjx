@@ -1,22 +1,74 @@
 local M = {}
+local codec = require("zzc.txjx_zzc_codec")
+local store = require("zzc.txjx_zzc_store")
 
 local char_parts
 local char_parts_full_loaded = false
 local char_parts_missing = {}
 local pending_cache = {}
 local pending_by_code = {}
-local pending_cover_by_code = {}
+local effective_projection_by_code = {}
+local effective_by_code = {}
 local pending_loaded = false
 local pending_version = nil
 local pending_version_check_second = nil
-local session_exact_cache = {}
-local runtime_exact_cache = {}
-local runtime_exact_loaded = false
 local write_file_atomic
 local allow_cache = {}
 local build_replace_snapshot
-local rebuild_pending_cover_index
-local update_pending_cover_for_code
+local rebuild_effective_projection_index
+local update_effective_projection_for_code
+local write_effective_state_file
+
+local function is_emoji_codepoint(cp)
+    return (cp >= 0x1F000 and cp <= 0x1FAFF)
+        or (cp >= 0x2600 and cp <= 0x27BF)
+        or (cp >= 0x2300 and cp <= 0x23FF)
+        or (cp >= 0x2B00 and cp <= 0x2BFF)
+        or cp == 0x00A9
+        or cp == 0x00AE
+        or cp == 0x3030
+        or cp == 0x303D
+        or cp == 0x3297
+        or cp == 0x3299
+end
+
+local function has_emoji_text(text)
+    if type(text) ~= "string" or text == "" or not utf8 or not utf8.codes then return false end
+    local has_emoji = false
+    local ok = pcall(function()
+        for _, cp in utf8.codes(text) do
+            if is_emoji_codepoint(cp) then
+                has_emoji = true
+                break
+            end
+        end
+    end)
+    return ok and has_emoji
+end
+
+function M.candidate_type(cand)
+    if not cand then return nil end
+    local cand_type = cand.type
+    if cand.get_genuine then
+        local ok, genuine = pcall(function() return cand:get_genuine() end)
+        if ok and genuine and genuine.type then cand_type = genuine.type end
+    end
+    return cand_type
+end
+
+function M.is_real_candidate(cand)
+    local cand_type = M.candidate_type(cand)
+    return cand
+        and cand.text
+        and cand.text ~= ""
+        and cand.text:sub(1, 1) ~= "~"
+        and not has_emoji_text(cand.text)
+        and cand_type ~= "completion"
+        and cand_type ~= "zzc_state"
+        and cand_type ~= "zzc_make_word"
+        and cand_type ~= "zzc_collect"
+        and cand_type ~= "punct"
+end
 
 local function data_dir()
     if rime_api and rime_api.get_user_data_dir then
@@ -58,19 +110,7 @@ local function read_fields(line)
 end
 
 local function utf8_chars(text)
-    local chars = {}
-    local start = 1
-    while text and start <= #text do
-        local next_start = utf8.offset(text, 2, start)
-        if next_start then
-            chars[#chars + 1] = text:sub(start, next_start - 1)
-            start = next_start
-        else
-            chars[#chars + 1] = text:sub(start)
-            break
-        end
-    end
-    return chars
+    return codec.utf8_chars(text)
 end
 
 local function same_parts(a, b)
@@ -85,31 +125,11 @@ local function push_unique_part(bucket, entry)
 end
 
 local function hint_matches(entry, hint)
-    if not hint then return true end
-    if type(hint) == "string" then
-        return entry.code and (entry.code:sub(1, #hint) == hint or hint:sub(1, #entry.code) == entry.code)
-    end
-    if hint.code_prefix and hint.code_prefix ~= "" then
-        local prefix = hint.code_prefix
-        if not entry.code or (entry.code:sub(1, #prefix) ~= prefix and prefix:sub(1, #entry.code) ~= entry.code) then
-            return false
-        end
-    end
-    if hint.s and hint.s ~= "" and entry.s ~= hint.s then return false end
-    if hint.y and hint.y ~= "" and entry.y ~= hint.y then return false end
-    if hint.p and hint.p ~= "" and entry.p ~= hint.p then return false end
-    return true
+    return codec.hint_matches(entry, hint)
 end
 
 local function collapse_options(options)
-    local first = options and options[1]
-    if not first then return nil end
-    for i = 2, #options do
-        if not same_parts(first, options[i]) then
-            return nil
-        end
-    end
-    return first
+    return codec.collapse_options(options)
 end
 
 local function hint_list_for_word(word, code)
@@ -292,7 +312,7 @@ function M.raw_items_from_text(text)
     return items
 end
 
-local code_at
+local code_at = codec.code_at
 
 function M.code_choices_for_text(text, len, limit)
     limit = limit or 9
@@ -336,63 +356,20 @@ function M.code_choices_for_text(text, len, limit)
     return choices
 end
 
-code_at = function(items, n)
-    if n == 2 then
-        return items[1].parts.s .. items[1].parts.y .. items[2].parts.s .. items[2].parts.y .. items[1].parts.p .. items[2].parts.p
-    elseif n == 3 then
-        return items[1].parts.s .. items[2].parts.s .. items[3].parts.s .. items[1].parts.p .. items[2].parts.p .. items[3].parts.p
-    end
-    return items[1].parts.s .. items[2].parts.s .. items[3].parts.s .. items[#items].parts.s .. items[1].parts.p .. items[2].parts.p
-end
-
 function M.code_for_items(items, len)
-    local n = #items
-    if n < 2 then return nil, "too_short" end
-    len = tonumber(len)
-    if not len then return nil, "bad_length" end
-    if n == 2 and (len < 4 or len > 6) then return nil, "bad_length" end
-    if n == 3 and (len < 3 or len > 6) then return nil, "bad_length" end
-    if n >= 4 and (len < 4 or len > 6) then return nil, "bad_length" end
-    for _, item in ipairs(items or {}) do
-        if not item.parts then return nil, "missing_parts" end
-    end
-    return code_at(items, n):sub(1, len)
+    return codec.code_for_items(items, len)
 end
 
 function M.word_from_items(items)
-    local parts = {}
-    for i, item in ipairs(items or {}) do parts[i] = item.text end
-    return table.concat(parts)
+    return codec.word_from_items(items)
 end
 
 function M.serialize_items(items)
-    local rows = {}
-    for _, item in ipairs(items or {}) do
-        local parts = item.parts or {}
-        rows[#rows + 1] = table.concat({
-            item.text or "",
-            parts.s or "",
-            parts.y or "",
-            parts.p or "",
-            parts.code or "",
-        }, "\t")
-    end
-    return table.concat(rows, "\n")
+    return codec.serialize_items(items)
 end
 
 function M.deserialize_items(text)
-    local items = {}
-    for line in tostring(text or ""):gmatch("[^\n]+") do
-        local ch, s, y, p, code = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)$")
-        if ch and ch ~= "" then
-            local parts = nil
-            if s ~= "" and y ~= "" and p ~= "" then
-                parts = { s = s, y = y, p = p, code = code ~= "" and code or (s .. y .. p) }
-            end
-            items[#items + 1] = { text = ch, parts = parts }
-        end
-    end
-    return items
+    return codec.deserialize_items(text)
 end
 
 local function ops_file()
@@ -403,8 +380,24 @@ local function pending_file()
     return ops_file()
 end
 
-local function runtime_exact_file()
-    return path("zzc/runtime_exact.tsv")
+local function runtime_ops_file()
+    return path("zzc/runtime_ops.tsv")
+end
+
+local function legacy_root_ops_file()
+    return path("txjx.zzc.ops.tsv")
+end
+
+local function legacy_ops_file()
+    return path("zzc/ops.tsv")
+end
+
+local function legacy_pending_file()
+    return path("zzc/pending.tsv")
+end
+
+local function effective_state_file()
+    return path("zzc/effective_state.tsv")
 end
 
 local function pending_version_file()
@@ -416,32 +409,15 @@ local function new_tx()
 end
 
 local function pending_record_from_line(line)
-    local yaml_line = line
-    if yaml_line:match("^%s*#") or yaml_line:match("^%s*$") or yaml_line:match("^%s*%.%.%.%s*$") or yaml_line:match("^%s*%-%-%-%s*$") then
-        return nil
-    elseif yaml_line:match("^%s*[%w_]+:") or yaml_line:match("^%s*%- ") then
-        return nil
-    end
-    local word, code, mark_token, tx = yaml_line:match("^([^\t#]+)\t([^%s#]+)%s*#%s*([+%-!%^]a?)%s+(%d+)%s*$")
-    local mark = mark_token and mark_token:sub(1, 1)
-    if word and code and mark then
-        return { mark = mark, append = mark_token == "+a", word = word, code = code, tx = tx }
-    end
-    word, code, mark_token = yaml_line:match("^([^\t#]+)\t([^%s#]+)%s*#%s*([+%-!%^]a?)%s*$")
-    mark = mark_token and mark_token:sub(1, 1)
-    if word and code and mark then
-        return { mark = mark, append = mark_token == "+a", word = word, code = code }
-    end
-    local mark, word, code = line:match("^([+%-!%^])\t([^\t]+)\t([^\t%s]+)$")
-    if not mark or not word or not code then return nil end
-    return { mark = mark, word = word, code = code }
+    return store.record_from_line(line)
 end
 
 local function pending_line_from_record(record)
-    local mark = record.mark or "+"
-    if record.append and mark == "+" then mark = "+a" end
-    local tx = record.tx or new_tx()
-    return table.concat({ record.word or "", (record.code or "") .. " #" .. mark .. " " .. tx }, "\t")
+    return store.pending_line(record, new_tx)
+end
+
+local function runtime_line_from_record(record)
+    return store.runtime_line(record, new_tx)
 end
 
 local function ops_header()
@@ -472,6 +448,17 @@ local function ensure_ops_file()
     f:close()
 end
 
+local function ensure_runtime_ops_file()
+    local f = io.open(runtime_ops_file(), "r")
+    if f then
+        f:close()
+        return
+    end
+    f = io.open(runtime_ops_file(), "w")
+    if not f then return end
+    f:close()
+end
+
 local function read_pending_version()
     local f = io.open(pending_version_file(), "r")
     if not f then return "" end
@@ -498,103 +485,19 @@ local function write_pending_version()
     return value
 end
 
-local function update_runtime_exact_cache(record)
-    if not record or not record.code or record.code == "" or not record.word or record.word == "" then return end
-    for code, bucket in pairs(runtime_exact_cache) do
-        local fresh_bucket = {}
-        for _, row in ipairs(bucket) do
-            if row.word ~= record.word then
-                fresh_bucket[#fresh_bucket + 1] = row
-            end
-        end
-        runtime_exact_cache[code] = fresh_bucket[1] and fresh_bucket or nil
-    end
-    if record.mark == "!" or record.append then return end
-    local bucket = runtime_exact_cache[record.code]
-    if not bucket then
-        bucket = {}
-        runtime_exact_cache[record.code] = bucket
-    end
-    table.insert(bucket, 1, { word = record.word, code = record.code, source = "runtime" })
-end
-
-local function load_runtime_exact_cache_record(record)
-    if not record or not record.code or record.code == "" or not record.word or record.word == "" then return end
-    for code, bucket in pairs(runtime_exact_cache) do
-        local fresh_bucket = {}
-        for _, row in ipairs(bucket) do
-            if row.word ~= record.word then
-                fresh_bucket[#fresh_bucket + 1] = row
-            end
-        end
-        runtime_exact_cache[code] = fresh_bucket[1] and fresh_bucket or nil
-    end
-    if record.mark == "!" or record.append then return end
-    local bucket = runtime_exact_cache[record.code]
-    if not bucket then
-        bucket = {}
-        runtime_exact_cache[record.code] = bucket
-    end
-    bucket[#bucket + 1] = { word = record.word, code = record.code, source = "runtime" }
-end
-
-local function append_runtime_exact_file(record)
-    local f = io.open(runtime_exact_file(), "a")
-    if not f then
-        return
-    end
-    f:write(record.word or "", "\t", record.code or "", "\n")
-    f:close()
-end
-
-local function load_runtime_exact_cache()
-    if runtime_exact_loaded then return runtime_exact_cache end
-    runtime_exact_cache = {}
-    local f = io.open(runtime_exact_file(), "r")
-    if f then
-        for line in f:lines() do
-            local word, code = line:match("^([^\t]+)\t([^\t%s]+)$")
-            if word and code then
-                load_runtime_exact_cache_record({ word = word, code = code })
-            end
-        end
-        f:close()
-    end
-    runtime_exact_loaded = true
-    return runtime_exact_cache
-end
-
-local function update_session_exact_cache(record)
-    if not record or not record.code or record.code == "" or not record.word or record.word == "" then return end
-    for code, bucket in pairs(session_exact_cache) do
-        local fresh_bucket = {}
-        for _, row in ipairs(bucket) do
-            if row.word ~= record.word then
-                fresh_bucket[#fresh_bucket + 1] = row
-            end
-        end
-        session_exact_cache[code] = fresh_bucket[1] and fresh_bucket or nil
-    end
-    if record.mark == "!" or record.append then return end
-    local bucket = session_exact_cache[record.code]
-    if not bucket then
-        bucket = {}
-        session_exact_cache[record.code] = bucket
-    end
-    table.insert(bucket, 1, { word = record.word, code = record.code, source = "session" })
-end
-
 local function load_pending_cache()
     if pending_loaded then return pending_cache end
     pending_cache = {}
     pending_by_code = {}
-    pending_cover_by_code = {}
-    for _, file_path in ipairs({ ops_file() }) do
+    effective_projection_by_code = {}
+    for _, file_path in ipairs({ ops_file(), runtime_ops_file() }) do
+        local is_runtime = file_path == runtime_ops_file()
         local f = io.open(file_path, "r")
         if f then
             for line in f:lines() do
                 local record = pending_record_from_line(line)
                 if record and record.code and record.word then
+                    record.runtime = is_runtime or nil
                     pending_cache[#pending_cache + 1] = record
                     local bucket = pending_by_code[record.code]
                     if not bucket then
@@ -610,7 +513,7 @@ local function load_pending_cache()
     pending_loaded = true
     pending_version = read_pending_version()
     pending_version_check_second = os.time()
-    if rebuild_pending_cover_index then rebuild_pending_cover_index() end
+    if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     return pending_cache
 end
 
@@ -618,18 +521,13 @@ local function reload_pending_cache()
     pending_loaded = false
     pending_cache = {}
     pending_by_code = {}
-    pending_cover_by_code = {}
+    effective_projection_by_code = {}
     pending_version_check_second = nil
     return load_pending_cache()
 end
 
 local function load_pending_cache_current()
     if pending_loaded then
-        local now = os.time()
-        if pending_version_check_second == now then
-            return pending_cache
-        end
-        pending_version_check_second = now
         if read_pending_version() == pending_version then
             return pending_cache
         end
@@ -646,10 +544,13 @@ local function append_pending_cache(record)
     if not pending_loaded then return end
     local cached = {
         mark = record.mark or "+",
+        op = record.op,
         append = record.append and true or nil,
+        restore = record.restore and true or nil,
         word = record.word,
         code = record.code,
         tx = record.tx,
+        runtime = record.runtime and true or nil,
     }
     pending_cache[#pending_cache + 1] = cached
     local bucket = pending_by_code[cached.code]
@@ -658,37 +559,7 @@ local function append_pending_cache(record)
         pending_by_code[cached.code] = bucket
     end
     bucket[#bucket + 1] = cached
-    if update_pending_cover_for_code then update_pending_cover_for_code(cached.code) end
-end
-
-local function reset_runtime_exact_cache()
-    session_exact_cache = {}
-    runtime_exact_cache = {}
-    runtime_exact_loaded = true
-end
-
-local function rebuild_runtime_from_records(records)
-    reset_runtime_exact_cache()
-    for _, record in ipairs(records or {}) do
-        if (record.mark == "+" or record.mark == "-") and not record.append then
-            update_session_exact_cache(record)
-            update_runtime_exact_cache(record)
-        elseif record.mark == "!" then
-            update_session_exact_cache(record)
-            update_runtime_exact_cache(record)
-        end
-    end
-    local f = io.open(runtime_exact_file(), "w")
-    if not f then
-        return nil, "runtime_open_failed"
-    end
-    for _, bucket in pairs(runtime_exact_cache) do
-        for _, record in ipairs(bucket) do
-            f:write(record.word or "", "\t", record.code or "", "\n")
-        end
-    end
-    f:close()
-    return true
+    if update_effective_projection_for_code then update_effective_projection_for_code(cached.code) end
 end
 
 local function rewrite_ops_records(records)
@@ -704,7 +575,7 @@ local function rewrite_ops_records(records)
     if not ok then return nil, err end
     pending_cache = records or {}
     pending_by_code = {}
-    pending_cover_by_code = {}
+    effective_projection_by_code = {}
     for _, record in ipairs(pending_cache) do
         local bucket = pending_by_code[record.code]
         if not bucket then
@@ -714,16 +585,134 @@ local function rewrite_ops_records(records)
         bucket[#bucket + 1] = record
     end
     pending_loaded = true
-    if rebuild_pending_cover_index then rebuild_pending_cover_index() end
+    if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     write_pending_version()
-    return rebuild_runtime_from_records(pending_cache)
+    return true
+end
+
+local function rewrite_runtime_ops_records(records)
+    local lines = {}
+    for _, record in ipairs(records or {}) do
+        local runtime_record = {
+            mark = record.mark,
+            append = record.append,
+            word = record.word,
+            code = record.code,
+            tx = record.tx,
+            runtime = true,
+        }
+        lines[#lines + 1] = runtime_line_from_record(runtime_record)
+    end
+    local ok, err = write_file_atomic(runtime_ops_file(), lines)
+    if not ok then return nil, err end
+    local legacy = {}
+    local f = io.open(ops_file(), "r")
+    if f then
+        for line in f:lines() do
+            local record = pending_record_from_line(line)
+            if record and record.code and record.word then legacy[#legacy + 1] = record end
+        end
+        f:close()
+    end
+    local merged = {}
+    for _, record in ipairs(legacy) do merged[#merged + 1] = record end
+    for _, record in ipairs(records or {}) do
+        record.runtime = true
+        merged[#merged + 1] = record
+    end
+    pending_cache = merged
+    pending_by_code = {}
+    effective_projection_by_code = {}
+    for _, record in ipairs(pending_cache) do
+        local bucket = pending_by_code[record.code]
+        if not bucket then
+            bucket = {}
+            pending_by_code[record.code] = bucket
+        end
+        bucket[#bucket + 1] = record
+    end
+    pending_loaded = true
+    if rebuild_effective_projection_index then rebuild_effective_projection_index() end
+    write_pending_version()
+    return true
+end
+
+local function compact_pending_records(records)
+    local latest = {}
+    local latest_order_tx_by_code = {}
+    for _, record in ipairs(records or {}) do
+        if record and record.word and record.code then
+            if record.mark == "^" and record.tx and record.tx ~= "" then
+                latest_order_tx_by_code[record.code] = record.tx
+            else
+                latest[record.word .. "\t" .. record.code] = record
+            end
+        end
+    end
+    local out = {}
+    for _, record in ipairs(records or {}) do
+        local key = record and record.word and record.code and (record.word .. "\t" .. record.code) or nil
+        if key and record.mark ~= "^" and latest[key] == record then
+            out[#out + 1] = record
+        end
+    end
+    local order_seen = {}
+    for _, record in ipairs(records or {}) do
+        if record and record.mark == "^" and latest_order_tx_by_code[record.code] == record.tx then
+            local key = record.word .. "\t" .. record.code
+            local current = latest[key]
+            if current and current.mark ~= "!" and not order_seen[key] then
+                out[#out + 1] = record
+                order_seen[key] = true
+            end
+        end
+    end
+    return out
+end
+
+local function flush_runtime_ops_to_pending()
+    ensure_ops_file()
+    ensure_runtime_ops_file()
+    local records = load_pending_cache_current()
+    local has_runtime = false
+    for _, record in ipairs(records or {}) do
+        if record.runtime then
+            has_runtime = true
+            break
+        end
+    end
+    if not has_runtime then return true, false end
+    local merged = {}
+    for _, record in ipairs(records or {}) do
+        merged[#merged + 1] = {
+            mark = record.mark,
+            op = record.op,
+            append = record.append,
+            restore = record.restore,
+            word = record.word,
+            code = record.code,
+            tx = record.tx,
+        }
+    end
+    merged = compact_pending_records(merged)
+    local ok, err = rewrite_ops_records(merged)
+    if not ok then return nil, err end
+    ok, err = write_file_atomic(runtime_ops_file(), {})
+    if not ok then return nil, err end
+    write_file_atomic(path("zzc/index.tsv"), {})
+    write_file_atomic(path("zzc/runtime_exact.tsv"), {})
+    write_file_atomic(effective_state_file(), {})
+    pending_loaded = false
+    load_pending_cache_current()
+    return true, true
 end
 
 local function append_ops_record(record)
-    ensure_ops_file()
-    local f = io.open(pending_file(), "a")
+    ensure_runtime_ops_file()
+    record.runtime = true
+    local f = io.open(runtime_ops_file(), "a")
     if not f then return nil, "ops_open_failed" end
-    f:write(pending_line_from_record(record), "\n")
+    f:write(runtime_line_from_record(record), "\n")
     f:close()
     write_pending_version()
     append_pending_cache(record)
@@ -731,13 +720,14 @@ local function append_ops_record(record)
 end
 
 local function append_ops_records(records)
-    ensure_ops_file()
-    local f = io.open(pending_file(), "a")
+    ensure_runtime_ops_file()
+    local f = io.open(runtime_ops_file(), "a")
     if not f then return nil, "ops_open_failed" end
     local tx = new_tx()
     for _, record in ipairs(records or {}) do
         record.tx = record.tx or tx
-        f:write(pending_line_from_record(record), "\n")
+        record.runtime = true
+        f:write(runtime_line_from_record(record), "\n")
     end
     f:close()
     write_pending_version()
@@ -747,195 +737,76 @@ local function append_ops_records(records)
     return true
 end
 
-local function append_runtime_records(records)
-    local runtime_rows = {}
-    for _, record in ipairs(records or {}) do
-        update_session_exact_cache(record)
-        update_runtime_exact_cache(record)
-        runtime_rows[#runtime_rows + 1] = record
-    end
-    if not runtime_rows[1] then return end
-    local f = io.open(runtime_exact_file(), "a")
-    if not f then
-        return
-    end
-    for _, record in ipairs(runtime_rows) do
-        f:write(record.word or "", "\t", record.code or "", "\n")
-    end
-    f:close()
-end
-
-local function rewrite_runtime_exact_cache()
-    local f = io.open(runtime_exact_file(), "w")
-    if not f then
-        return nil, "runtime_open_failed"
-    end
-    for _, bucket in pairs(runtime_exact_cache) do
-        for _, record in ipairs(bucket) do
-            f:write(record.word or "", "\t", record.code or "", "\n")
+write_effective_state_file = function()
+    local lines = {}
+    effective_by_code = {}
+    for code, cover in pairs(effective_projection_by_code or {}) do
+        local effective = { rows = {}, append_rows = {}, keep_words = {}, hide_words = {}, restore_rows = {} }
+        for _, row in ipairs((cover and cover.rows) or {}) do
+            lines[#lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc" }, "\t")
+            effective.rows[#effective.rows + 1] = row
+            effective.keep_words[row.word] = true
+        end
+        for _, row in ipairs((cover and cover.append_rows) or {}) do
+            lines[#lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc_append" }, "\t")
+            effective.append_rows[#effective.append_rows + 1] = row
+            effective.keep_words[row.word] = true
+        end
+        for word in pairs((cover and cover.hide_words) or {}) do
+            lines[#lines + 1] = table.concat({ "hidden", word or "", code or "", "zzc_restore" }, "\t")
+            effective.hide_words[word] = true
+            effective.restore_rows[#effective.restore_rows + 1] = { word = word, code = code, source = "zzc_restore" }
+        end
+        effective.has_order = cover and cover.has_order or nil
+        effective.has_exact_cover = cover and cover.has_exact_cover or nil
+        effective.has_append = cover and cover.has_append or nil
+        effective.has_delete_cover = cover and cover.has_delete_cover or nil
+        if effective.rows[1] or effective.append_rows[1] or next(effective.hide_words) then
+            effective_by_code[code] = effective
         end
     end
-    f:close()
-    return true
-end
-
-local function apply_runtime_records(records)
-    load_runtime_exact_cache()
-    for _, record in ipairs(records or {}) do
-        if (record.mark == "+" or record.mark == "-") and not record.append then
-            update_session_exact_cache(record)
-            update_runtime_exact_cache(record)
-        elseif record.mark == "!" then
-            update_session_exact_cache(record)
-            update_runtime_exact_cache(record)
-        end
-    end
-    return rewrite_runtime_exact_cache()
-end
-
-local function remove_runtime_exact_word(word)
-    if not word or word == "" then return nil, "missing_word" end
-    load_runtime_exact_cache()
-    local record = { mark = "!", word = word }
-    update_session_exact_cache(record)
-    update_runtime_exact_cache(record)
-    return rewrite_runtime_exact_cache()
+    table.sort(lines)
+    local ok = write_file_atomic(effective_state_file(), lines)
+    return ok
 end
 
 local function word_valid_at_code(pending, word, code)
-    if not word or word == "" or not code or code == "" then return false end
-    for i = #(pending or {}), 1, -1 do
-        local record = pending[i]
-        if record.word == word and record.code == code and record.mark ~= "^" then
-            return record.mark ~= "!"
-        end
-    end
-    return true
+    return store.word_valid_at_code(pending, word, code)
 end
 
-local function hidden_words_for_code(pending, code)
-    local hide_words, seen_words = {}, {}
-    if not code or code == "" then return hide_words end
-    for i = #(pending or {}), 1, -1 do
-        local record = pending[i]
-        if record.code == code and record.word and record.word ~= "" and not seen_words[record.word] and record.mark ~= "^" then
-            if record.mark == "!" then hide_words[record.word] = true end
-            seen_words[record.word] = true
-        end
-    end
-    return hide_words
+local function build_effective_projection(input, pending, opts)
+    return store.build_effective_projection(input, pending, opts)
 end
 
-local function build_cover_from_records(input, pending, opts)
-    opts = opts or {}
-    local keep_rows, append_rows, keep_words, hide_words, seen_words = {}, {}, {}, {}, {}
-    local latest_order_tx = nil
-    if not opts.ignore_order then
-        for i = #(pending or {}), 1, -1 do
-            local record = pending[i]
-            if record.code == input and record.mark == "^" and record.tx and record.tx ~= "" then
-                latest_order_tx = record.tx
-                break
-            end
-        end
-    end
-    if latest_order_tx then
-        local order_rows = {}
-        hide_words = hidden_words_for_code(pending, input)
-        for _, record in ipairs(pending or {}) do
-            if record.code == input and record.mark == "^" and record.tx == latest_order_tx and not seen_words[record.word] and word_valid_at_code(pending, record.word, input) then
-                order_rows[#order_rows + 1] = { word = record.word, code = record.code, source = "zzc_order" }
-                keep_words[record.word] = true
-                seen_words[record.word] = true
-            end
-        end
-        for i = #(pending or {}), 1, -1 do
-            local record = pending[i]
-            if record.code == input and not seen_words[record.word] and (record.mark == "+" or record.mark == "-") then
-                local row = { word = record.word, code = record.code, source = record.append and "zzc_append" or "zzc" }
-                if record.append then
-                    append_rows[#append_rows + 1] = row
-                else
-                    order_rows[#order_rows + 1] = row
-                end
-                keep_words[record.word] = true
-                seen_words[record.word] = true
-            elseif record.code == input and not seen_words[record.word] and record.mark == "!" then
-                hide_words[record.word] = true
-                seen_words[record.word] = true
-            end
-        end
-        if order_rows[1] then
-            return { rows = order_rows, append_rows = append_rows, keep_words = keep_words, hide_words = hide_words, has_order = true }
-        end
-    end
-    for i = #(pending or {}), 1, -1 do
-        local record = pending[i]
-        if record.code == input then
-            if not seen_words[record.word] and (record.mark == "+" or record.mark == "-") then
-                local row = { word = record.word, code = record.code, source = record.append and "zzc_append" or "zzc" }
-                if record.append then
-                    append_rows[#append_rows + 1] = row
-                else
-                    keep_rows[#keep_rows + 1] = row
-                end
-                keep_words[record.word] = true
-                seen_words[record.word] = true
-            elseif not seen_words[record.word] and record.mark == "!" then
-                hide_words[record.word] = true
-                seen_words[record.word] = true
-            end
-        end
-    end
-    if not keep_rows[1] and not append_rows[1] then
-        for _ in pairs(hide_words) do
-            return { rows = keep_rows, append_rows = append_rows, keep_words = keep_words, hide_words = hide_words, has_delete_cover = true }
-        end
-        return nil
-    end
-    return { rows = keep_rows, append_rows = append_rows, keep_words = keep_words, hide_words = hide_words, has_exact_cover = keep_rows[1] ~= nil, has_append = append_rows[1] ~= nil }
-end
-
-update_pending_cover_for_code = function(code)
+update_effective_projection_for_code = function(code)
     if not code or code == "" then return end
-    pending_cover_by_code[code] = build_cover_from_records(code, pending_by_code[code] or {})
+    effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
+    if write_effective_state_file then write_effective_state_file() end
 end
 
-rebuild_pending_cover_index = function()
-    pending_cover_by_code = {}
+rebuild_effective_projection_index = function()
+    effective_projection_by_code = {}
     for code in pairs(pending_by_code) do
-        update_pending_cover_for_code(code)
+        if code and code ~= "" then
+            effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
+        end
     end
+    if write_effective_state_file then write_effective_state_file() end
 end
 
 local function enqueue_snapshot(snapshot)
     local first_code, first_word
-    local runtime_records = {}
     local ok, err = append_ops_records(snapshot or {})
     if not ok then
         return nil, err
     end
     for _, record in ipairs(snapshot or {}) do
         if (record.mark == "+" or record.mark == "-") and not record.append then
-            runtime_records[#runtime_records + 1] = record
             if not first_code and record.mark == "+" then
                 first_code = record.code
                 first_word = record.word
             end
         end
-    end
-    local has_delete_record = false
-    for _, record in ipairs(snapshot or {}) do
-        if record.mark == "!" then
-            has_delete_record = true
-            break
-        end
-    end
-    if has_delete_record then
-        ok, err = apply_runtime_records(snapshot)
-        if not ok then return nil, err end
-    else
-        append_runtime_records(runtime_records)
     end
     return first_code, first_word
 end
@@ -955,8 +826,8 @@ function M.move_word_to_code(word, source_code, target_code, probe_first, replac
     if not word or word == "" then return nil, "missing_word" end
     if not source_code or source_code == "" then return nil, "missing_source_code" end
     if not target_code or target_code == "" then return nil, "missing_target_code" end
-    local snapshot = build_replace_snapshot(word, target_code, replaced_word, probe_first)
-    snapshot[#snapshot + 1] = { mark = "!", word = word, code = source_code }
+    local snapshot = build_replace_snapshot(word, target_code, replaced_word, probe_first, "move")
+    snapshot[#snapshot + 1] = { op = "delete", mark = "!", word = word, code = source_code }
     local saved_code, saved_word = enqueue_snapshot(snapshot)
     return saved_code, saved_word
 end
@@ -965,7 +836,7 @@ function M.undo_last_tx()
     local records = load_pending_cache_current()
     local last_tx
     for i = #records, 1, -1 do
-        if records[i].tx and records[i].tx ~= "" then
+        if records[i].runtime and records[i].tx and records[i].tx ~= "" then
             last_tx = records[i].tx
             break
         end
@@ -973,22 +844,58 @@ function M.undo_last_tx()
     if not last_tx then return nil, "missing_tx" end
     local kept = {}
     for _, record in ipairs(records) do
-        if record.tx ~= last_tx then kept[#kept + 1] = record end
+        if record.runtime and record.tx ~= last_tx then kept[#kept + 1] = record end
     end
-    local ok, err = rewrite_ops_records(kept)
+    local ok, err = rewrite_runtime_ops_records(kept)
     if not ok then return nil, err end
     return true, last_tx
+end
+
+function M.undo_all_pending()
+    local had_records = false
+    for _, record in ipairs(load_pending_cache_current() or {}) do
+        if record and record.code and record.word then
+            had_records = true
+            break
+        end
+    end
+    local header_lines = {}
+    for line in ops_header():gmatch("([^\n]*)\n") do
+        header_lines[#header_lines + 1] = line
+    end
+    local ok, err = write_file_atomic(pending_file(), header_lines)
+    if not ok then return nil, err end
+    ok, err = write_file_atomic(runtime_ops_file(), {})
+    if not ok then return nil, err end
+    for _, file_path in ipairs({ legacy_root_ops_file(), legacy_ops_file(), legacy_pending_file() }) do
+        local f = io.open(file_path, "r")
+        if f then
+            f:close()
+            ok, err = write_file_atomic(file_path, {})
+            if not ok then return nil, err end
+        end
+    end
+    pending_cache = {}
+    pending_by_code = {}
+    effective_projection_by_code = {}
+    effective_by_code = {}
+    pending_loaded = true
+    write_pending_version()
+    if write_effective_state_file then write_effective_state_file() end
+    return true, had_records
 end
 
 function M.delete_word_at_code(word, code)
     if not word or word == "" then return nil, "missing_word" end
     if not code or code == "" then return nil, "missing_code" end
-    local record = { mark = "!", word = word, code = code, tx = new_tx() }
+    local record = { op = "delete", mark = "!", word = word, code = code, tx = new_tx() }
     local ok, err = append_ops_record(record)
     if not ok then return nil, err end
-    ok, err = remove_runtime_exact_word(word)
-    if not ok then return nil, err end
     return true, record.tx
+end
+
+function M.flush_runtime_ops()
+    return flush_runtime_ops_to_pending()
 end
 
 function M.reorder_words_at_code(words, code)
@@ -1001,7 +908,7 @@ function M.reorder_words_at_code(words, code)
     for _, word in ipairs(words or {}) do
         if word and word ~= "" and not seen[word] and word_valid_at_code(pending, word, code) then
             seen[word] = true
-            records[#records + 1] = { mark = "^", word = word, code = code, tx = tx }
+            records[#records + 1] = { op = "order", mark = "^", word = word, code = code, tx = tx }
         end
     end
     if not records[1] then return nil, "missing_words" end
@@ -1085,15 +992,15 @@ local function append_next_code(word, code)
     return code .. p
 end
 
-local function build_direct_snapshot(word, code)
-    return { { mark = "+", word = word, code = code } }
+local function build_direct_snapshot(word, code, op)
+    return { { op = op or "make", mark = "+", word = word, code = code } }
 end
 
 function M.append_word_at_code(items, target_code)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
     local word = M.word_from_items(items)
     if not word or word == "" then return nil, "missing_word" end
-    local snapshot = { { mark = "+", append = true, word = word, code = target_code } }
+    local snapshot = { { op = "append", mark = "+", append = true, word = word, code = target_code } }
     local _, err = enqueue_snapshot(snapshot)
     if err then
         return nil, err
@@ -1101,8 +1008,30 @@ function M.append_word_at_code(items, target_code)
     return target_code, word
 end
 
-build_replace_snapshot = function(word, code, replaced_word, probe_first)
-    local snapshot = build_direct_snapshot(word, code)
+function M.restore_rows_for_input(input)
+    if not input or input == "" then return nil end
+    load_pending_cache_current()
+    local effective = effective_by_code[input]
+    local rows = effective and effective.restore_rows or nil
+    if not (rows and rows[1]) then return nil end
+    local out = {}
+    for _, row in ipairs(rows) do
+        out[#out + 1] = { word = row.word, code = row.code, source = row.source or "zzc_restore" }
+    end
+    return out
+end
+
+function M.restore_word_at_code(word, code)
+    if not word or word == "" then return nil, "missing_word" end
+    if not code or code == "" then return nil, "missing_code" end
+    local record = { op = "restore", mark = "+", restore = true, word = word, code = code, tx = new_tx() }
+    local ok, err = append_ops_record(record)
+    if not ok then return nil, err end
+    return true, record.tx
+end
+
+build_replace_snapshot = function(word, code, replaced_word, probe_first, op)
+    local snapshot = build_direct_snapshot(word, code, op)
     if (not replaced_word or replaced_word == "") and probe_first then
         local ok, probed = pcall(function() return probe_first(code) end)
         if ok and probed and probed ~= "" then replaced_word = probed end
@@ -1114,8 +1043,8 @@ build_replace_snapshot = function(word, code, replaced_word, probe_first)
         visiting[displaced_word] = true
         local next_code = append_next_code(displaced_word, displaced_code)
         if next_code then
-            snapshot[#snapshot + 1] = { mark = "-", word = displaced_word, code = next_code }
-            snapshot[#snapshot + 1] = { mark = "!", word = displaced_word, code = displaced_code }
+            snapshot[#snapshot + 1] = { op = "move", mark = "-", word = displaced_word, code = next_code }
+            snapshot[#snapshot + 1] = { op = "delete", mark = "!", word = displaced_word, code = displaced_code }
             if #next_code >= 6 then break end
             local next_word = nil
             if probe_first then
@@ -1132,24 +1061,13 @@ build_replace_snapshot = function(word, code, replaced_word, probe_first)
     return snapshot
 end
 
-function M.pending_candidates_for_input(input)
-    local session_rows = session_exact_cache[input]
-    if session_rows and session_rows[1] then
-        return { rows = session_rows, exact_rows = session_rows, has_exact = true }
-    end
-    local runtime_exact_rows = load_runtime_exact_cache()[input]
-    if runtime_exact_rows and runtime_exact_rows[1] then
-        return { rows = runtime_exact_rows, exact_rows = runtime_exact_rows, has_exact = true }
-    end
-    return nil
-end
-
 local function save_word_to_code(items, code, replaced_word, probe_first)
     local word = M.word_from_items(items)
     if not code then
         return nil, "missing_code"
     end
-    local snapshot = build_replace_snapshot(word, code, replaced_word, probe_first)
+    local op = replaced_word and replaced_word ~= "" and "replace" or "make"
+    local snapshot = build_replace_snapshot(word, code, replaced_word, probe_first, op)
     local saved_code, err = enqueue_snapshot(snapshot)
     if not saved_code then
         return nil, err
@@ -1173,43 +1091,55 @@ function M.zzc_cover_for_input(input, opts)
     if not input or input == "" then return nil end
     opts = opts or {}
     if opts.ignore_order then
-        return build_cover_from_records(input, pending_records_for_code(input), opts)
+        return build_effective_projection(input, pending_records_for_code(input), opts)
     end
     load_pending_cache_current()
-    return pending_cover_by_code[input]
+    return effective_by_code[input]
 end
 
 function M.zzc_order_for_input(input)
     if not input or input == "" then return nil end
     load_pending_cache_current()
-    local cover = pending_cover_by_code[input]
+    local cover = effective_by_code[input]
     if cover and cover.has_order then return cover end
     return nil
 end
 
-function M.cover_for_probe(input, opts)
-    local pending = M.pending_candidates_for_input(input)
-    if pending and pending.rows and pending.rows[1] then return pending end
-    return M.zzc_cover_for_input(input, opts)
-end
-
-function M.candidates_for_input(input)
-    local out, words, codes, exact_rows = {}, {}, {}, {}
-    local pending = M.pending_candidates_for_input(input)
-    if pending and pending.rows then
-        for _, row in ipairs(pending.rows) do
-            out[#out + 1] = { word = row.word, code = row.code, source = row.source or "pending" }
-            words[row.word] = true
-            codes[row.code] = true
-        end
-        if pending.has_exact then
-            for _, row in ipairs(pending.exact_rows) do
-                exact_rows[#exact_rows + 1] = { word = row.word, code = row.code, source = row.source or "pending" }
+function M.zzc_completion_rows_for_prefix(prefix, limit)
+    if not prefix or prefix == "" then return nil end
+    load_pending_cache_current()
+    local rows, seen = {}, {}
+    limit = limit or 30
+    for code, pending in pairs(pending_by_code) do
+        if code ~= prefix and code:sub(1, #prefix) == prefix then
+            local cover = effective_by_code[code] or effective_projection_by_code[code] or build_effective_projection(code, pending)
+            if cover then
+                local function push(row)
+                    if row and row.word and row.word ~= "" and row.code and not seen[row.word] then
+                        rows[#rows + 1] = { word = row.word, code = row.code, source = row.source or "zzc_completion" }
+                        seen[row.word] = true
+                    end
+                end
+                for _, row in ipairs(cover.rows or {}) do
+                    push(row)
+                end
+                for _, row in ipairs(cover.append_rows or {}) do
+                    push(row)
+                end
             end
         end
     end
-    if not out[1] then return nil end
-    return { prefix = nil, rows = out, words = words, codes = codes, exact_rows = exact_rows, has_exact = #exact_rows > 0 }
+    table.sort(rows, function(left, right)
+        if #left.code ~= #right.code then return #left.code < #right.code end
+        if left.code ~= right.code then return left.code < right.code end
+        return left.word < right.word
+    end)
+    if not rows[1] then return nil end
+    return rows
+end
+
+function M.cover_for_probe(input, opts)
+    return M.zzc_cover_for_input(input, opts)
 end
 
 return M
