@@ -8,8 +8,8 @@ Windows:
 - Windows 只需要双击 exe，不需要 Python。
 
 Mac:
-- Mac_词库合并.py
-- Mac_撤回合并.py
+- Mac_词库合并
+- Mac_撤回合并
 - 交给有 Mac 环境的人打包成无扩展可执行文件后使用。
 
 Linux:

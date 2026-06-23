@@ -10,33 +10,66 @@ from time import perf_counter
 sys.dont_write_bytecode = True
 
 
-SCRIPT_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
-ROOT = SCRIPT_PATH.parents[1]
-ZZC_DIR = ROOT / "zzc"
-ROLLBACK_DIR = ZZC_DIR / "撤回合并"
-INDEX = ZZC_DIR / "index.tsv"
-CHAR_PARTS = ZZC_DIR / "char_parts.tsv"
-CACHE_VERSION = ZZC_DIR / "cache_version.txt"
 KEEP_ROLLBACKS = 3
 
 
-def find_one(pattern: str) -> Path:
-    matches = sorted(ROOT.glob(pattern))
+def find_one(base: Path, pattern: str) -> Path:
+    matches = sorted(base.glob(pattern))
     if not matches:
-        raise FileNotFoundError(f"找不到文件：{pattern}")
+        raise FileNotFoundError(f"missing file: {pattern}")
     return matches[0]
 
 
-OPS = find_one("*.zzc.dict.yaml")
-SCHEMA = OPS.name.removesuffix(".zzc.dict.yaml")
+def schema_target_names(schema: str) -> list[str]:
+    primary = f"{schema}.cizu.dict.yaml" if schema == "xmjd6" else f"{schema}.dict.yaml"
+    return [primary, f"{schema}.fjcy.dict.yaml"]
+
+
+def has_target_dicts(base: Path, schema: str) -> bool:
+    return all((base / name).exists() for name in schema_target_names(schema))
+
+
+def discover_layout() -> tuple[Path, Path, Path, str]:
+    script_path = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
+    start_dir = script_path.parent
+    op_candidates = sorted(start_dir.glob("*.zzc.dict.yaml"))
+    op_candidates += sorted(start_dir.parent.glob("*.zzc.dict.yaml"))
+    seen: set[Path] = set()
+    unique_ops: list[Path] = []
+    for path in op_candidates:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique_ops.append(resolved)
+    if not unique_ops:
+        raise FileNotFoundError(f"missing *.zzc.dict.yaml in {start_dir} or {start_dir.parent}")
+
+    for ops_path in unique_ops:
+        schema = ops_path.name.removesuffix(".zzc.dict.yaml")
+        for root in (ops_path.parent, ops_path.parent.parent):
+            if has_target_dicts(root, schema):
+                zzc_dir = root / "zzc" if (root / "zzc").exists() else ops_path.parent
+                return root, zzc_dir, ops_path, schema
+    ops_path = unique_ops[0]
+    schema = ops_path.name.removesuffix(".zzc.dict.yaml")
+    root = ops_path.parent.parent if ops_path.parent.name == "zzc" else ops_path.parent
+    zzc_dir = root / "zzc" if (root / "zzc").exists() else ops_path.parent
+    return root, zzc_dir, ops_path, schema
+
+
+ROOT, ZZC_DIR, OPS, SCHEMA = discover_layout()
+ROLLBACK_DIR = ZZC_DIR / "撤回合并"
+INDEX = ZZC_DIR / "index.tsv"
+RUNTIME_EXACT = ZZC_DIR / "runtime_exact.tsv"
+RUNTIME_OPS = ZZC_DIR / "runtime_ops.tsv"
+EFFECTIVE_STATE = ZZC_DIR / "effective_state.tsv"
+CHAR_PARTS = ZZC_DIR / "char_parts.tsv"
+CACHE_VERSION = ZZC_DIR / "cache_version.txt"
 CHAR_DICT = ROOT / f"{SCHEMA}.danzi.dict.yaml"
 LEGACY_ROOT_OPS = ROOT / f"{SCHEMA}.zzc.ops.tsv"
 LEGACY_OPS = ZZC_DIR / "ops.tsv"
 LEGACY_PENDING = ZZC_DIR / "pending.tsv"
-PRIMARY_DICT = ROOT / f"{SCHEMA}.cizu.dict.yaml" if (ROOT / f"{SCHEMA}.cizu.dict.yaml").exists() else ROOT / f"{SCHEMA}.dict.yaml"
-TARGET_DICTS = [PRIMARY_DICT, ROOT / f"{SCHEMA}.fjcy.dict.yaml"]
-
-CHAR_PARTS_CACHE: dict[str, list[dict[str, str]]] | None = None
+TARGET_DICTS = [ROOT / name for name in schema_target_names(SCHEMA)]
 
 
 def read_text(path: Path) -> str:
@@ -67,14 +100,23 @@ def parse_ops_line(line: str) -> dict[str, str] | None:
     stripped = text.strip()
     if not stripped or stripped in {"---", "..."}:
         return None
-    if stripped.startswith("#") or stripped.startswith("name:") or stripped.startswith("version:"):
+    if stripped.startswith("#") or stripped.startswith("- "):
         return None
-    if stripped.startswith("sort:") or stripped.startswith("use_preset_vocabulary:") or stripped.startswith("columns:"):
-        return None
-    if stripped.startswith("- ") or stripped.startswith("  - "):
+    if ":" in stripped and "\t" not in stripped:
         return None
 
     parts = text.split("\t")
+    if len(parts) == 5:
+        tx, op, word, code, mark_token = [part.strip() for part in parts]
+        mark = mark_token[:1]
+        if op and word and code and mark in {"+", "-", "!", "^"}:
+            row = {"tx": tx, "op": op, "mark": mark, "word": word, "code": code}
+            if mark_token == "+a":
+                row["append"] = "1"
+            if mark_token == "+r" or op == "restore":
+                row["restore"] = "1"
+            return row
+
     if len(parts) >= 2:
         word = parts[0].strip()
         code_part = parts[1].strip()
@@ -84,17 +126,19 @@ def parse_ops_line(line: str) -> dict[str, str] | None:
             mark_token = comment_parts[0] if comment_parts else ""
             mark = mark_token[:1]
             code = code.strip()
-            if mark in {"+", "-", "!", "^"} and word and code:
+            if word and code and mark in {"+", "-", "!", "^"}:
                 row = {"mark": mark, "word": word, "code": code}
                 if mark_token == "+a":
                     row["append"] = "1"
+                if mark_token == "+r":
+                    row["restore"] = "1"
                 if len(comment_parts) >= 2 and comment_parts[1].isdigit():
                     row["tx"] = comment_parts[1]
                 return row
 
     if len(parts) == 3:
-        mark, word, code = parts
-        if mark in {"+", "-", "!", "^"} and word and code:
+        mark, word, code = [part.strip() for part in parts]
+        if word and code and mark in {"+", "-", "!", "^"}:
             return {"mark": mark, "word": word, "code": code}
     return None
 
@@ -143,116 +187,66 @@ def rebuild_char_parts() -> int:
 
 def load_ops() -> list[dict[str, str]]:
     ops: list[dict[str, str]] = []
-    for source in (OPS, LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
+    for source in (OPS, RUNTIME_OPS, LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
         if not source.exists():
             continue
         for line in read_text(source).splitlines():
             row = parse_ops_line(line)
             if row:
+                row["source"] = str(source)
                 ops.append(row)
     return ops
 
 
-def load_char_parts() -> dict[str, list[dict[str, str]]]:
-    global CHAR_PARTS_CACHE
-    if CHAR_PARTS_CACHE is not None:
-        return CHAR_PARTS_CACHE
-    out: dict[str, list[dict[str, str]]] = {}
-    if not CHAR_PARTS.exists():
-        rebuild_char_parts()
-    for line in read_text(CHAR_PARTS).splitlines():
-        fields = line.split("\t")
-        if len(fields) < 4:
+def latest_state_by_word_code(ops: list[dict[str, str]]) -> dict[tuple[str, str], dict[str, str]]:
+    latest: dict[tuple[str, str], dict[str, str]] = {}
+    for row in reversed(ops):
+        key = (row["word"], row["code"])
+        if row["mark"] == "^" or key in latest:
             continue
-        text, s, y, p = fields[:4]
-        code = fields[4] if len(fields) >= 5 and fields[4] else f"{s}{y}{p}"
-        if text and s and y and p:
-            entry = {"s": s, "y": y, "p": p, "code": code}
-            bucket = out.setdefault(text, [])
-            if entry not in bucket:
-                bucket.append(entry)
-    CHAR_PARTS_CACHE = out
-    return out
+        latest[key] = row
+    return latest
 
 
-def same_parts(a: dict[str, str], b: dict[str, str]) -> bool:
-    return a["s"] == b["s"] and a["y"] == b["y"] and a["p"] == b["p"]
-
-
-def hint_matches(entry: dict[str, str], hint: dict[str, str] | str | None) -> bool:
-    if hint is None:
-        return True
-    if isinstance(hint, str):
-        code = entry.get("code", "")
-        return code.startswith(hint) or hint.startswith(code)
-    prefix = hint.get("code_prefix", "")
-    if prefix:
-        code = entry.get("code", "")
-        if not (code.startswith(prefix) or prefix.startswith(code)):
-            return False
-    for key in ("s", "y", "p"):
-        value = hint.get(key, "")
-        if value and entry.get(key) != value:
-            return False
-    return True
-
-
-def collapse_options(options: list[dict[str, str]]) -> dict[str, str] | None:
-    if not options:
-        return None
-    first = options[0]
-    for entry in options[1:]:
-        if not same_parts(first, entry):
-            return None
-    return first
-
-
-def parts_for_char(ch: str, hint: dict[str, str] | str | None) -> dict[str, str]:
-    options = load_char_parts().get(ch, [])
-    if not options:
-        raise ValueError(f"missing_char:{ch}")
-    if len(options) == 1:
-        return options[0]
-    matched = [entry for entry in options if hint_matches(entry, hint)]
-    if len(matched) == 1:
-        return matched[0]
-    collapsed = collapse_options(matched)
-    if collapsed:
-        return collapsed
-    collapsed = collapse_options(options)
-    if collapsed:
-        return collapsed
-    raise ValueError(f"ambiguous_char:{ch}")
+def has_prior_add_fact(ops: list[dict[str, str]], key: tuple[str, str], latest: dict[str, str]) -> bool:
+    for row in ops:
+        row_key = (row["word"], row["code"])
+        if row is latest:
+            break
+        if row_key != key or row["mark"] == "^":
+            continue
+        if row["mark"] in {"+", "-"} and not row.get("restore"):
+            return True
+    return False
 
 
 def final_rows_from_ops(ops: list[dict[str, str]]) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-    deleted: set[tuple[str, str]] = set()
-    for row in reversed(ops):
-        key = (row["word"], row["code"])
+    latest = latest_state_by_word_code(ops)
+    for key, row in latest.items():
         if row["mark"] == "!":
-            deleted.add(key)
             continue
-        if row["mark"] == "^":
+        if row.get("restore") and not has_prior_add_fact(ops, key, row):
             continue
-        if key in seen or key in deleted:
-            continue
-        seen.add(key)
         rows.append(key)
     rows.sort(key=lambda item: (len(item[1]), item[1], item[0]))
     return rows
 
 
 def latest_order_map(ops: list[dict[str, str]]) -> dict[str, list[str]]:
+    latest_state = latest_state_by_word_code(ops)
     latest_tx_by_code: dict[str, str] = {}
     for row in ops:
         if row["mark"] == "^" and row.get("tx"):
             latest_tx_by_code[row["code"]] = row["tx"]
+
     order_map: dict[str, list[str]] = {}
     seen_by_code: dict[str, set[str]] = {}
     for row in ops:
         if row["mark"] != "^" or latest_tx_by_code.get(row["code"]) != row.get("tx"):
+            continue
+        state = latest_state.get((row["word"], row["code"]))
+        if not state or state["mark"] == "!":
             continue
         seen = seen_by_code.setdefault(row["code"], set())
         if row["word"] in seen:
@@ -262,6 +256,32 @@ def latest_order_map(ops: list[dict[str, str]]) -> dict[str, list[str]]:
     return order_map
 
 
+def compact_ops(ops: list[dict[str, str]]) -> list[dict[str, str]]:
+    latest = latest_state_by_word_code(ops)
+    latest_order_tx_by_code: dict[str, str] = {}
+    for row in ops:
+        if row["mark"] == "^" and row.get("tx"):
+            latest_order_tx_by_code[row["code"]] = row["tx"]
+
+    out: list[dict[str, str]] = []
+    for row in ops:
+        key = (row["word"], row["code"])
+        if row["mark"] != "^" and latest.get(key) is row:
+            out.append(row)
+
+    seen_order: set[tuple[str, str]] = set()
+    for row in ops:
+        if row["mark"] != "^" or latest_order_tx_by_code.get(row["code"]) != row.get("tx"):
+            continue
+        key = (row["word"], row["code"])
+        state = latest.get(key)
+        if not state or state["mark"] == "!" or key in seen_order:
+            continue
+        seen_order.add(key)
+        out.append(row)
+    return out
+
+
 def reorder_dict_lines(lines: list[str], order_map: dict[str, list[str]]) -> list[str]:
     if not order_map:
         return lines
@@ -269,12 +289,15 @@ def reorder_dict_lines(lines: list[str], order_map: dict[str, list[str]]) -> lis
     for index, line in enumerate(lines):
         row = parse_dict_row(line)
         if row and row[1] in order_map:
-            buckets.setdefault(row[1], []).append((index, row[0], line))
+            word, code = row
+            buckets.setdefault(code, []).append((index, word, line))
+
     sorted_buckets: dict[str, list[str]] = {}
     for code, rows in buckets.items():
         rank = {word: idx for idx, word in enumerate(order_map.get(code, []))}
         rows.sort(key=lambda item: (rank.get(item[1], 1_000_000), item[0]))
         sorted_buckets[code] = [line for _, _, line in rows]
+
     out: list[str] = []
     inserted: set[str] = set()
     for line in lines:
@@ -287,20 +310,6 @@ def reorder_dict_lines(lines: list[str], order_map: dict[str, list[str]]) -> lis
             continue
         out.append(line)
     return out
-
-
-def build_code_locations(paths: list[Path]) -> dict[str, tuple[Path, int]]:
-    locations: dict[str, tuple[Path, int]] = {}
-    for path in paths:
-        if not path.exists():
-            continue
-        for index, line in enumerate(read_text(path).splitlines()):
-            row = parse_dict_row(line)
-            if not row:
-                continue
-            code = row[1]
-            locations.setdefault(code, (path, index))
-    return locations
 
 
 def is_zzc_code(code: str) -> bool:
@@ -321,21 +330,31 @@ def find_insert_index(lines: list[str], code: str) -> int:
         if row_code > code:
             return previous_index + 1 if previous_index >= 0 else index
         previous_index = index
-    if previous_index >= 0:
-        return previous_index + 1
-    return len(lines)
+    return previous_index + 1 if previous_index >= 0 else len(lines)
+
+
+def build_code_locations(paths: list[Path]) -> dict[str, Path]:
+    locations: dict[str, Path] = {}
+    for path in paths:
+        if not path.exists():
+            continue
+        for line in read_text(path).splitlines():
+            row = parse_dict_row(line)
+            if row:
+                locations.setdefault(row[1], path)
+    return locations
 
 
 def insert_rows_by_code(
     dict_lines: dict[Path, list[str]],
     keep_rows: list[tuple[str, str]],
-    code_locations: dict[str, tuple[Path, int]],
+    code_locations: dict[str, Path],
 ) -> dict[Path, int]:
     inserted_by_path: dict[Path, int] = {}
     rows_by_path: dict[Path, list[tuple[str, str]]] = {}
     fallback = TARGET_DICTS[0]
     for word, code in keep_rows:
-        path = code_locations.get(code, (fallback, 0))[0]
+        path = code_locations.get(code, fallback)
         rows_by_path.setdefault(path, []).append((word, code))
 
     for path, rows in rows_by_path.items():
@@ -354,16 +373,31 @@ def insert_rows_by_code(
 def prune_rollback_logs() -> None:
     if not ROLLBACK_DIR.exists():
         return
-    logs = sorted([p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"], key=lambda p: p.name, reverse=True)
+    logs = sorted(
+        [p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"],
+        key=lambda p: p.name,
+        reverse=True,
+    )
     for old in logs[KEEP_ROLLBACKS:]:
         shutil.rmtree(old, ignore_errors=True)
+
+
+def backup_if_exists(path: Path, backup_dir: Path, manifest: list[str], key: str) -> None:
+    if not path.exists():
+        return
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup = backup_dir / path.name
+    shutil.copy2(path, backup)
+    manifest.append(f"{key}={path}|{backup.relative_to(backup_dir.parent)}")
 
 
 def create_rollback_log(ops_count: int, keep_count: int) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = ROLLBACK_DIR / stamp
     dict_dir = log_dir / "dicts"
+    state_dir = log_dir / "state"
     dict_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
 
     manifest = [
         f"created_at={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -375,6 +409,14 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
         "target_paths=" + "|".join(str(p) for p in TARGET_DICTS if p.exists()),
     ]
 
+    backup_if_exists(OPS, state_dir, manifest, "state_path")
+    backup_if_exists(RUNTIME_OPS, state_dir, manifest, "state_path")
+    backup_if_exists(EFFECTIVE_STATE, state_dir, manifest, "state_path")
+    backup_if_exists(RUNTIME_EXACT, state_dir, manifest, "state_path")
+    backup_if_exists(INDEX, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_ROOT_OPS, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_OPS, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_PENDING, state_dir, manifest, "state_path")
     if OPS.exists():
         shutil.copy2(OPS, log_dir / "before_zzc.dict.yaml")
     for path in TARGET_DICTS:
@@ -387,10 +429,16 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
 
 
 def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, str]], order_map: dict[str, list[str]]) -> None:
-    words_to_remove = {row["word"] for row in ops if row["mark"] in {"+", "-"} and not row.get("append")}
-    exact_to_remove = {(row["word"], row["code"]) for row in ops if row["mark"] == "!"}
+    latest = latest_state_by_word_code(ops)
+    words_to_remove = {
+        row["word"]
+        for row in latest.values()
+        if row["mark"] in {"+", "-"} and not row.get("append") and not row.get("restore")
+    }
+    exact_to_remove = {(word, code) for (word, code), row in latest.items() if row["mark"] == "!"}
     code_locations = build_code_locations(TARGET_DICTS)
     dict_lines: dict[Path, list[str]] = {}
+
     for path in TARGET_DICTS:
         if not path.exists():
             continue
@@ -404,26 +452,23 @@ def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, 
                     removed += 1
                     continue
             kept.append(line)
-        kept = reorder_dict_lines(kept, order_map)
-        dict_lines[path] = kept
-        print(f"已整理：{path.name}，移除 {removed} 条")
+        dict_lines[path] = reorder_dict_lines(kept, order_map)
+        print(f"cleaned {path.name}: removed={removed}")
+
     inserted_by_path = insert_rows_by_code(dict_lines, keep_rows, code_locations)
     for path, lines in dict_lines.items():
         write_text(path, "\n".join(lines) + "\n")
-    for path in TARGET_DICTS:
-        count = inserted_by_path.get(path, 0)
-        if count:
-            print(f"已按编码插入最终 zzc 词条：{path.name}，{count} 条")
+    for path, count in inserted_by_path.items():
+        print(f"inserted {path.name}: rows={count}")
 
 
 def touch_cache_version() -> None:
-    stamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-    write_text(CACHE_VERSION, f"{stamp}\n")
+    write_text(CACHE_VERSION, datetime.now().strftime("%Y%m%d%H%M%S%f") + "\n")
 
 
 def clear_ops() -> None:
     write_text(OPS, ops_header())
-    for source in (LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
+    for source in (RUNTIME_OPS, LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
         if source.exists():
             write_text(source, "")
     touch_cache_version()
@@ -435,30 +480,31 @@ def clear_runtime_cache() -> None:
         group_file.unlink()
         removed += 1
     write_text(INDEX, "")
-    write_text(ZZC_DIR / "runtime_exact.tsv", "")
-    print(f"已清空运行快照：group={removed}")
+    write_text(RUNTIME_EXACT, "")
+    write_text(EFFECTIVE_STATE, "")
+    print(f"cleared runtime cache: group={removed}")
 
 
 def main() -> int:
     started = perf_counter()
-    print(f"方案目录：{ROOT}")
+    print(f"scheme root: {ROOT}")
     char_count = rebuild_char_parts()
-    print(f"已重建 char_parts.tsv：{char_count} 字")
+    print(f"rebuilt char_parts.tsv: {char_count} chars")
 
-    ops = load_ops()
+    ops = compact_ops(load_ops())
     keep_rows = final_rows_from_ops(ops)
-    print(f"待合并操作：{len(ops)} 条；最终写入：{len(keep_rows)} 条")
+    print(f"pending ops: {len(ops)}; final rows: {len(keep_rows)}")
     if not ops:
-        print("没有需要合并的 zzc 操作。")
+        print("no zzc ops to merge")
         return 0
 
     log_dir = create_rollback_log(len(ops), len(keep_rows))
-    print(f"已创建撤回备份：{log_dir.relative_to(ZZC_DIR)}")
+    print(f"rollback backup: {log_dir.relative_to(ZZC_DIR)}")
 
     merge_into_real_dicts(ops, keep_rows, latest_order_map(ops))
     clear_ops()
     clear_runtime_cache()
-    print(f"合并完成，用时 {perf_counter() - started:.1f} 秒")
+    print(f"merge done: {perf_counter() - started:.1f}s")
     return 0
 
 
@@ -466,5 +512,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print(f"词库合并失败：{exc}", file=sys.stderr)
+        print(f"merge failed: {exc}", file=sys.stderr)
         raise SystemExit(1)

@@ -9,42 +9,49 @@ sys.dont_write_bytecode = True
 
 
 SCRIPT_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
-ROOT = SCRIPT_PATH.parents[1]
-ZZC_DIR = ROOT / "zzc"
+START_DIR = SCRIPT_PATH.parent
+ZZC_DIR = START_DIR if START_DIR.name == "zzc" else START_DIR / "zzc"
+if not ZZC_DIR.exists() and (START_DIR.parent / "zzc").exists():
+    ZZC_DIR = START_DIR.parent / "zzc"
 ROLLBACK_DIR = ZZC_DIR / "撤回合并"
 
 
-def read_manifest(path: Path) -> dict[str, str]:
-    out: dict[str, str] = {}
+def read_manifest(path: Path) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
     manifest = path / "manifest.txt"
     if not manifest.exists():
         return out
     for line in manifest.read_text(encoding="utf-8-sig").splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            out[key.strip()] = value.strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        out.setdefault(key.strip(), []).append(value.strip())
     return out
 
 
 def latest_logs() -> list[Path]:
     if not ROLLBACK_DIR.exists():
         return []
-    return sorted([p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"], key=lambda p: p.name, reverse=True)[:3]
+    logs = [p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"]
+    return sorted(logs, key=lambda p: p.name, reverse=True)[:3]
+
+
+def first(meta: dict[str, list[str]], key: str, default: str = "") -> str:
+    values = meta.get(key) or []
+    return values[0] if values else default
 
 
 def choose_log(logs: list[Path]) -> Path | None:
-    print("请选择要恢复的备份：")
+    print("choose rollback backup:")
     for idx, log in enumerate(logs, 1):
         meta = read_manifest(log)
-        created = meta.get("created_at", log.name)
-        ops_count = meta.get("ops_count", "?")
-        keep_count = meta.get("keep_count", "?")
-        print(f"{idx}. {log.name}  {created}  操作 {ops_count} 条，写入 {keep_count} 条")
-    print("0. 取消")
-    choice = input("输入序号：").strip()
-    if choice == "0" or choice == "":
-        return None
-    if not choice.isdigit():
+        created = first(meta, "created_at", log.name)
+        ops_count = first(meta, "ops_count", "?")
+        keep_count = first(meta, "keep_count", "?")
+        print(f"{idx}. {log.name}  {created}  ops={ops_count} keep={keep_count}")
+    print("0. cancel")
+    choice = input("number: ").strip()
+    if choice in {"", "0"} or not choice.isdigit():
         return None
     index = int(choice)
     if index < 1 or index > len(logs):
@@ -52,46 +59,63 @@ def choose_log(logs: list[Path]) -> Path | None:
     return logs[index - 1]
 
 
+def restore_state_files(log: Path, meta: dict[str, list[str]]) -> None:
+    for item in meta.get("state_path", []):
+        target_text, _, backup_text = item.partition("|")
+        if not target_text or not backup_text:
+            continue
+        target = Path(target_text)
+        backup = log / backup_text
+        if backup.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(backup, target)
+            print(f"restored state: {target}")
+        else:
+            print(f"missing state backup: {backup}")
+
+
 def restore_log(log: Path) -> None:
     meta = read_manifest(log)
-    ops_path = Path(meta.get("ops_path", ""))
-    target_paths = [Path(item) for item in meta.get("target_paths", "").split("|") if item]
+    ops_path = Path(first(meta, "ops_path"))
+    target_paths = [Path(item) for item in first(meta, "target_paths").split("|") if item]
     if not ops_path:
-        raise RuntimeError("manifest 缺少 ops_path")
+        raise RuntimeError("manifest missing ops_path")
 
     before_zzc = log / "before_zzc.dict.yaml"
     if before_zzc.exists():
         shutil.copy2(before_zzc, ops_path)
-        print(f"已恢复 zzc：{ops_path}")
+        print(f"restored zzc: {ops_path}")
     else:
-        print("未找到 before_zzc.dict.yaml，跳过 zzc 恢复")
+        print("missing before_zzc.dict.yaml; skipped zzc restore")
 
     dict_dir = log / "dicts"
     for target in target_paths:
         backup = dict_dir / target.name
         if backup.exists():
             shutil.copy2(backup, target)
-            print(f"已恢复码表：{target}")
+            print(f"restored dict: {target}")
         else:
-            print(f"未找到备份，跳过：{target}")
+            print(f"missing dict backup: {target}")
+
+    restore_state_files(log, meta)
 
 
 def main() -> int:
     logs = latest_logs()
     if not logs:
-        print("没有可撤回的合并备份。")
+        print("no rollback backup")
         return 0
     log = choose_log(logs)
     if not log:
-        print("已取消。")
+        print("cancelled")
         return 0
-    print(f"将恢复：{log.name}")
-    confirm = input("会覆盖当前正式码表和 zzc 文件，确认恢复？输入 YES：").strip()
+    print(f"will restore: {log.name}")
+    confirm = input("this overwrites dict and zzc state files. type YES: ").strip()
     if confirm != "YES":
-        print("已取消。")
+        print("cancelled")
         return 0
     restore_log(log)
-    print("撤回完成。")
+    print("rollback done")
     return 0
 
 
@@ -99,5 +123,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print(f"撤回合并失败：{exc}", file=sys.stderr)
+        print(f"rollback failed: {exc}", file=sys.stderr)
         raise SystemExit(1)
