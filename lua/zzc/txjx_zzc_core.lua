@@ -18,6 +18,16 @@ local build_replace_snapshot
 local rebuild_effective_projection_index
 local update_effective_projection_for_code
 local write_effective_state_file
+local request_effective_state_write
+local with_effective_state_batch
+local runtime_ops_file
+local effective_state_file
+local pending_record_from_line
+local runtime_reminder_seen_1000 = false
+local runtime_reminder_pending_comment = nil
+local zzc_reminder_shown_10000 = false
+local zzc_reminder_last_time = 0
+local zzc_effective_count_snapshot = nil
 
 local function is_emoji_codepoint(cp)
     return (cp >= 0x1F000 and cp <= 0x1FAFF)
@@ -70,6 +80,24 @@ function M.is_real_candidate(cand)
         and cand_type ~= "punct"
 end
 
+function M.is_collect_selectable_candidate(cand)
+    return M.is_real_candidate(cand)
+end
+
+function M.is_completion_hint_candidate(cand)
+    local cand_type = M.candidate_type(cand)
+    local comment = cand and cand.comment or ""
+    return cand_type == "completion"
+        or (type(comment) == "string" and comment:match("^~[A-Za-z;']+$") ~= nil)
+end
+
+function M.candidate_visible_under_cover(cand, cover)
+    if not M.is_collect_selectable_candidate(cand) then return false end
+    if not cover or not cand or not cand.text then return true end
+    return (not cover.keep_words or not cover.keep_words[cand.text])
+        and (not cover.hide_words or not cover.hide_words[cand.text])
+end
+
 local function data_dir()
     if rime_api and rime_api.get_user_data_dir then
         return rime_api.get_user_data_dir()
@@ -84,6 +112,83 @@ end
 
 local function path(name)
     return join_path(data_dir(), name)
+end
+
+local function flag_exists(name)
+    local f = io.open(path(name), "r")
+    if not f then return false end
+    f:close()
+    return true
+end
+
+local function count_nonempty_lines(file_path)
+    local f = io.open(file_path, "r")
+    if not f then return 0 end
+    local n = 0
+    for line in f:lines() do
+        if line and line ~= "" and line:sub(1, 1) ~= "#" then
+            n = n + 1
+        end
+    end
+    f:close()
+    return n
+end
+
+local function runtime_ops_count()
+    local f = io.open(runtime_ops_file(), "r")
+    if not f then return 0 end
+    local n = 0
+    for line in f:lines() do
+        local record = pending_record_from_line(line)
+        if record and record.word and record.code then n = n + 1 end
+    end
+    f:close()
+    return n
+end
+
+local function update_runtime_reminder()
+    local n = runtime_ops_count()
+    if n >= 3000 then
+        runtime_reminder_pending_comment = "请尽快重新部署"
+    elseif n >= 1000 and not runtime_reminder_seen_1000 then
+        runtime_reminder_seen_1000 = true
+        runtime_reminder_pending_comment = "建议重新部署"
+    end
+end
+
+local function zzc_effective_count_at_load()
+    if zzc_effective_count_snapshot == nil then
+        zzc_effective_count_snapshot = count_nonempty_lines(effective_state_file())
+    end
+    return zzc_effective_count_snapshot
+end
+
+function M.take_reminder_comment()
+    if runtime_reminder_pending_comment and runtime_reminder_pending_comment ~= "" then
+        local comment = runtime_reminder_pending_comment
+        runtime_reminder_pending_comment = nil
+        return comment
+    end
+    local count = zzc_effective_count_at_load()
+    if count < 10000 then return nil end
+    local now = os.time()
+    local comment
+    if count >= 20000 then
+        if (not zzc_reminder_shown_10000) or (now - zzc_reminder_last_time >= 10800) then
+            comment = "zzc文件较大，请尽快电脑合并"
+        end
+    elseif count >= 15000 then
+        if (not zzc_reminder_shown_10000) or (now - zzc_reminder_last_time >= 10800) then
+            comment = "zzc文件较大，建议电脑合并"
+        end
+    elseif not zzc_reminder_shown_10000 then
+        comment = "zzc文件较大，建议电脑合并"
+    end
+    if comment then
+        zzc_reminder_shown_10000 = true
+        zzc_reminder_last_time = now
+    end
+    return comment
 end
 
 local function hidden_stem()
@@ -380,7 +485,7 @@ local function pending_file()
     return ops_file()
 end
 
-local function runtime_ops_file()
+runtime_ops_file = function()
     return path("zzc/runtime_ops.tsv")
 end
 
@@ -396,7 +501,7 @@ local function legacy_pending_file()
     return path("zzc/pending.tsv")
 end
 
-local function effective_state_file()
+effective_state_file = function()
     return path("zzc/effective_state.tsv")
 end
 
@@ -408,7 +513,7 @@ local function new_tx()
     return os.date("%Y%m%d%H%M%S") .. string.format("%03d", math.floor((os.clock() * 1000) % 1000))
 end
 
-local function pending_record_from_line(line)
+pending_record_from_line = function(line)
     return store.record_from_line(line)
 end
 
@@ -563,6 +668,7 @@ local function append_pending_cache(record)
 end
 
 local function rewrite_ops_records(records)
+    return with_effective_state_batch(function()
     local lines = {}
     local header = ops_header()
     for line in header:gmatch("([^\n]*)\n") do
@@ -588,9 +694,11 @@ local function rewrite_ops_records(records)
     if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     write_pending_version()
     return true
+    end)
 end
 
 local function rewrite_runtime_ops_records(records)
+    return with_effective_state_batch(function()
     local lines = {}
     for _, record in ipairs(records or {}) do
         local runtime_record = {
@@ -635,6 +743,7 @@ local function rewrite_runtime_ops_records(records)
     if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     write_pending_version()
     return true
+    end)
 end
 
 local function compact_pending_records(records)
@@ -716,58 +825,71 @@ local function append_ops_record(record)
     f:close()
     write_pending_version()
     append_pending_cache(record)
+    update_runtime_reminder()
     return true
 end
 
 local function append_ops_records(records)
-    ensure_runtime_ops_file()
-    local f = io.open(runtime_ops_file(), "a")
-    if not f then return nil, "ops_open_failed" end
-    local tx = new_tx()
-    for _, record in ipairs(records or {}) do
-        record.tx = record.tx or tx
-        record.runtime = true
-        f:write(runtime_line_from_record(record), "\n")
-    end
-    f:close()
-    write_pending_version()
-    for _, record in ipairs(records or {}) do
-        append_pending_cache(record)
-    end
-    return true
+    return with_effective_state_batch(function()
+        ensure_runtime_ops_file()
+        local f = io.open(runtime_ops_file(), "a")
+        if not f then return nil, "ops_open_failed" end
+        local tx = new_tx()
+        for _, record in ipairs(records or {}) do
+            record.tx = record.tx or tx
+            record.runtime = true
+            f:write(runtime_line_from_record(record), "\n")
+        end
+        f:close()
+        write_pending_version()
+        for _, record in ipairs(records or {}) do
+            append_pending_cache(record)
+        end
+        update_runtime_reminder()
+        return true
+    end)
 end
 
 write_effective_state_file = function()
     local lines = {}
     effective_by_code = {}
     for code, cover in pairs(effective_projection_by_code or {}) do
-        local effective = { rows = {}, append_rows = {}, keep_words = {}, hide_words = {}, restore_rows = {} }
-        for _, row in ipairs((cover and cover.rows) or {}) do
-            lines[#lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc" }, "\t")
-            effective.rows[#effective.rows + 1] = row
-            effective.keep_words[row.word] = true
+        local snapshot = store.effective_state_snapshot and store.effective_state_snapshot(code, cover) or nil
+        local effective = snapshot and snapshot.effective or { rows = {}, append_rows = {}, keep_words = {}, hide_words = {}, restore_rows = {} }
+        for _, line in ipairs((snapshot and snapshot.lines) or {}) do
+            lines[#lines + 1] = line
         end
-        for _, row in ipairs((cover and cover.append_rows) or {}) do
-            lines[#lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc_append" }, "\t")
-            effective.append_rows[#effective.append_rows + 1] = row
-            effective.keep_words[row.word] = true
-        end
-        for word in pairs((cover and cover.hide_words) or {}) do
-            lines[#lines + 1] = table.concat({ "hidden", word or "", code or "", "zzc_restore" }, "\t")
-            effective.hide_words[word] = true
-            effective.restore_rows[#effective.restore_rows + 1] = { word = word, code = code, source = "zzc_restore" }
-        end
-        effective.has_order = cover and cover.has_order or nil
-        effective.has_exact_cover = cover and cover.has_exact_cover or nil
-        effective.has_append = cover and cover.has_append or nil
-        effective.has_delete_cover = cover and cover.has_delete_cover or nil
         if effective.rows[1] or effective.append_rows[1] or next(effective.hide_words) then
             effective_by_code[code] = effective
         end
     end
     table.sort(lines)
-    local ok = write_file_atomic(effective_state_file(), lines)
-    return ok
+    return write_file_atomic(effective_state_file(), lines)
+end
+
+local effective_state_write_depth = 0
+local effective_state_write_pending = false
+
+request_effective_state_write = function()
+    if not write_effective_state_file then return end
+    if effective_state_write_depth > 0 then
+        effective_state_write_pending = true
+        return
+    end
+    write_effective_state_file()
+end
+
+with_effective_state_batch = function(fn)
+    effective_state_write_depth = effective_state_write_depth + 1
+    local results = { pcall(fn) }
+    effective_state_write_depth = effective_state_write_depth - 1
+    local ok = results[1]
+    if ok and effective_state_write_depth == 0 and effective_state_write_pending then
+        effective_state_write_pending = false
+        request_effective_state_write()
+    end
+    if not ok then error(results[2]) end
+    return table.unpack(results, 2, results.n or #results)
 end
 
 local function word_valid_at_code(pending, word, code)
@@ -781,17 +903,19 @@ end
 update_effective_projection_for_code = function(code)
     if not code or code == "" then return end
     effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
-    if write_effective_state_file then write_effective_state_file() end
+    request_effective_state_write()
 end
 
 rebuild_effective_projection_index = function()
-    effective_projection_by_code = {}
-    for code in pairs(pending_by_code) do
-        if code and code ~= "" then
-            effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
+    with_effective_state_batch(function()
+        effective_projection_by_code = {}
+        for code in pairs(pending_by_code) do
+            if code and code ~= "" then
+                effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
+            end
         end
-    end
-    if write_effective_state_file then write_effective_state_file() end
+        request_effective_state_write()
+    end)
 end
 
 local function enqueue_snapshot(snapshot)
@@ -881,7 +1005,7 @@ function M.undo_all_pending()
     effective_by_code = {}
     pending_loaded = true
     write_pending_version()
-    if write_effective_state_file then write_effective_state_file() end
+    request_effective_state_write()
     return true, had_records
 end
 

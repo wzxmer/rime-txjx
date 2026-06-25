@@ -164,4 +164,29 @@ function M.build_effective_projection(input, pending, opts)
     return { rows = keep_rows, append_rows = append_rows, keep_words = keep_words, hide_words = hide_words, has_exact_cover = keep_rows[1] ~= nil, has_append = append_rows[1] ~= nil }
 end
 
+function M.effective_state_snapshot(code, cover)
+    local snapshot = { effective = { rows = {}, append_rows = {}, keep_words = {}, hide_words = {}, restore_rows = {} }, lines = {} }
+    local effective = snapshot.effective
+    for _, row in ipairs((cover and cover.rows) or {}) do
+        snapshot.lines[#snapshot.lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc" }, "\t")
+        effective.rows[#effective.rows + 1] = row
+        effective.keep_words[row.word] = true
+    end
+    for _, row in ipairs((cover and cover.append_rows) or {}) do
+        snapshot.lines[#snapshot.lines + 1] = table.concat({ "visible", row.word or "", code or "", row.source or "zzc_append" }, "\t")
+        effective.append_rows[#effective.append_rows + 1] = row
+        effective.keep_words[row.word] = true
+    end
+    for word in pairs((cover and cover.hide_words) or {}) do
+        snapshot.lines[#snapshot.lines + 1] = table.concat({ "hidden", word or "", code or "", "zzc_restore" }, "\t")
+        effective.hide_words[word] = true
+        effective.restore_rows[#effective.restore_rows + 1] = { word = word, code = code, source = "zzc_restore" }
+    end
+    effective.has_order = cover and cover.has_order or nil
+    effective.has_exact_cover = cover and cover.has_exact_cover or nil
+    effective.has_append = cover and cover.has_append or nil
+    effective.has_delete_cover = cover and cover.has_delete_cover or nil
+    return snapshot
+end
+
 return M

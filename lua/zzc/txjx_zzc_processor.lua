@@ -1,5 +1,4 @@
-local core = require("txjx_zzc_core")
-local zzc_candidate = require("txjx_zzc_candidate")
+local core = require("zzc.txjx_zzc_core")
 
 local kAccepted = 1
 local kNoop = 2
@@ -159,20 +158,26 @@ local function is_space(key)
 end
 
 local function is_less_key(key, ch)
-    if ch == "<" or ch == "," or key == "less" or key == "Less" or key == "comma" then return true end
+    local fullwidth_less = string.char(0xEF, 0xBC, 0x9C)
+    local left_angle = string.char(0xE3, 0x80, 0x8A)
+    if ch == "<" or ch == "," or ch == fullwidth_less or ch == left_angle
+        or key == "less" or key == "Less" or key == "comma" or key == fullwidth_less or key == left_angle then return true end
     if type(key) == "string" then
         local clean = key:match("^[Ss]hift%+(.*)") or key
-        return clean == "<" or clean == "comma" or clean:lower() == "less" or key:match("^[Ss]hift%+comma$")
+        return clean == "<" or clean == fullwidth_less or clean == left_angle
+            or clean == "comma" or clean:lower() == "less" or key:match("^[Ss]hift%+comma$")
     end
     return false
 end
 
 local function is_minus_key(key, ch)
-    if ch == "-" then return true end
+    local fullwidth_minus = string.char(0xEF, 0xBC, 0x8D)
+    local minus_sign = string.char(0xE2, 0x88, 0x92)
+    if ch == "-" or ch == fullwidth_minus or ch == minus_sign then return true end
     if type(key) ~= "string" then return false end
     local clean = key:match("^[Ss]hift%+(.*)") or key
     local lower = clean:lower()
-    return lower == "minus" or lower == "hyphen" or clean == "-"
+    return lower == "minus" or lower == "hyphen" or clean == "-" or clean == fullwidth_minus or clean == minus_sign
 end
 
 local function is_unshifted_equal_key(key, ch, shifted)
@@ -185,10 +190,12 @@ local function is_unshifted_equal_key(key, ch, shifted)
 end
 
 local function is_plus_key(key, ch, shifted, keycode)
-    if ch == "+" then return true end
+    local fullwidth_plus = string.char(0xEF, 0xBC, 0x8B)
+    if ch == "+" or ch == fullwidth_plus then return true end
     if type(key) ~= "string" then return false end
     local clean = key:match("^[Ss]hift%+(.*)") or key
     local lower = clean:lower()
+    if lower == "equal" or clean == "=" then return true end
     if key:match("^[Ss]hift%+") and (lower == "equal" or clean == "=") then return true end
     if shifted and (lower == "equal" or clean == "=" or keycode == 61 or keycode == 0xBB or keycode == 43) then return true end
     return lower == "plus"
@@ -201,6 +208,27 @@ local function is_plus_key(key, ch, shifted, keycode)
         or keycode == 0xBB
         or keycode == 43
         or clean == "+"
+        or clean == fullwidth_plus
+end
+
+local function is_fullwidth_bang_text(text)
+    return type(text) == "string"
+        and #text == 3
+        and text:byte(1) == 0xEF
+        and text:byte(2) == 0xBC
+        and text:byte(3) == 0x81
+end
+
+local function is_bang_key(key, ch, shifted, keycode)
+    local fullwidth_bang = string.char(0xEF, 0xBC, 0x81)
+    if ch == fullwidth_bang or key == fullwidth_bang then return true end
+    if ch == "!" or is_fullwidth_bang_text(ch) then return true end
+    if shifted and (keycode == 49 or keycode == 0x31) then return true end
+    if type(key) ~= "string" then return false end
+    local shifted_key = key:match("^[Ss]hift%+") ~= nil
+    local clean = key:match("^[Ss]hift%+(.*)") or key
+    local lower = clean:lower()
+    return clean == "!" or clean == "！" or lower == "exclam" or (shifted_key and (clean == "1" or lower == "exclam"))
 end
 
 local function is_backspace(key)
@@ -435,8 +463,8 @@ local function selected_candidate(ctx)
     return ok and cand or nil
 end
 
-local candidate_type = zzc_candidate.candidate_type
-local is_real_candidate = zzc_candidate.is_real_candidate
+local candidate_type = core.candidate_type
+local is_real_candidate = core.is_real_candidate
 
 local function first_real_candidate(ctx)
     if not ctx or not ctx.composition or ctx.composition:empty() then return nil end
@@ -606,6 +634,14 @@ end
 
 local function begin_undo_command(ctx)
     return begin_command_wait(ctx, "undo", "", "-", {}, true)
+end
+
+local function begin_restore_wait(ctx, target_code)
+    local candidates = {}
+    for _, row in ipairs(core.restore_rows_for_input(target_code) or {}) do
+        candidates[#candidates + 1] = row.word or ""
+    end
+    return begin_command_wait(ctx, "restore", target_code, "", candidates, true)
 end
 
 local function switch_command_wait(ctx, mode, display_word)
@@ -967,6 +1003,16 @@ local function commit_command_promote(ctx)
     return kAccepted
 end
 
+local function commit_command_restore(ctx)
+    local idx = tonumber(state.display_word or "") or 1
+    local word = state.command_candidates and state.command_candidates[idx]
+    if word and word ~= "" then
+        core.restore_word_at_code(word, state.target_code or "")
+    end
+    reset(ctx)
+    return kAccepted
+end
+
 local function commit_code_choice(ctx, env, idx)
     local choice = state.command_candidates and state.command_candidates[idx]
     if not choice then
@@ -1088,17 +1134,6 @@ local function finalize_with_length(ctx, len, env)
     return finalize_current(ctx, env, { len = len, direct_code = direct_code })
 end
 
-local function handoff_length_to_filter(ctx, len, ch)
-    if not ctx or not len then return kAccepted end
-    if ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
-    local suffix = ch and ch ~= "" and ch or tostring(len)
-    local word = core.buffer_word() or state.display_word or ""
-    ctx.input = "\\" .. word .. suffix
-    sync_state(ctx)
-    refresh_context(ctx)
-    return kAccepted
-end
-
 local function push_code_char(ctx, ch)
     if not ctx or not ch or ch == "" then return end
     local pushed = false
@@ -1179,6 +1214,9 @@ local function handle_replace_wait(ctx, current_input, key, ch, shifted, keycode
         return switch_command_wait(ctx, "delete", "")
     end
     if is_plus_key(key, ch, shifted, keycode) then
+        if state.mode == "append" and state.target_code ~= "" and #state.items == 0 then
+            return begin_restore_wait(ctx, state.target_code)
+        end
         begin_append_collect(ctx, state.target_code)
         return kAccepted
     end
@@ -1208,7 +1246,7 @@ local function handle_replace_wait(ctx, current_input, key, ch, shifted, keycode
     return kAccepted
 end
 
-local function handle_command_wait(ctx, key, ch)
+local function handle_command_wait(ctx, key, ch, shifted, keycode)
     if is_backspace(key) or key == "Escape" or key == "escape" then
         if is_backspace(key) then
             return handle_command_wait_backspace(ctx)
@@ -1223,12 +1261,26 @@ local function handle_command_wait(ctx, key, ch)
         if state.mode == "promote" then
             return commit_command_promote(ctx)
         end
+        if state.mode == "restore" then
+            return commit_command_restore(ctx)
+        end
         if state.mode == "undo" and state.display_word == "-" then
             core.undo_last_tx()
             reset(ctx)
             return kAccepted
         end
+        if state.mode == "undo" and (state.display_word == "!!!" or state.display_word == "！！！") then
+            core.undo_all_pending()
+            reset(ctx)
+            return kAccepted
+        end
         reset(ctx)
+        return kAccepted
+    end
+    if state.mode == "undo" and is_bang_key(key, ch, shifted, keycode) then
+        state.display_word = (state.display_word or "") .. "!"
+        sync_state(ctx)
+        refresh_context(ctx)
         return kAccepted
     end
     if state.mode == "undo" and is_minus_key(key, ch) and (not state.display_word or state.display_word == "") then
@@ -1249,6 +1301,12 @@ local function handle_command_wait(ctx, key, ch)
     local idx = resolve_index_key(key, ch)
     if idx and idx >= 1 and idx <= 9 then
         state.display_word = (state.display_word or "") .. tostring(idx)
+        sync_state(ctx)
+        refresh_context(ctx)
+        return kAccepted
+    end
+    if state.mode == "restore" and (ch == "r" or ch == "R" or key == "r" or key == "R") and (not state.display_word or state.display_word == "") then
+        state.display_word = "1"
         sync_state(ctx)
         refresh_context(ctx)
         return kAccepted
@@ -1308,7 +1366,7 @@ local function processor(key_event, env)
         return kAccepted
     end
     if state.stage == "command_wait" then
-        return handle_command_wait(ctx, key, ch)
+        return handle_command_wait(ctx, key, ch, shifted, keycode)
     end
     if state.stage == "shorten_wait" then
         if key == "Escape" or key == "escape" then
@@ -1337,8 +1395,15 @@ local function processor(key_event, env)
 
     if not state.active then
         local command_prefix, command_directive = split_command_input(current_input)
+        if command_prefix ~= nil and (command_directive == "!!!" or command_directive == "！！！") then
+            core.undo_all_pending()
+            reset(ctx)
+            return kAccepted
+        end
         if command_prefix ~= nil and command_directive == "--" then
-            return begin_undo_command(ctx)
+            core.undo_last_tx()
+            reset(ctx)
+            return kAccepted
         end
         local command_code = command_trigger_code(current_input)
         if command_code then
@@ -1359,6 +1424,10 @@ local function processor(key_event, env)
             if is_minus_key(key, ch) then
                 set_pending_trigger(ctx, false)
                 return begin_command_wait(ctx, "undo", "", "", {}, true)
+            end
+            if is_bang_key(key, ch, shifted, keycode) then
+                set_pending_trigger(ctx, false)
+                return begin_command_wait(ctx, "undo", "", "!", {}, true)
             end
             local idx = resolve_index_key(key, ch)
             if idx then
@@ -1468,11 +1537,19 @@ local function processor(key_event, env)
         return handle_replace_wait(ctx, current_input, key, ch, shifted, keycode)
     end
 
+    if state.stage == "collect"
+        and state.mode == "append"
+        and state.target_code ~= ""
+        and (ctx.input or "") == "\\"
+        and is_plus_key(key, ch, shifted, keycode) then
+        return begin_restore_wait(ctx, state.target_code)
+    end
+
     if state.stage == "collect" and (ctx.input or "") == "\\" and ch and ch ~= "" and not is_trigger(key, ch) then
         local idx = resolve_index_key(key, ch)
         if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
             if direct_len then
-                return handoff_length_to_filter(ctx, direct_len, ch)
+                return finalize_with_length(ctx, direct_len, env)
             end
             if invalid_length_digit(idx, direct_len) then
                 reset(ctx)
@@ -1517,7 +1594,7 @@ local function processor(key_event, env)
         local idx = resolve_index_key(key, ch)
         if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
             if direct_len then
-                return handoff_length_to_filter(ctx, direct_len, ch)
+                return finalize_with_length(ctx, direct_len, env)
             end
             if invalid_length_digit(idx, direct_len) then
                 reset(ctx)
@@ -1530,7 +1607,7 @@ local function processor(key_event, env)
                 local cand_len, cand_text = selected_length_candidate(ctx, idx)
                 if cand_len then
                     if ctx then ctx:clear() end
-                    return handoff_length_to_filter(ctx, cand_len, cand_text)
+                    return finalize_with_length(ctx, cand_len, env)
                 end
             end
             capture_candidate_at(ctx, idx)
@@ -1539,7 +1616,7 @@ local function processor(key_event, env)
     end
 
     if direct_len and state.mode ~= "replace" and waiting_length_confirm(ctx) then
-        return handoff_length_to_filter(ctx, direct_len, ch)
+        return finalize_with_length(ctx, direct_len, env)
     end
 
     if state.stage == "collect" then
@@ -1565,7 +1642,7 @@ local function processor(key_event, env)
             local cand_len = cand and length_from_candidate_text(cand.text)
             if cand_len and ready_for_length(ctx) then
                 ctx:clear()
-                return handoff_length_to_filter(ctx, cand_len, cand.text)
+                return finalize_with_length(ctx, cand_len, env)
             end
             local text = capture_current_candidate(ctx)
             if not text then return kAccepted end

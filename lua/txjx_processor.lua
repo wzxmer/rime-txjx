@@ -8,11 +8,11 @@ local string_match = string.match
 local string_find = string.find
 local string_lower = string.lower
 local type = type
-local config_util = require("txjx_config")
-local platform = require("txjx_platform")
-local state = require("txjx_state")
-local registry = require("txjx_cache_registry")
-local zzc_processor = require("txjx_zzc_processor")
+local config_util = require("common.txjx_config")
+local platform = require("common.txjx_platform")
+local state = require("common.txjx_state")
+local registry = require("common.txjx_cache_registry")
+local zzc_processor = require("zzc.txjx_zzc_processor")
 
 local kAccepted = 1
 local kNoop = 2
@@ -1255,6 +1255,10 @@ local function processor(key_event, env)
         env._af_seed = nil
         _space_guard_clear(env)
         if key_event:release() then return kAccepted end
+        local cold_code_key = _plain_code_key(env, CHAR_CACHE[kc] or clean_key, clean_key, kc)
+        if _cold_start_push_code_key(env, ctx, key_event, cold_code_key, false, false) then
+            return kAccepted
+        end
         if ctx:is_composing() then ctx:commit() end
         env.engine:commit_text(uppercase)
         return kAccepted
@@ -1273,6 +1277,15 @@ local function processor(key_event, env)
     if ascii_mode then
         _space_guard_clear(env)
         return kNoop
+    end
+    if no_modifier and not env._tu_pending_key and not key_event:release() and not sf and not caps_on
+        and not ctx:is_composing() and (ctx.input or "") == "" then
+        local cold_plain_key = _plain_code_key(env, CHAR_CACHE[kc] or clean_key, clean_key, kc)
+        if cold_plain_key then
+            env._cold_code_guard = nil
+            _push_code_input(env, ctx, cold_plain_key)
+            return kAccepted
+        end
     end
     local opts = {
         smarttwo = ctx:get_option("smarttwo"),
@@ -1330,7 +1343,9 @@ local function processor(key_event, env)
     if _topup_flush_plain_alpha_press(env, ctx, key_event, key, sf, caps_on) then
         return kAccepted
     end
-    if _passthrough_alpha_key(env, ctx, sf, key, clean_key, kc) then return kNoop end
+    if _passthrough_alpha_key(env, ctx, sf, key, clean_key, kc) then
+        return kNoop
+    end
 
     if opts.direct_symbols and ctx.input == ";" and env._alpha[key] then
         _push_code_input(env, ctx, key)

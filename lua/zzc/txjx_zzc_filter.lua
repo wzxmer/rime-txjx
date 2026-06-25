@@ -25,6 +25,7 @@ local function is_cjk_text(text)
 end
 
 local is_real_candidate = core.is_real_candidate
+local with_reminder
 
 local function is_collect_candidate(cand)
     return cand
@@ -157,7 +158,7 @@ local function state_candidate(ctx, code)
         word = prop_display
     elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
         word = prop_word
-    elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
+    elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_stage == "collect" or prop_items == "") then
         word = prop_display
     elseif word == "" then
         word = prop_word
@@ -184,6 +185,8 @@ local function state_candidate(ctx, code)
         text = word
     elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
         text = prop_target .. "\\+" .. (word or "")
+    elseif prop_mode == "replace" and prop_display ~= "" and prop_stage == "collect" and prop_target ~= "" then
+        text = prop_target .. "\\" .. (word or "")
     elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
         text = word .. "\\"
     elseif prop_stage == "collect" and pending_code ~= "" then
@@ -198,7 +201,7 @@ local function state_candidate(ctx, code)
         comment = "已选编码 " .. prop_target
     end
     local cand_text = text
-    if prop_stage == "collect" and pending_code ~= "" then
+    if prop_stage == "collect" and (pending_code ~= "" or (prop_mode == "replace" and prop_target ~= "")) then
         cand_text = word
     end
     local cand = Candidate("zzc_state", 0, end_pos, cand_text, comment)
@@ -220,7 +223,7 @@ local function yield_restore_candidates(ctx, code)
         idx = idx + 1
         local cand = Candidate("zzc_restore", 0, #code, line, "恢复")
         cand.quality = 10070 - idx
-        yield(cand)
+        yield(with_reminder(cand))
         yielded = true
     end
     return yielded
@@ -243,7 +246,7 @@ local function yield_code_choice_candidates(ctx, code)
             end
             local cand = Candidate("zzc_code_choice", 0, #code, display_word, choice_code)
             cand.quality = 10080 - idx
-            yield(cand)
+            yield(with_reminder(cand))
             yielded = true
         end
     end
@@ -264,6 +267,15 @@ local function with_preedit(cand, preedit_text)
     return nc
 end
 
+with_reminder = function(cand)
+    if not cand or not core.take_reminder_comment then return cand end
+    local comment = core.take_reminder_comment()
+    if comment and comment ~= "" then
+        cand.comment = comment
+    end
+    return cand
+end
+
 local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
     cover = cover or core.zzc_cover_for_input(input_text)
     if not cover then return nil end
@@ -276,7 +288,7 @@ local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
                 cand.preedit = preedit_text or cand.preedit
                 first = false
             end
-            yield(cand)
+            yield(with_reminder(cand))
         end
     end
     return cover
@@ -288,13 +300,10 @@ local function yield_append_candidates(input_text, cover)
     for _, row in ipairs(cover.append_rows) do
         local cand = Candidate("zzc_append", 0, #input_text, row.word, "自造词")
         cand.quality = 8000
-        yield(cand)
+        yield(with_reminder(cand))
         yielded = true
     end
     return yielded
-end
-
-local function cover_diag(ctx, label, code, cover)
 end
 
 local function yield_input_candidates(input, skip_first, real_only, preedit_text)
@@ -341,13 +350,11 @@ local function filter(input, env)
         yield_input_candidates(input, false)
         return
     end
-    local perf_start = core.perf_enabled and core.perf_enabled() and os.clock() or nil
     local ctx = env.engine.context
     local code = ctx and ctx.input or ""
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
     if maybe_finalize_from_input(ctx, code, env, input) then
-        core.perf_log("filter", "maybe_finalize", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     local state_cand = state_candidate(ctx, code)
@@ -357,72 +364,58 @@ local function filter(input, env)
         and code ~= "\\"
     local collect_preedit = collect_with_code and state_cand.preedit or nil
     if yield_code_choice_candidates(ctx, code) then
-        core.perf_log("filter", "code_choice", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and code == "" then
-        yield(state_cand)
-        core.perf_log("filter", "state_empty", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if code == "\\" and state_cand then
-        yield(state_cand)
-        core.perf_log("filter", "state_trigger", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if state_cand and prop_mode == "restore" and prop_stage == "command_wait" then
-        yield(state_cand)
+        yield(with_reminder(state_cand))
         yield_restore_candidates(ctx, code)
-        core.perf_log("filter", "restore_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     if state_cand and (prop_mode == "delete" or prop_mode == "promote" or prop_mode == "undo") and prop_stage == "command_wait" then
-        yield(state_cand)
-        core.perf_log("filter", "command_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if state_cand and prop_mode == "shorten" and prop_stage == "shorten_wait" then
-        yield(state_cand)
-        core.perf_log("filter", "shorten_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if state_cand and prop_stage == "resolve_notice" then
-        yield(state_cand)
-        core.perf_log("filter", "resolve_notice", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if state_cand and prop_mode == "replace" and prop_stage == "replace_wait" then
-        yield(state_cand)
-        core.perf_log("filter", "replace_wait", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
+        yield(with_reminder(state_cand))
         return
     end
     if code ~= "" and (not state_cand or collect_with_code) then
         local cover = core.zzc_order_for_input and core.zzc_order_for_input(code) or core.zzc_cover_for_input(code)
-        cover_diag(ctx, "filter_cover_loaded", code, cover)
         if cover and cover.has_order then
             yield_zzc_cover_candidates(code, cover, collect_preedit)
             yield_append_candidates(code, cover)
             yield_filtered_input_candidates(input, cover, collect_preedit)
-            core.perf_log("filter", "cover_order", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
             return
         end
         cover = yield_zzc_cover_candidates(code, cover, collect_preedit)
         if cover then
-            cover_diag(ctx, "filter_cover_branch", code, cover)
             yield_append_candidates(code, cover)
             yield_filtered_input_candidates(input, cover, collect_preedit)
-            core.perf_log("filter", "cover", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
             return
         end
     end
     if code == "" then
-        if state_cand then yield(state_cand) end
+        if state_cand then yield(with_reminder(state_cand)) end
         for cand in input:iter() do yield(cand) end
-        core.perf_log("filter", "empty_passthrough", perf_start, { stage = prop_stage, mode = prop_mode }, 30)
         return
     end
     yield_input_candidates(input, false, false, collect_preedit)
-    core.perf_log("filter", "passthrough", perf_start, { code_len = #code, stage = prop_stage, mode = prop_mode }, 30)
 end
 
 return filter
