@@ -80,8 +80,6 @@ switches:
 ascii_composer:
   switch_key:
     Caps_Lock: noop
-    Shift_L: commit_code
-    Shift_R: commit_code
 
 # ============ 拼写 ============
 speller:
@@ -107,12 +105,6 @@ translator:
   enable_user_dict: false
   max_phrase_length: 6
   initial_quality: 0
-
-# ============ 辅助功能 ============
-repeat_history:
-  input: i
-  size: 1
-  initial_quality: 10000
 
 txjx_opencc_filter:
   # db_name 为旧版配置项，当前 Lua 版使用 dataset_name 直接加载 opencc/Data。

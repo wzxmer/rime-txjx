@@ -12,6 +12,8 @@ patch:
   menu/page_size: 5                 # 候选词显示数量
   txjx/history_size: 5              # i键历史候选保存数量
   txjx/direct_symbols_fast_leaf: false # 设置成false后，快符会顶功上屏补全候选内容
+  ascii_composer/switch_key/Shift_L: commit_code # Shift 上屏编码并切英文
+  ascii_composer/switch_key/Shift_R: commit_code # Shift 上屏编码并切英文
   
   # ==================== 功能开关默认状态 ====================
   # 说明：0=选择第一个状态，1=选择第二个状态
