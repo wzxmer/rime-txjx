@@ -513,36 +513,6 @@ local function deploy_flush_stamp_file()
     return path("zzc/last_deploy_flush.tsv")
 end
 
-local function shell_quote(text)
-    text = tostring(text or "")
-    return "'" .. text:gsub("'", "'\\''") .. "'"
-end
-
-local function ps_quote(text)
-    text = tostring(text or "")
-    return "'" .. text:gsub("'", "''") .. "'"
-end
-
-local function command_first_line(command)
-    if not io.popen then return nil end
-    local f = io.popen(command)
-    if not f then return nil end
-    local line = f:read("*l")
-    f:close()
-    if line and line ~= "" then return line end
-    return nil
-end
-
-local function file_mtime(file_path)
-    local sep = package and package.config and package.config:sub(1, 1) or "/"
-    if sep == "\\" then
-        local quoted = ps_quote(file_path)
-        return command_first_line("pwsh -NoLogo -NoProfile -Command \"if (Test-Path -LiteralPath " .. quoted .. ") { [int64](Get-Item -LiteralPath " .. quoted .. ").LastWriteTimeUtc.Ticks }\"")
-    end
-    local quoted = shell_quote(file_path)
-    return command_first_line("stat -c %Y " .. quoted .. " 2>/dev/null || stat -f %m " .. quoted .. " 2>/dev/null")
-end
-
 local function read_first_line(file_path)
     local f = io.open(file_path, "r")
     if not f then return nil end
@@ -560,19 +530,26 @@ end
 
 local function current_deploy_stamp(env)
     local schema_id = schema_id_from_env(env)
-    local files = {
-        path("build/" .. schema_id .. ".schema.yaml"),
-        path("build/" .. schema_id .. ".prism.bin"),
-        path("build/" .. schema_id .. ".table.bin"),
+    local config = env and env.engine and env.engine.schema and env.engine.schema.config
+    if not config then return nil end
+    local keys = {
+        "default",
+        "default.custom",
+        schema_id .. ".schema",
+        schema_id .. ".custom",
+        schema_id .. ".symbols",
+        schema_id .. ".symbols.custom",
     }
-    local parts = {}
-    for _, file_path in ipairs(files) do
-        local mtime = file_mtime(file_path)
-        if mtime and mtime ~= "" then
-            parts[#parts + 1] = file_path .. "=" .. mtime
+    local parts = { "schema=" .. schema_id }
+    local version = config:get_string("__build_info/rime_version")
+    if version and version ~= "" then parts[#parts + 1] = "rime=" .. version end
+    for _, key in ipairs(keys) do
+        local value = config:get_int("__build_info/timestamps/" .. key)
+        if value and value ~= 0 then
+            parts[#parts + 1] = key .. "=" .. tostring(value)
         end
     end
-    if not parts[1] then return nil end
+    if not parts[2] then return nil end
     return table.concat(parts, "\t")
 end
 
