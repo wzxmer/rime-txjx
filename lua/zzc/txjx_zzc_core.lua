@@ -509,6 +509,73 @@ local function pending_version_file()
     return path("zzc/cache_version.txt")
 end
 
+local function deploy_flush_stamp_file()
+    return path("zzc/last_deploy_flush.tsv")
+end
+
+local function shell_quote(text)
+    text = tostring(text or "")
+    return "'" .. text:gsub("'", "'\\''") .. "'"
+end
+
+local function ps_quote(text)
+    text = tostring(text or "")
+    return "'" .. text:gsub("'", "''") .. "'"
+end
+
+local function command_first_line(command)
+    if not io.popen then return nil end
+    local f = io.popen(command)
+    if not f then return nil end
+    local line = f:read("*l")
+    f:close()
+    if line and line ~= "" then return line end
+    return nil
+end
+
+local function file_mtime(file_path)
+    local sep = package and package.config and package.config:sub(1, 1) or "/"
+    if sep == "\\" then
+        local quoted = ps_quote(file_path)
+        return command_first_line("pwsh -NoLogo -NoProfile -Command \"if (Test-Path -LiteralPath " .. quoted .. ") { [int64](Get-Item -LiteralPath " .. quoted .. ").LastWriteTimeUtc.Ticks }\"")
+    end
+    local quoted = shell_quote(file_path)
+    return command_first_line("stat -c %Y " .. quoted .. " 2>/dev/null || stat -f %m " .. quoted .. " 2>/dev/null")
+end
+
+local function read_first_line(file_path)
+    local f = io.open(file_path, "r")
+    if not f then return nil end
+    local line = f:read("*l")
+    f:close()
+    return line
+end
+
+local function schema_id_from_env(env)
+    local id = env and env.engine and env.engine.schema and env.engine.schema.schema_id or ""
+    if type(id) ~= "string" or id == "" then return "txjx" end
+    if not id:match("^[%w_.%-]+$") then return "txjx" end
+    return id
+end
+
+local function current_deploy_stamp(env)
+    local schema_id = schema_id_from_env(env)
+    local files = {
+        path("build/" .. schema_id .. ".schema.yaml"),
+        path("build/" .. schema_id .. ".prism.bin"),
+        path("build/" .. schema_id .. ".table.bin"),
+    }
+    local parts = {}
+    for _, file_path in ipairs(files) do
+        local mtime = file_mtime(file_path)
+        if mtime and mtime ~= "" then
+            parts[#parts + 1] = file_path .. "=" .. mtime
+        end
+    end
+    if not parts[1] then return nil end
+    return table.concat(parts, "\t")
+end
+
 local function new_tx()
     return os.date("%Y%m%d%H%M%S") .. string.format("%03d", math.floor((os.clock() * 1000) % 1000))
 end
@@ -1022,6 +1089,19 @@ function M.flush_runtime_ops()
     return flush_runtime_ops_to_pending()
 end
 
+function M.maybe_flush_after_deploy(env)
+    local stamp = current_deploy_stamp(env)
+    if not stamp then return true, false end
+    local stamp_file = deploy_flush_stamp_file()
+    local last = read_first_line(stamp_file)
+    if last == stamp then return true, false end
+    local ok, changed_or_err = flush_runtime_ops_to_pending()
+    if not ok then return nil, changed_or_err end
+    local wrote, err = write_file_atomic(stamp_file, { stamp })
+    if not wrote then return nil, err end
+    return true, changed_or_err == true
+end
+
 function M.reorder_words_at_code(words, code)
     if not words or not words[1] then return nil, "missing_words" end
     if not code or code == "" then return nil, "missing_code" end
@@ -1267,3 +1347,4 @@ function M.cover_for_probe(input, opts)
 end
 
 return M
+

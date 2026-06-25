@@ -1671,7 +1671,22 @@ local function module_capture_current_candidate(ctx, next_input)
     return text and true or false
 end
 
+local function init(env)
+    if not core.maybe_flush_after_deploy then return end
+    local ok, result, changed_or_err = pcall(core.maybe_flush_after_deploy, env)
+    if ok then
+        env._zzc_flush_ok = result and true or false
+        env._zzc_flush_changed = changed_or_err == true
+        env._zzc_flush_error = result and nil or tostring(changed_or_err or "")
+    else
+        env._zzc_flush_ok = false
+        env._zzc_flush_changed = false
+        env._zzc_flush_error = tostring(result or "")
+    end
+end
+
 return {
+    init = init,
     func = processor,
     is_active = module_is_active,
     capture_current_candidate = module_capture_current_candidate,
