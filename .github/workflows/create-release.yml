@@ -14,17 +14,17 @@ jobs:
         run: |
           BASE_MAJOR=3
           BASE_MINOR=6
-          BASE_PATCH=5
+          BASE_PATCH=7
 
           # 当前发布
-          BASE_RUN_NUMBER=366
+          BASE_RUN_NUMBER=367
 
           CURRENT_RUN=${{ github.run_number }}
           PATCH=$(( BASE_PATCH + CURRENT_RUN - BASE_RUN_NUMBER ))
 
           VERSION="${BASE_MAJOR}.${BASE_MINOR}.${PATCH}"
           CURRENT_DATE="$(date +'%Y%m%d')"
-          RELEASE_TITLE="天行键$(date +'%Y.%m.%d') v${VERSION} 词库更新"
+          RELEASE_TITLE="天行键v${VERSION}"
 
           echo "CURRENT_DATE=${CURRENT_DATE}" >> "$GITHUB_ENV"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
