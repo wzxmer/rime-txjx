@@ -296,7 +296,9 @@ local function sync_state(ctx)
     if ctx and ctx.set_property then
         ctx:set_property("_txjx_zzc_stage", state.stage ~= "off" and state.stage or "")
         local current_word = core.buffer_word() or ""
-        if current_word == "" then current_word = state.display_word or "" end
+        if current_word == "" and not (state.stage == "collect" and state.mode == "replace") then
+            current_word = state.display_word or ""
+        end
         ctx:set_property("_txjx_zzc_word", current_word)
         ctx:set_property("_txjx_zzc_items", core.serialize_items(state.items))
         ctx:set_property("_txjx_zzc_mode", state.mode or "make")
@@ -370,8 +372,14 @@ local function restore_state_from_context(ctx)
     local prop_cmd_candidates = ctx:get_property("_txjx_zzc_cmd_candidates") or ""
     local prop_shorten_idx = tonumber(ctx:get_property("_txjx_zzc_shorten_idx") or "") or 1
     if prop_stage == "" and prop_word == "" and prop_items == "" then return false end
+    local replace_placeholder = prop_stage == "collect"
+        and prop_mode == "replace"
+        and prop_target ~= ""
+        and prop_items == ""
+        and prop_word ~= ""
+        and prop_word == prop_display
     local items = core.deserialize_items(prop_items)
-    if (not items or #items == 0) and prop_word ~= "" then
+    if (not items or #items == 0) and prop_word ~= "" and not replace_placeholder then
         items = core.items_from_text(prop_word) or {}
     end
     state.active = true
@@ -432,7 +440,18 @@ local function recover_collect_items(ctx)
             core.set_state_items(state.items)
             return true
         end
+        local prop_stage = ctx:get_property("_txjx_zzc_stage") or ""
+        local prop_mode = ctx:get_property("_txjx_zzc_mode") or ""
+        local prop_target = ctx:get_property("_txjx_zzc_target") or ""
+        local prop_display = ctx:get_property("_txjx_zzc_display") or ""
         local prop_word = ctx:get_property("_txjx_zzc_word") or ""
+        if prop_stage == "collect"
+            and prop_mode == "replace"
+            and prop_target ~= ""
+            and prop_word ~= ""
+            and prop_word == prop_display then
+            return false
+        end
         items = core.items_from_text(prop_word)
         if items and #items > 0 then
             state.items = items

@@ -25,7 +25,6 @@ local function is_cjk_text(text)
 end
 
 local is_real_candidate = core.is_real_candidate
-local with_reminder
 
 local function is_collect_candidate(cand)
     return cand
@@ -158,12 +157,16 @@ local function state_candidate(ctx, code)
         word = prop_display
     elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
         word = prop_word
-    elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_stage == "collect" or prop_items == "") then
+    elseif prop_mode == "replace" and prop_stage == "collect" and prop_target ~= "" then
+        word = prop_word
+    elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
         word = prop_display
     elseif word == "" then
         word = prop_word
     end
-    if (not word or word == "") and not (prop_mode == "append" and prop_target ~= "" and prop_stage == "collect") then return nil end
+    if (not word or word == "")
+        and not (prop_mode == "append" and prop_target ~= "" and prop_stage == "collect")
+        and not (prop_mode == "replace" and prop_target ~= "" and prop_stage == "collect") then return nil end
     local text
     if prop_mode == "delete" and prop_stage == "command_wait" and prop_target ~= "" then
         text = prop_target .. "\\-" .. (prop_display or "")
@@ -185,8 +188,8 @@ local function state_candidate(ctx, code)
         text = word
     elseif prop_mode == "append" and prop_target ~= "" and prop_stage == "collect" then
         text = prop_target .. "\\+" .. (word or "")
-    elseif prop_mode == "replace" and prop_display ~= "" and prop_stage == "collect" and prop_target ~= "" then
-        text = prop_target .. "\\" .. (word or "")
+    elseif prop_mode == "replace" and prop_stage == "collect" and prop_target ~= "" then
+        text = prop_target .. "\\" .. (word or "") .. (pending_code or "")
     elseif prop_mode == "replace" and prop_display ~= "" and (prop_stage == "replace_wait" or prop_items == "") then
         text = word .. "\\"
     elseif prop_stage == "collect" and pending_code ~= "" then
@@ -201,11 +204,15 @@ local function state_candidate(ctx, code)
         comment = "已选编码 " .. prop_target
     end
     local cand_text = text
-    if prop_stage == "collect" and (pending_code ~= "" or (prop_mode == "replace" and prop_target ~= "")) then
+    if prop_stage == "collect" and prop_mode == "replace" and prop_target ~= "" then
+        cand_text = text
+    elseif prop_stage == "collect" and word ~= "" and pending_code ~= "" then
         cand_text = word
     end
     local cand = Candidate("zzc_state", 0, end_pos, cand_text, comment)
-    if cand_text ~= text then
+    if prop_stage == "collect" and prop_mode == "replace" and prop_target ~= "" then
+        cand.preedit = text
+    elseif cand_text ~= text then
         cand.preedit = text
     end
     cand.quality = 10000
@@ -267,7 +274,7 @@ local function with_preedit(cand, preedit_text)
     return nc
 end
 
-with_reminder = function(cand)
+local function with_reminder(cand)
     if not cand or not core.take_reminder_comment then return cand end
     local comment = core.take_reminder_comment()
     if comment and comment ~= "" then
@@ -362,7 +369,7 @@ local function filter(input, env)
         and prop_stage == "collect"
         and code ~= ""
         and code ~= "\\"
-    local collect_preedit = collect_with_code and state_cand.preedit or nil
+    local collect_preedit = collect_with_code and (state_cand.preedit or state_cand.text) or nil
     if yield_code_choice_candidates(ctx, code) then
         return
     end
