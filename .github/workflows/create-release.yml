@@ -16,13 +16,11 @@ jobs:
           BASE_MINOR=6
           BASE_PATCH=5
 
-          # 从哪一次 workflow run_number 开始算 3.6.5
-          # 例如当前 run_number 是 238，并且这次要发布 3.6.5，就填 238
-          BASE_RUN_NUMBER=365
+          # 当前发布
+          BASE_RUN_NUMBER=366
 
           CURRENT_RUN=${{ github.run_number }}
-          PATCH_OFFSET=$(( (CURRENT_RUN - BASE_RUN_NUMBER) / 1 ))
-          PATCH=$(( BASE_PATCH + PATCH_OFFSET ))
+          PATCH=$(( BASE_PATCH + CURRENT_RUN - BASE_RUN_NUMBER ))
 
           VERSION="${BASE_MAJOR}.${BASE_MINOR}.${PATCH}"
           CURRENT_DATE="$(date +'%Y%m%d')"
@@ -50,8 +48,8 @@ jobs:
           release_name: ${{ env.RELEASE_TITLE }}
           body: |
             Release
-        draft: false
-        prerelease: false
+          draft: false
+          prerelease: false
 
       - name: Upload txjx.zip to Release
         uses: shogo82148/actions-upload-release-asset@v1
