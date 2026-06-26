@@ -22,18 +22,23 @@ Windows 只保留 `.exe`。macOS 保留无扩展入口，后续可在 Mac 上转
 
 ## 当前 zzc 状态文件
 
-- `../txjx.zzc.dict.yaml` / `../xmjd6.zzc.dict.yaml`：部署和兼容层，不再是运行时唯一真源。
-- `runtime_ops.tsv`：重部署或合并前的运行时操作记录。
+- `../txjx.zzc.dict.yaml` / `../xmjd6.zzc.dict.yaml`：部署可读的持久层，不再是运行时唯一真源。
+- `runtime_ops.tsv`：实时运行时操作记录；每次自造词、替换、删除、置顶、前移、append、restore 都先写这里。
 - `effective_state.tsv`：运行时实际生效快照，普通显示、自造词 collect、删除、置顶、前移、append、restore、completion 都读这里。
 - `runtime_exact.tsv`：兼容缓存占位，不是当前主要显示来源。
 - `index.tsv`：兼容索引占位。
 - `cache_version.txt`：运行时缓存失效标记，用于通知 Lua VM 刷新。
+- `runtime_ops_appended.tsv`：记录已追加到 `*.zzc.dict.yaml` 的运行时操作签名，避免清理失败后重复追加。
 - `char_parts.tsv`：单字拆分索引，Lua 和合并脚本都会用。
 - `撤回合并/`：合并前自动备份目录。
 
-## 重部署行为
+## 运行时和重部署行为
 
-Lua 重载时会把 `runtime_ops.tsv` 按最终生效状态 compact 后写入 `*.zzc.dict.yaml`，再清空 `runtime_ops.tsv`、`runtime_exact.tsv`、`index.tsv` 和 `effective_state.tsv`，并刷新 `cache_version.txt`。运行中不压缩 `runtime_ops.tsv`，以保留 `\--\` 撤回链。
+Lua 运行中只实时写 `runtime_ops.tsv`，并更新 `effective_state.tsv` 给当前会话显示使用，不立即改写 `*.zzc.dict.yaml`。
+
+键盘收起或 Rime session 结束时，Lua 会把 `runtime_ops.tsv` 追加写入 `*.zzc.dict.yaml`，再清空 `runtime_ops.tsv`、`runtime_exact.tsv`、`index.tsv` 和 `effective_state.tsv`，并刷新 `cache_version.txt`。追加成功后会记录 `runtime_ops_appended.tsv` 签名；如果清空运行时文件失败，下次 session 创建时只重试清理，不重复追加同一批操作。
+
+session 创建时不再作为主要写入点，只做上述补偿清理。运行中和 session 结束时都不压缩操作链，以保留完整操作记录；手动合并脚本负责 compact。自造词后如果要让重新部署读取到 `*.zzc.dict.yaml`，先收起键盘结束当前 session，再重新部署。
 
 ## 合并行为
 
