@@ -22,7 +22,7 @@ Linux:
   自造词操作记录，也是临时 zzc 码表。
 - char_parts.tsv
   单字拆分索引，合并脚本会自动重建。
-- runtime_exact.tsv / index.tsv / group_*.tsv
+- runtime_exact.tsv / group_*.tsv
   输入法运行时快照，合并后会清空重建。
 - 撤回合并/
   合并前自动备份目录，只保留最近 3 份。
