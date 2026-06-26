@@ -13,12 +13,14 @@ Windows 只保留 `.exe`。macOS 保留无扩展入口，后续可在 Mac 上转
 
 旧的 `apply_zzc.py`、`gen_char_parts.py`、`.cmd`、`.bat` 入口已经废弃，不要恢复。
 
-合并入口可以放在方案根目录，也可以放在 `zzc/` 目录。脚本会优先查找同目录的 `*.zzc.dict.yaml`，找不到再查找上级目录。
+合并入口可以放在方案根目录，也可以放在 `zzc/` 目录。脚本会自动检查脚本所在目录和上级目录里的 `*.zzc.dict.yaml`。
 
-按方案名选择合并目标：
+按 `*.zzc.dict.yaml` 前缀选择合并目标：
 
-- `txjx.zzc.dict.yaml` 合并到 `txjx.dict.yaml` 和 `txjx.fjcy.dict.yaml`
-- `xmjd6.zzc.dict.yaml` 合并到 `xmjd6.cizu.dict.yaml` 和 `xmjd6.fjcy.dict.yaml`
+- `txjx*` 前缀合并到 `*.dict.yaml` 和 `*.fjcy.dict.yaml`
+- `xmjd*` 前缀合并到 `*.cizu.dict.yaml` 和 `*.fjcy.dict.yaml`
+
+Linux/macOS 合并脚本按 Python 3.7+ 兼容写法维护，避免依赖 Python 3.9/3.10 专属运行时 API。
 
 ## 当前 zzc 状态文件
 

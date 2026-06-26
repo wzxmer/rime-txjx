@@ -20,20 +20,44 @@ def find_one(base: Path, pattern: str) -> Path:
     return matches[0]
 
 
-def schema_target_names(schema: str) -> list[str]:
-    primary = f"{schema}.cizu.dict.yaml" if schema == "xmjd6" else f"{schema}.dict.yaml"
-    return [primary, f"{schema}.fjcy.dict.yaml"]
+def strip_suffix(text: str, suffix: str) -> str:
+    if text.endswith(suffix):
+        return text[:-len(suffix)]
+    return text
+
+
+def target_dict_name_options(prefix: str) -> list[list[str]]:
+    if prefix.startswith("txjx"):
+        return [[f"{prefix}.dict.yaml"], [f"{prefix}.fjcy.dict.yaml"]]
+    if prefix.startswith("xmjd"):
+        return [[f"{prefix}.cizu.dict.yaml"], [f"{prefix}.fjcy.dict.yaml"]]
+    raise ValueError(f"unsupported zzc prefix: {prefix}")
+
+
+def resolve_target_dicts(root: Path, prefix: str) -> list[Path]:
+    out = []
+    for options in target_dict_name_options(prefix):
+        matched = None
+        for name in options:
+            path = root / name
+            if path.exists():
+                matched = path
+                break
+        out.append(matched or (root / options[0]))
+    return out
 
 
 def has_target_dicts(base: Path, schema: str) -> bool:
-    return all((base / name).exists() for name in schema_target_names(schema))
+    return all(path.exists() for path in resolve_target_dicts(base, schema))
 
 
 def discover_layout() -> tuple[Path, Path, Path, str]:
     script_path = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
     start_dir = script_path.parent
-    op_candidates = sorted(start_dir.glob("*.zzc.dict.yaml"))
-    op_candidates += sorted(start_dir.parent.glob("*.zzc.dict.yaml"))
+    search_dirs = [start_dir, start_dir.parent]
+    op_candidates = []
+    for base in search_dirs:
+        op_candidates += sorted(base.glob("*.zzc.dict.yaml"))
     seen: set[Path] = set()
     unique_ops: list[Path] = []
     for path in op_candidates:
@@ -45,13 +69,13 @@ def discover_layout() -> tuple[Path, Path, Path, str]:
         raise FileNotFoundError(f"missing *.zzc.dict.yaml in {start_dir} or {start_dir.parent}")
 
     for ops_path in unique_ops:
-        schema = ops_path.name.removesuffix(".zzc.dict.yaml")
-        for root in (ops_path.parent, ops_path.parent.parent):
+        schema = strip_suffix(ops_path.name, ".zzc.dict.yaml")
+        for root in search_dirs:
             if has_target_dicts(root, schema):
                 zzc_dir = root / "zzc" if (root / "zzc").exists() else ops_path.parent
                 return root, zzc_dir, ops_path, schema
     ops_path = unique_ops[0]
-    schema = ops_path.name.removesuffix(".zzc.dict.yaml")
+    schema = strip_suffix(ops_path.name, ".zzc.dict.yaml")
     root = ops_path.parent.parent if ops_path.parent.name == "zzc" else ops_path.parent
     zzc_dir = root / "zzc" if (root / "zzc").exists() else ops_path.parent
     return root, zzc_dir, ops_path, schema
@@ -69,7 +93,7 @@ CHAR_DICT = ROOT / f"{SCHEMA}.danzi.dict.yaml"
 LEGACY_ROOT_OPS = ROOT / f"{SCHEMA}.zzc.ops.tsv"
 LEGACY_OPS = ZZC_DIR / "ops.tsv"
 LEGACY_PENDING = ZZC_DIR / "pending.tsv"
-TARGET_DICTS = [ROOT / name for name in schema_target_names(SCHEMA)]
+TARGET_DICTS = resolve_target_dicts(ROOT, SCHEMA)
 
 
 def read_text(path: Path) -> str:
