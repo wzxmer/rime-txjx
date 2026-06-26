@@ -1224,6 +1224,26 @@ local function processor(key_event, env)
     local ascii_mode = ctx:get_option("ascii_mode")
     local no_modifier = not key_event:ctrl() and not key_event:alt() and not key_event:super()
     local caps_on = _effective_caps_on(env, key_event)
+    local shift_uppercase = (not ascii_mode and sf and no_modifier) and _alpha_upper_char(clean_key, kc) or nil
+    if shift_uppercase then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        _space_guard_clear(env)
+        if key_event:release() then return kAccepted end
+        if ctx:is_composing() then ctx:commit() end
+        env.engine:commit_text(shift_uppercase)
+        return kAccepted
+    end
+    local bare_uppercase = (not ascii_mode and not sf and not caps_on and no_modifier) and _uppercase_char(clean_key, kc) or nil
+    if bare_uppercase then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        _space_guard_clear(env)
+        if key_event:release() then return kAccepted end
+        if ctx:is_composing() then ctx:commit() end
+        env.engine:commit_text(bare_uppercase)
+        return kAccepted
+    end
     if not ascii_mode and no_modifier and ctx:is_composing() and _get_append_suffix(env, ctx) then
         if key_event:release() then return kAccepted end
         local ch = _ascii_append_char(kn, sf, caps_on, kc, clean_key, repr)
@@ -1232,7 +1252,7 @@ local function processor(key_event, env)
     end
     local append_alpha = nil
     if not ascii_mode and no_modifier and ctx:is_composing() then
-        if sf or caps_on then
+        if caps_on then
             append_alpha = _alpha_upper_char(clean_key, kc)
         else
             append_alpha = _uppercase_char(clean_key, kc)
