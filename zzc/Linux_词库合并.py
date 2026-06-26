@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+import secrets
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -82,17 +83,24 @@ def discover_layout() -> tuple[Path, Path, Path, str]:
 
 
 ROOT, ZZC_DIR, OPS, SCHEMA = discover_layout()
+STATE_DIR = ROOT / "zzc_state"
 ROLLBACK_DIR = ZZC_DIR / "撤回合并"
-INDEX = ZZC_DIR / "index.tsv"
-RUNTIME_EXACT = ZZC_DIR / "runtime_exact.tsv"
-RUNTIME_OPS = ZZC_DIR / "runtime_ops.tsv"
-EFFECTIVE_STATE = ZZC_DIR / "effective_state.tsv"
-CHAR_PARTS = ZZC_DIR / "char_parts.tsv"
-CACHE_VERSION = ZZC_DIR / "cache_version.txt"
+RUNTIME_EXACT = STATE_DIR / "runtime_exact.tsv"
+RUNTIME_OPS = STATE_DIR / "runtime_ops.tsv"
+EFFECTIVE_STATE = STATE_DIR / "effective_state.tsv"
+CHAR_PARTS = STATE_DIR / "char_parts.tsv"
+CACHE_VERSION = STATE_DIR / "cache_version.tsv"
+RESET_MARKER = STATE_DIR / "zzc_reset.tsv"
+RESET_SEEN = STATE_DIR / "zzc_reset_seen.tsv"
 CHAR_DICT = ROOT / f"{SCHEMA}.danzi.dict.yaml"
 LEGACY_ROOT_OPS = ROOT / f"{SCHEMA}.zzc.ops.tsv"
 LEGACY_OPS = ZZC_DIR / "ops.tsv"
 LEGACY_PENDING = ZZC_DIR / "pending.tsv"
+LEGACY_RUNTIME_EXACT = ZZC_DIR / "runtime_exact.tsv"
+LEGACY_RUNTIME_OPS = ZZC_DIR / "runtime_ops.tsv"
+LEGACY_EFFECTIVE_STATE = ZZC_DIR / "effective_state.tsv"
+LEGACY_RESET_MARKER = ZZC_DIR / "zzc_reset.tsv"
+LEGACY_RESET_SEEN = ZZC_DIR / "zzc_reset_seen.tsv"
 TARGET_DICTS = resolve_target_dicts(ROOT, SCHEMA)
 
 
@@ -103,7 +111,8 @@ def read_text(path: Path) -> str:
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8", newline="\n")
+    with tmp.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
     tmp.replace(path)
 
 
@@ -211,7 +220,7 @@ def rebuild_char_parts() -> int:
 
 def load_ops() -> list[dict[str, str]]:
     ops: list[dict[str, str]] = []
-    for source in (OPS, RUNTIME_OPS, LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
+    for source in (OPS, RUNTIME_OPS, LEGACY_RUNTIME_OPS, LEGACY_ROOT_OPS, LEGACY_OPS, LEGACY_PENDING):
         if not source.exists():
             continue
         for line in read_text(source).splitlines():
@@ -437,7 +446,13 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
     backup_if_exists(RUNTIME_OPS, state_dir, manifest, "state_path")
     backup_if_exists(EFFECTIVE_STATE, state_dir, manifest, "state_path")
     backup_if_exists(RUNTIME_EXACT, state_dir, manifest, "state_path")
-    backup_if_exists(INDEX, state_dir, manifest, "state_path")
+    backup_if_exists(RESET_MARKER, state_dir, manifest, "state_path")
+    backup_if_exists(RESET_SEEN, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_RUNTIME_OPS, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_EFFECTIVE_STATE, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_RUNTIME_EXACT, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_RESET_MARKER, state_dir, manifest, "state_path")
+    backup_if_exists(LEGACY_RESET_SEEN, state_dir, manifest, "state_path")
     backup_if_exists(LEGACY_ROOT_OPS, state_dir, manifest, "state_path")
     backup_if_exists(LEGACY_OPS, state_dir, manifest, "state_path")
     backup_if_exists(LEGACY_PENDING, state_dir, manifest, "state_path")
@@ -487,7 +502,19 @@ def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, 
 
 
 def touch_cache_version() -> None:
-    write_text(CACHE_VERSION, datetime.now().strftime("%Y%m%d%H%M%S%f") + "\n")
+    write_text(CACHE_VERSION, f"cache_token\t{secrets.token_hex(8)}\n")
+
+
+def write_reset_marker() -> None:
+    write_text(
+        RESET_MARKER,
+        "\n".join([
+            "version\t2",
+            f"schema\t{SCHEMA}",
+            "mode\tfull_reset",
+            f"reset_token\t{secrets.token_hex(16)}",
+        ]) + "\n",
+    )
 
 
 def clear_ops() -> None:
@@ -500,10 +527,9 @@ def clear_ops() -> None:
 
 def clear_runtime_cache() -> None:
     removed = 0
-    for group_file in ZZC_DIR.glob("group_*.tsv"):
+    for group_file in list(STATE_DIR.glob("group_*.tsv")) + list(ZZC_DIR.glob("group_*.tsv")):
         group_file.unlink()
         removed += 1
-    write_text(INDEX, "")
     write_text(RUNTIME_EXACT, "")
     write_text(EFFECTIVE_STATE, "")
     print(f"cleared runtime cache: group={removed}")
@@ -528,6 +554,7 @@ def main() -> int:
     merge_into_real_dicts(ops, keep_rows, latest_order_map(ops))
     clear_ops()
     clear_runtime_cache()
+    write_reset_marker()
     print(f"merge done: {perf_counter() - started:.1f}s")
     return 0
 

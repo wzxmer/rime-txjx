@@ -114,6 +114,24 @@ local function path(name)
     return join_path(data_dir(), name)
 end
 
+local function state_path(name)
+    return path("zzc_state/" .. name)
+end
+
+local function legacy_state_path(name)
+    return path("zzc/" .. name)
+end
+
+local function existing_state_path(name)
+    local next_path = state_path(name)
+    local f = io.open(next_path, "r")
+    if f then
+        f:close()
+        return next_path
+    end
+    return legacy_state_path(name)
+end
+
 local function flag_exists(name)
     local f = io.open(path(name), "r")
     if not f then return false end
@@ -302,7 +320,7 @@ local function add_char_part(text, s, y, p, code)
 end
 
 local function load_char_parts_from_tsv(target)
-    local f = io.open(path("zzc/char_parts.tsv"), "r")
+    local f = io.open(existing_state_path("char_parts.tsv"), "r")
     if not f then return false end
     local found = false
     local seen_target = false
@@ -486,7 +504,7 @@ local function pending_file()
 end
 
 runtime_ops_file = function()
-    return path("zzc/runtime_ops.tsv")
+    return state_path("runtime_ops.tsv")
 end
 
 local function legacy_root_ops_file()
@@ -494,23 +512,43 @@ local function legacy_root_ops_file()
 end
 
 local function legacy_ops_file()
-    return path("zzc/ops.tsv")
+    return existing_state_path("ops.tsv")
 end
 
 local function legacy_pending_file()
-    return path("zzc/pending.tsv")
+    return existing_state_path("pending.tsv")
 end
 
 effective_state_file = function()
-    return path("zzc/effective_state.tsv")
+    return state_path("effective_state.tsv")
 end
 
 local function pending_version_file()
-    return path("zzc/cache_version.txt")
+    return state_path("cache_version.tsv")
+end
+
+local function legacy_pending_version_file()
+    return existing_state_path("cache_version.txt")
 end
 
 local function runtime_ops_append_stamp_file()
-    return path("zzc/runtime_ops_appended.tsv")
+    return state_path("runtime_ops_appended.tsv")
+end
+
+local function runtime_exact_file()
+    return state_path("runtime_exact.tsv")
+end
+
+local function readable_runtime_exact_file()
+    return existing_state_path("runtime_exact.tsv")
+end
+
+local function reset_marker_file()
+    return existing_state_path("zzc_reset.tsv")
+end
+
+local function reset_seen_file()
+    return state_path("zzc_reset_seen.tsv")
 end
 
 local function read_first_line(file_path)
@@ -519,6 +557,61 @@ local function read_first_line(file_path)
     local line = f:read("*l")
     f:close()
     return line
+end
+
+local function reset_marker_from_file(file_path)
+    local f = io.open(file_path, "r")
+    if not f then return nil end
+    local marker = {}
+    for line in f:lines() do
+        local key, value = line:match("^([^\t]+)\t(.+)$")
+        if key and value then
+            marker[key] = value
+        end
+    end
+    f:close()
+    if marker.version ~= "2" or marker.schema ~= "txjx" or marker.mode ~= "full_reset" then
+        return nil
+    end
+    local token = marker.reset_token or ""
+    if not token:match("^[0-9a-fA-F]+$") then return nil end
+    marker.reset_token = token:lower()
+    return marker
+end
+
+local function file_has_content(file_path)
+    local f = io.open(file_path, "r")
+    if not f then return false end
+    local has_content = false
+    for line in f:lines() do
+        if line:match("%S") then
+            has_content = true
+            break
+        end
+    end
+    f:close()
+    return has_content
+end
+
+local function ops_has_body_record()
+    local f = io.open(pending_file(), "r")
+    if not f then return false end
+    for line in f:lines() do
+        if pending_record_from_line(line) then
+            f:close()
+            return true
+        end
+    end
+    f:close()
+    return false
+end
+
+local function has_local_resettable_zzc_state()
+    return ops_has_body_record()
+        or file_has_content(runtime_ops_file())
+        or file_has_content(readable_runtime_exact_file())
+        or file_has_content(effective_state_file())
+        or file_has_content(runtime_ops_append_stamp_file())
 end
 
 local function runtime_ops_signature()
@@ -592,10 +685,19 @@ end
 
 local function read_pending_version()
     local f = io.open(pending_version_file(), "r")
-    if not f then return "" end
-    local value = f:read("*l") or ""
-    f:close()
-    return value
+    if f then
+        local value = ""
+        for line in f:lines() do
+            local key, item = line:match("^([^\t]+)\t(.+)$")
+            if key == "cache_token" then
+                value = item or ""
+                break
+            end
+        end
+        f:close()
+        return value
+    end
+    return read_first_line(legacy_pending_version_file()) or ""
 end
 
 local function write_pending_version()
@@ -604,7 +706,7 @@ local function write_pending_version()
     local tmp = file_path .. ".tmp"
     local f = io.open(tmp, "w")
     if not f then return nil end
-    f:write(value, "\n")
+    f:write("cache_token\t", value, "\n")
     f:close()
     os.remove(file_path)
     if not os.rename(tmp, file_path) then
@@ -848,8 +950,7 @@ local function flush_runtime_ops_to_pending()
     local ok, err
     ok, err = write_file_atomic(runtime_ops_file(), {})
     if not ok then return nil, err end
-    write_file_atomic(path("zzc/index.tsv"), {})
-    write_file_atomic(path("zzc/runtime_exact.tsv"), {})
+    write_file_atomic(runtime_exact_file(), {})
     write_file_atomic(effective_state_file(), {})
     pending_loaded = false
     load_pending_cache_current()
@@ -873,10 +974,48 @@ local function cleanup_appended_runtime_ops()
     end
     local ok, err = write_file_atomic(runtime_ops_file(), {})
     if not ok then return nil, err end
-    write_file_atomic(path("zzc/index.tsv"), {})
-    write_file_atomic(path("zzc/runtime_exact.tsv"), {})
+    write_file_atomic(runtime_exact_file(), {})
     write_file_atomic(effective_state_file(), {})
     pending_loaded = false
+    load_pending_cache_current()
+    return true, true
+end
+
+local function apply_reset_marker()
+    local marker = reset_marker_from_file(reset_marker_file())
+    if not marker then return true, false end
+    local seen = reset_marker_from_file(reset_seen_file())
+    if seen and seen.reset_token == marker.reset_token and not has_local_resettable_zzc_state() then
+        return true, false
+    end
+    local header_lines = {}
+    for line in ops_header():gmatch("([^\n]*)\n") do
+        header_lines[#header_lines + 1] = line
+    end
+    local ok, err = write_file_atomic(pending_file(), header_lines)
+    if not ok then return nil, err end
+    for _, file_path in ipairs({
+        runtime_ops_file(),
+        runtime_exact_file(),
+        effective_state_file(),
+        runtime_ops_append_stamp_file(),
+    }) do
+        ok, err = write_file_atomic(file_path, {})
+        if not ok then return nil, err end
+    end
+    ok, err = write_file_atomic(reset_seen_file(), {
+        "version\t2",
+        "schema\ttxjx",
+        "mode\tfull_reset",
+        "reset_token\t" .. marker.reset_token,
+    })
+    if not ok then return nil, err end
+    write_pending_version()
+    pending_loaded = false
+    pending_cache = {}
+    pending_by_code = {}
+    effective_projection_by_code = {}
+    effective_by_code = {}
     load_pending_cache_current()
     return true, true
 end
@@ -1091,7 +1230,14 @@ function M.cleanup_appended_runtime_ops()
     return cleanup_appended_runtime_ops()
 end
 
+function M.apply_reset_marker()
+    return apply_reset_marker()
+end
+
 function M.maybe_flush_after_deploy(env)
+    local ok, changed_or_err = apply_reset_marker()
+    if not ok then return nil, changed_or_err end
+    if changed_or_err == true then return true, true end
     return cleanup_appended_runtime_ops()
 end
 

@@ -1691,6 +1691,20 @@ local function module_capture_current_candidate(ctx, next_input)
 end
 
 local function init(env)
+    if core.apply_reset_marker then
+        local reset_ok, reset_result, reset_changed_or_err = pcall(core.apply_reset_marker)
+        if reset_ok and reset_result then
+            env._zzc_reset_changed = reset_changed_or_err == true
+        elseif reset_ok then
+            env._zzc_flush_ok = false
+            env._zzc_flush_error = tostring(reset_changed_or_err or "")
+            return
+        else
+            env._zzc_flush_ok = false
+            env._zzc_flush_error = tostring(reset_result or "")
+            return
+        end
+    end
     if not core.cleanup_appended_runtime_ops then return end
     local ok, result, changed_or_err = pcall(core.cleanup_appended_runtime_ops)
     if ok then
