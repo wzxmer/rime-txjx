@@ -15,17 +15,20 @@ jobs:
           BASE_MAJOR=3
           BASE_MINOR=6
           BASE_PATCH=9
-          
-          # 3.6.9 对应的 GitHub Actions run number
-          BASE_RUN_NUMBER=367
-          
+
+          # 当前这次 run 76 对应 3.6.9
+          BASE_RUN_NUMBER=76
+
           CURRENT_RUN=${{ github.run_number }}
           PATCH=$(( BASE_PATCH + CURRENT_RUN - BASE_RUN_NUMBER ))
-          
+
           VERSION="${BASE_MAJOR}.${BASE_MINOR}.${PATCH}"
           CURRENT_DATE="$(date +'%Y%m%d')"
           RELEASE_TITLE="天行键v${VERSION}"
-          
+
+          echo "CURRENT_RUN=${CURRENT_RUN}"
+          echo "VERSION=${VERSION}"
+
           echo "CURRENT_DATE=${CURRENT_DATE}" >> "$GITHUB_ENV"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_TITLE=${RELEASE_TITLE}" >> "$GITHUB_ENV"
