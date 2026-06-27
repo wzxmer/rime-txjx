@@ -702,17 +702,8 @@ end
 
 local function write_pending_version()
     local value = new_tx()
-    local file_path = pending_version_file()
-    local tmp = file_path .. ".tmp"
-    local f = io.open(tmp, "w")
-    if not f then return nil end
-    f:write("cache_token\t", value, "\n")
-    f:close()
-    os.remove(file_path)
-    if not os.rename(tmp, file_path) then
-        os.remove(tmp)
-        return nil
-    end
+    local ok, err = write_file_atomic(pending_version_file(), { "cache_token\t" .. value })
+    if not ok then return nil, err end
     pending_version = read_pending_version()
     pending_version_check_second = os.time()
     return value
@@ -985,7 +976,7 @@ local function apply_reset_marker()
     local marker = reset_marker_from_file(reset_marker_file())
     if not marker then return true, false end
     local seen = reset_marker_from_file(reset_seen_file())
-    if seen and seen.reset_token == marker.reset_token and not has_local_resettable_zzc_state() then
+    if seen and seen.reset_token == marker.reset_token then
         return true, false
     end
     local header_lines = {}
@@ -1010,7 +1001,8 @@ local function apply_reset_marker()
         "reset_token\t" .. marker.reset_token,
     })
     if not ok then return nil, err end
-    write_pending_version()
+    ok, err = write_pending_version()
+    if not ok then return nil, err end
     pending_loaded = false
     pending_cache = {}
     pending_by_code = {}
@@ -1284,8 +1276,10 @@ write_file_atomic = function(file_path, lines)
     end
     for _, line in ipairs(lines) do f:write(line, "\n") end
     f:close()
-    local removed = os.remove(file_path)
     local renamed = os.rename(tmp, file_path)
+    if renamed then return true end
+    os.remove(file_path)
+    renamed = os.rename(tmp, file_path)
     if not renamed then
         os.remove(tmp)
         return nil, "rename_failed:" .. file_path

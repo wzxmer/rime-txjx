@@ -993,6 +993,7 @@ end
 
 local function commit_command_deletes(ctx)
     local digits = state.display_word or ""
+    if digits == "" then digits = "1" end
     local code = state.target_code or ""
     local snapshot = state.command_candidates
     for d in digits:gmatch("%d") do
@@ -1309,10 +1310,7 @@ local function handle_command_wait(ctx, key, ch, shifted, keycode)
         return kAccepted
     end
     if state.mode == "delete" and is_minus_key(key, ch) and (not state.display_word or state.display_word == "") then
-        state.mode = "undo"
-        state.target_code = ""
-        state.command_candidates = {}
-        state.display_word = "-"
+        state.display_word = "1"
         sync_state(ctx)
         refresh_context(ctx)
         return kAccepted
