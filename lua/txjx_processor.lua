@@ -593,6 +593,19 @@ local function _alpha_upper_char(clean_key, kc)
     return nil
 end
 
+local function _bare_upper_alpha_char(clean_key, kc, repr)
+    if kc >= 65 and kc <= 90 then return CHAR_CACHE[kc] end
+    if type(clean_key) == "string" and #clean_key == 1 then
+        local b = string_byte(clean_key, 1)
+        if b >= 65 and b <= 90 then return clean_key end
+    end
+    if type(repr) == "string" and #repr == 1 then
+        local b = string_byte(repr, 1)
+        if b >= 65 and b <= 90 then return repr end
+    end
+    return nil
+end
+
 local function _is_caps_on(key_event)
     local ok, value = pcall(function() return key_event:caps() end)
     return ok and value == true
@@ -942,13 +955,22 @@ local function _is_alpha_key(env, key, clean_key, kc)
     return false
 end
 
-local function _has_uppercase_input(input)
-    return type(input) == "string" and string_match(input, "[A-Z]") ~= nil
-end
-
 local function _passthrough_alpha_key(env, ctx, sf, key, clean_key, kc)
     if not _is_alpha_key(env, key, clean_key, kc) then return false end
-    return sf or _has_uppercase_input(ctx.input) or _is_reverse_input(env, ctx.input)
+    return sf or _is_reverse_input(env, ctx.input)
+end
+
+local function _shift_inline_alpha_key(env, ctx, sf, key, clean_key, kc)
+    if not env._shift_inline_ascii then return false end
+    if sf or not ctx:is_composing() or (ctx.input or "") == "" then
+        env._shift_inline_ascii = nil
+        return false
+    end
+    if not _is_alpha_key(env, key, clean_key, kc) then
+        env._shift_inline_ascii = nil
+        return false
+    end
+    return true
 end
 
 local function _topup_fixed_rule_would_commit(env, current_input, key, opts)
@@ -1103,7 +1125,7 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
     end
 
     if direct_symbols_off then
-        if kn == "period" and not sf then return kNoop end
+        if kn == "period" and not sf and not ctx:is_composing() then return kNoop end
         if not (kn == "equal" and not sf and opts.jisuanqi) then
              if _tdc(_SymCN, kn, sf, env.engine, ctx) then
                 local sym_cfg = _SymCN[kn]
@@ -1224,25 +1246,31 @@ local function processor(key_event, env)
     local ascii_mode = ctx:get_option("ascii_mode")
     local no_modifier = not key_event:ctrl() and not key_event:alt() and not key_event:super()
     local caps_on = _effective_caps_on(env, key_event)
-    local shift_uppercase = (not ascii_mode and sf and no_modifier) and _alpha_upper_char(clean_key, kc) or nil
-    if shift_uppercase then
+    local bare_upper = (not ascii_mode and not sf and not caps_on and no_modifier and not key_event:release())
+        and _bare_upper_alpha_char(clean_key, kc, repr) or nil
+    if bare_upper and ((ctx.input or "") == "" or env._shift_inline_ascii) then
+        env._shift_inline_ascii = true
         _topup_clear_queued_keys(env)
         env._af_seed = nil
         _space_guard_clear(env)
-        if key_event:release() then return kAccepted end
-        if ctx:is_composing() then ctx:commit() end
-        env.engine:commit_text(shift_uppercase)
+        ctx:push_input(bare_upper)
         return kAccepted
     end
-    local bare_uppercase = (not ascii_mode and not sf and not caps_on and no_modifier) and _uppercase_char(clean_key, kc) or nil
-    if bare_uppercase then
+    if not ascii_mode and sf and no_modifier and _is_alpha_key(env, kn, clean_key, kc) then
+        env._shift_inline_ascii = true
         _topup_clear_queued_keys(env)
         env._af_seed = nil
         _space_guard_clear(env)
-        if key_event:release() then return kAccepted end
-        if ctx:is_composing() then ctx:commit() end
-        env.engine:commit_text(bare_uppercase)
-        return kAccepted
+        return kNoop
+    end
+    if ascii_mode or not ctx:is_composing() or (ctx.input or "") == "" then
+        env._shift_inline_ascii = nil
+    elseif not key_event:release() and no_modifier and not caps_on
+        and _shift_inline_alpha_key(env, ctx, sf, kn, clean_key, kc) then
+        _topup_clear_queued_keys(env)
+        env._af_seed = nil
+        _space_guard_clear(env)
+        return kNoop
     end
     if not ascii_mode and no_modifier and ctx:is_composing() and _get_append_suffix(env, ctx) then
         if key_event:release() then return kAccepted end
@@ -1473,6 +1501,7 @@ local function init(env)
     env._caps_blocked = nil
     env._caps_lock_on = nil
     env._shift_symbol_release_guard = nil
+    env._shift_inline_ascii = nil
     env._calc_equal_allow_next = nil
 
     registry.register("processor", function()
@@ -1482,6 +1511,7 @@ local function init(env)
         env._af_seed = nil
         env._calc_equal_allow_next = nil
         env._caps_lock_on = nil
+        env._shift_inline_ascii = nil
         return true
     end)
 
@@ -1504,6 +1534,7 @@ local function fini(env)
     env._caps_blocked = nil
     env._caps_lock_on = nil
     env._shift_symbol_release_guard = nil
+    env._shift_inline_ascii = nil
     env._calc_equal_allow_next = nil
     -- 主动GC：释放资源后回收内存
     collectgarbage("step", 200)
