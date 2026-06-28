@@ -1,6 +1,7 @@
 local core = require("zzc.txjx_zzc_core")
 local COLLECT_CANDIDATE_LIMIT = 30
 
+
 local length_inputs = {
     ["3"] = 3, ["4"] = 4, ["5"] = 5, ["6"] = 6,
     ["三"] = 3, ["四"] = 4, ["五"] = 5, ["六"] = 6,
@@ -32,6 +33,8 @@ local function is_collect_candidate(cand)
         and cand.text ~= ""
         and cand.text:sub(1, 1) ~= "~"
 end
+
+local with_reminder
 
 local function maybe_finalize_from_input(ctx, input_text, env, input)
     local prefix, len = split_length_input(input_text)
@@ -98,6 +101,12 @@ local function maybe_finalize_from_input(ctx, input_text, env, input)
     if not code then
         local choices = core.code_choices_for_text(word, len, 9)
         if choices and choices[1] then
+            if #choices == 1 then
+                local choice = choices[1]
+                code = core.save_word_at_code(choice.items or core.state_items or {}, choice.code)
+            end
+        end
+        if not code and choices and choices[1] then
             local rows = {}
             for _, choice in ipairs(choices) do
                 rows[#rows + 1] = choice.word .. "\t" .. choice.code
@@ -253,7 +262,7 @@ local function yield_code_choice_candidates(ctx, code)
             end
             local cand = Candidate("zzc_code_choice", 0, #code, display_word, choice_code)
             cand.quality = 10080 - idx
-            yield(with_reminder(cand))
+            yield(cand)
             yielded = true
         end
     end
@@ -274,7 +283,7 @@ local function with_preedit(cand, preedit_text)
     return nc
 end
 
-local function with_reminder(cand)
+with_reminder = function(cand)
     if not cand or not core.take_reminder_comment then return cand end
     local comment = core.take_reminder_comment()
     if comment and comment ~= "" then

@@ -116,6 +116,8 @@ return {
         local reverse_lookup = nil
         local buffer = {}
         local buffer_size = 0
+        local zzc_append_buffer = {}
+        local zzc_append_size = 0
         local completion_buffer = {}
         local comp_count = 0
         local zzc_cover = input_text ~= "" and zzc_core.zzc_cover_for_input(input_text) or nil
@@ -137,6 +139,11 @@ return {
         for cand in input:iter() do
             if cand.type == "history" then
                 yield(cand)
+                goto continue
+            end
+            if cand.type == "zzc_append" then
+                zzc_append_size = zzc_append_size + 1
+                zzc_append_buffer[zzc_append_size] = cand
                 goto continue
             end
             if type(cand.type) == "string" and cand.type:match("^zzc_") then
@@ -183,6 +190,9 @@ return {
 
         for i = 1, buffer_size do
             yield(buffer[i])
+        end
+        for i = 1, zzc_append_size do
+            yield(zzc_append_buffer[i])
         end
         sort_completion_buffer(completion_buffer)
         for i = 1, #completion_buffer do

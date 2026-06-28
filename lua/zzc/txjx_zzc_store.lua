@@ -89,11 +89,23 @@ function M.build_effective_projection(input, pending, opts)
     local latest, latest_hidden = latest_state_for_code(pending, input)
     for word in pairs(latest_hidden) do hide_words[word] = true end
     local latest_order_tx = nil
+    local latest_order_pos = nil
     if not opts.ignore_order then
         for i = #(pending or {}), 1, -1 do
             local record = pending[i]
             if record.code == input and record.mark == "^" and record.tx and record.tx ~= "" then
                 latest_order_tx = record.tx
+                latest_order_pos = i
+                break
+            end
+        end
+    end
+    if latest_order_pos then
+        for i = latest_order_pos + 1, #(pending or {}) do
+            local record = pending[i]
+            if record and record.code == input and record.mark ~= "^" and record.mark ~= "!" and not record.append then
+                latest_order_tx = nil
+                latest_order_pos = nil
                 break
             end
         end
