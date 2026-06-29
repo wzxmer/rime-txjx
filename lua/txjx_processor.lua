@@ -1273,7 +1273,8 @@ local function processor(key_event, env)
     end
     local ascii_mode = ctx:get_option("ascii_mode")
     local no_modifier = not key_event:ctrl() and not key_event:alt() and not key_event:super()
-    local plain_digit_key = (no_modifier and not sf and not key_event:release())
+    local plain_digit_key = (not ascii_mode and no_modifier and not sf and not key_event:release()
+        and not ctx:is_composing() and (ctx.input or "") == "")
         and _digit_char(clean_key, kc, repr) or nil
     env._standalone_period_after_digit = (no_modifier and not sf and not key_event:release()
         and kn == "period" and not ctx:is_composing() and env._last_plain_digit_key) or nil
