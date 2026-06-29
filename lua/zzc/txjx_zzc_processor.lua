@@ -7,7 +7,9 @@ local state = { active = false, stage = "off", items = {}, mode = "make", target
 local current_action_candidate
 local first_candidate
 local reset
+local refresh_context
 local command_candidate_snapshot
+local collect_lookup_input
 
 local zzc_props = {
     "_txjx_zzc_stage",
@@ -312,7 +314,7 @@ local function sync_state(ctx)
     end
 end
 
-local function refresh_context(ctx)
+refresh_context = function(ctx)
     if not ctx then return end
     pcall(function()
         if ctx.refresh_non_confirmed_composition then
@@ -515,8 +517,10 @@ local function probe_first_candidate(ctx, code)
     end
     local old_input = ctx.input or ""
     local old_props = snapshot_props(ctx, probe_props)
+    local old_core_stage = core.current_stage and core.current_stage() or "off"
     local text = nil
     local ok = pcall(function()
+        if core.set_current_stage then core.set_current_stage("off") end
         clear_props(ctx, probe_props)
         ctx.input = code
         refresh_context(ctx)
@@ -539,6 +543,7 @@ local function probe_first_candidate(ctx, code)
     pcall(function()
         ctx:clear()
         ctx.input = old_input
+        if core.set_current_stage then core.set_current_stage(old_core_stage) end
         restore_props(ctx, old_props, probe_props)
         refresh_context(ctx)
     end)
@@ -569,7 +574,7 @@ end
 
 local function capture_current_candidate(ctx, next_input)
     if not ctx then return nil end
-    local code_hint = strip_zzc_prefix(ctx.input)
+    local code_hint = collect_lookup_input(ctx.input)
     local cand = current_action_candidate(ctx) or first_candidate(ctx)
     if not is_real_candidate(cand) then return nil end
     local text = cand.text
@@ -599,7 +604,7 @@ local function capture_candidate_at(ctx, idx)
     if not is_real_candidate(cand) then return nil end
     local text = cand.text
     if not text or text == "" or not is_cjk_text(text) then return nil end
-    local code_hint = strip_zzc_prefix(ctx.input)
+    local code_hint = collect_lookup_input(ctx.input)
     local appended
     if state.mode == "make" and (not state.target_code or state.target_code == "") then
         appended = append_text_raw(text)
@@ -618,7 +623,68 @@ end
 local function pending_input_code(ctx)
     local input = ctx and ctx.input or ""
     if input == "" or input == "\\" then return "" end
-    return strip_zzc_prefix(input)
+    return collect_lookup_input(input)
+end
+
+local function collect_display_prefix()
+    if state.stage ~= "collect" then return "\\" end
+    if state.mode == "append" and (state.target_code or "") ~= "" then
+        return (state.target_code or "") .. "\\+"
+    end
+    if state.mode == "replace" and (state.target_code or "") ~= "" then
+        return (state.target_code or "") .. "\\"
+    end
+    return "\\"
+end
+
+collect_lookup_input = function(input)
+    input = tostring(input or "")
+    local prefix = collect_display_prefix()
+    if prefix ~= "" and input:sub(1, #prefix) == prefix then
+        return input:sub(#prefix + 1)
+    end
+    if input:sub(1, 1) == "\\" then
+        return strip_zzc_prefix(input)
+    end
+    return input
+end
+
+local function update_collect_input_shape(ctx)
+    if not (ctx and state.stage == "collect") then return false end
+    if not ((state.mode == "append" or state.mode == "replace") and (state.target_code or "") ~= "") then return false end
+    local lookup = collect_lookup_input(ctx.input)
+    if lookup == "" or lookup == "\\" then return false end
+    local shaped = lookup
+    if not probe_first_candidate(ctx, lookup) then
+        shaped = collect_display_prefix() .. lookup
+    end
+    if ctx.input ~= shaped then
+        ctx.input = shaped
+        refresh_context(ctx)
+        return true
+    end
+    return false
+end
+
+local function push_collect_code_char(ctx, ch)
+    if not (ctx and ch and ch ~= "" and state.stage == "collect") then return false end
+    if not ((state.mode == "append" or state.mode == "replace") and (state.target_code or "") ~= "") then return false end
+    local lookup = collect_lookup_input(ctx.input)
+    if #lookup >= 6 then
+        ctx.input = collect_display_prefix()
+        sync_state(ctx)
+        refresh_context(ctx)
+        return true
+    end
+    lookup = lookup .. ch
+    if probe_first_candidate(ctx, lookup) then
+        ctx.input = lookup
+    else
+        ctx.input = collect_display_prefix() .. lookup
+    end
+    sync_state(ctx)
+    refresh_context(ctx)
+    return true
 end
 
 local function current_direct_code(ctx)
@@ -734,6 +800,13 @@ local function restore_code_backslash_input(ctx)
     return restore_plain_input(ctx, target ~= "" and (target .. "\\") or "\\")
 end
 
+local function restore_code_without_backslash(ctx)
+    local origin = state.origin_input or ""
+    local code = origin:gsub("\\$", "")
+    if code == "" then code = state.target_code or "" end
+    return restore_plain_input(ctx, code)
+end
+
 local function handle_shorten_wait_backspace(ctx)
     local idx = tonumber(state.shorten_idx or 1) or 1
     if idx > 1 then
@@ -755,9 +828,19 @@ local function handle_collect_backspace(ctx)
     end
     if state.stage == "collect"
         and (state.mode == "append" or state.mode == "replace")
-        and ctx.input == "\\"
-        and #state.items == 0 then
-        return restore_code_backslash_input(ctx)
+        and ctx.input and ctx.input ~= "" and ctx.input ~= "\\" then
+        local lookup = collect_lookup_input(ctx.input)
+        if #lookup > 1 then
+            lookup = lookup:sub(1, -2)
+            ctx.input = lookup
+            sync_state(ctx)
+            refresh_context(ctx)
+            return kAccepted
+        end
+        ctx.input = "\\"
+        sync_state(ctx)
+        refresh_context(ctx)
+        return kAccepted
     end
     if state.stage == "collect" and ctx.input and #ctx.input == 1 and ctx.input ~= "\\" then
         ctx.input = "\\"
@@ -768,24 +851,26 @@ local function handle_collect_backspace(ctx)
     if state.stage == "collect" and ctx.input and ctx.input ~= "" and ctx.input ~= "\\" then
         return kNoop
     end
+    if state.stage == "collect"
+        and (state.mode == "append" or state.mode == "replace")
+        and ctx.input == "\\"
+        and #state.items == 0 then
+        return restore_code_without_backslash(ctx)
+    end
     if #state.items > 0 then
         table.remove(state.items)
+        core.set_state_items(state.items)
         state.display_word = core.buffer_word() or ""
         if #state.items > 0 then
             ctx.input = "\\"
             sync_state(ctx)
             refresh_context(ctx)
         else
-            if state.mode == "append" or state.mode == "replace" then
-                return restore_code_backslash_input(ctx)
-            else
-                state.stage = "collect"
-                state.active = true
-                state.mode = "make"
-                ctx.input = "\\"
-                sync_state(ctx)
-                refresh_context(ctx)
-            end
+            state.stage = "collect"
+            state.active = true
+            ctx.input = "\\"
+            sync_state(ctx)
+            refresh_context(ctx)
         end
         return kAccepted
     end
@@ -837,9 +922,7 @@ command_candidate_snapshot = function(ctx, code, opts)
     local function add_cover_rows(rows)
         for _, row in ipairs(rows or {}) do
             local word = row and row.word
-            if word and word ~= ""
-                and not seen[word]
-                and (not cover or not cover.hide_words or not cover.hide_words[word]) then
+            if word and word ~= "" and not seen[word] then
                 out[#out + 1] = word
                 seen[word] = true
             end
@@ -1241,6 +1324,7 @@ local function activate_collect(ctx, first_char)
     sync_state(ctx)
     if is_code_char(first_char) then
         push_code_char(ctx, first_char)
+        update_collect_input_shape(ctx)
     end
 end
 
@@ -1261,6 +1345,7 @@ local function begin_replace_collect(ctx, target_code, first_char)
     sync_state(ctx)
     if is_code_char(first_char) then
         push_code_char(ctx, first_char)
+        update_collect_input_shape(ctx)
     end
 end
 
@@ -1469,6 +1554,9 @@ local function processor(key_event, env)
     end
 
     if not state.active then
+        if is_backspace(key) and current_input ~= "\\" then
+            return kNoop
+        end
         local command_prefix, command_directive = split_command_input(current_input)
         if command_prefix ~= nil and (command_directive == "!!!" or command_directive == "！！！") then
             core.undo_all_pending()
@@ -1621,6 +1709,10 @@ local function processor(key_event, env)
         and (ctx.input or "") == "\\"
         and is_plus_key(key, ch, shifted, keycode) then
         return begin_restore_wait(ctx, state.target_code)
+    end
+
+    if state.stage == "collect" and code_char and push_collect_code_char(ctx, code_char) then
+        return kAccepted
     end
 
     if state.stage == "collect" and (ctx.input or "") == "\\" and ch and ch ~= "" and not is_trigger(key, ch) then

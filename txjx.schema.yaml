@@ -84,6 +84,7 @@ ascii_composer:
 # ============ 拼写 ============
 speller:
   auto_select: false
+  max_code_length: 32
   alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
   initials: "abcdefghijklmnopqrstuvwxyz;'"
   delimiter: " '"

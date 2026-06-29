@@ -151,7 +151,12 @@ local function state_candidate(ctx, code)
     local word = core.buffer_word()
     local pending_code = ""
     if prop_stage == "collect" and code and code ~= "" and code ~= "\\" then
-        pending_code = code:sub(1, 1) == "\\" and code:sub(2) or code
+        local prefix = prop_mode == "append" and (prop_target .. "\\+") or (prop_target .. "\\")
+        if prop_target ~= "" and code:sub(1, #prefix) == prefix then
+            pending_code = code:sub(#prefix + 1)
+        else
+            pending_code = code:sub(1, 1) == "\\" and code:sub(2) or code
+        end
         if pending_code and not pending_code:match("^[A-Za-z;']+$") then
             pending_code = ""
         end
@@ -228,6 +233,21 @@ local function state_candidate(ctx, code)
     return cand
 end
 
+local function collect_lookup_code(ctx, code)
+    local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
+    local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
+    local prop_target = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_target") or ""
+    if prop_stage == "collect"
+        and (prop_mode == "replace" or prop_mode == "append")
+        and prop_target ~= "" then
+        local prefix = prop_mode == "append" and (prop_target .. "\\+") or (prop_target .. "\\")
+        if tostring(code or ""):sub(1, #prefix) == prefix then
+            return tostring(code or ""):sub(#prefix + 1)
+        end
+    end
+    return code
+end
+
 local function yield_restore_candidates(ctx, code)
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
@@ -296,6 +316,7 @@ local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
     cover = cover or core.zzc_cover_for_input(input_text)
     if not cover then return nil end
     local first = true
+    local yielded = false
     if cover.rows then
         for _, row in ipairs(cover.rows) do
             local cand = Candidate("zzc_cover", 0, #input_text, row.word, "自造词")
@@ -305,8 +326,10 @@ local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
                 first = false
             end
             yield(with_reminder(cand))
+            yielded = true
         end
     end
+    if not yielded and not (cover.append_rows and cover.append_rows[1]) then return nil end
     return cover
 end
 
@@ -322,9 +345,19 @@ local function yield_append_candidates(input_text, cover)
     return yielded
 end
 
+local function yield_empty_state_candidate(ctx, code, preedit_text)
+    local text = preedit_text or ""
+    local cand = Candidate("zzc_state", 0, #text, text, "")
+    cand.preedit = text
+    cand.quality = 10000
+    yield(cand)
+    return true
+end
+
 local function yield_input_candidates(input, skip_first, real_only, preedit_text)
     local skipped = false
     local first = true
+    local yielded = false
     for cand in input:iter() do
         if not real_only or is_real_candidate(cand) then
             if skip_first and not skipped then
@@ -336,13 +369,16 @@ local function yield_input_candidates(input, skip_first, real_only, preedit_text
                 else
                     yield(cand)
                 end
+                yielded = true
             end
         end
     end
+    return yielded
 end
 
 local function yield_filtered_input_candidates(input, cover, preedit_text)
     local first = true
+    local yielded = false
     for cand in input:iter() do
         if is_real_candidate(cand) then
             if not cover
@@ -354,11 +390,14 @@ local function yield_filtered_input_candidates(input, cover, preedit_text)
                 else
                     yield(cand)
                 end
+                yielded = true
             end
         else
             yield(cand)
+            yielded = true
         end
     end
+    return yielded
 end
 
 local function filter(input, env)
@@ -412,26 +451,53 @@ local function filter(input, env)
         return
     end
     if code ~= "" and (not state_cand or collect_with_code) then
-        local cover = core.zzc_order_for_input and core.zzc_order_for_input(code) or core.zzc_cover_for_input(code)
+        local lookup_code = collect_with_code and collect_lookup_code(ctx, code) or code
+        local cover = core.zzc_order_for_input and core.zzc_order_for_input(lookup_code) or core.zzc_cover_for_input(lookup_code)
         if cover and cover.has_order then
-            yield_zzc_cover_candidates(code, cover, collect_preedit)
-            yield_append_candidates(code, cover)
-            yield_filtered_input_candidates(input, cover, collect_preedit)
+            local yielded = yield_zzc_cover_candidates(code, cover, collect_preedit) ~= nil
+            yielded = yield_append_candidates(code, cover) or yielded
+            yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
+            if collect_with_code and not yielded then
+                yield_empty_state_candidate(ctx, lookup_code, collect_preedit)
+            end
             return
         end
         cover = yield_zzc_cover_candidates(code, cover, collect_preedit)
         if cover then
-            yield_append_candidates(code, cover)
-            yield_filtered_input_candidates(input, cover, collect_preedit)
+            local yielded = cover.rows and cover.rows[1] ~= nil
+            if not yielded then
+                yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
+            end
+            yielded = yield_append_candidates(code, cover) or yielded
+            if cover.rows and cover.rows[1] then
+                yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
+            end
+            if collect_with_code and not yielded then
+                yield_empty_state_candidate(ctx, lookup_code, collect_preedit)
+            end
             return
         end
+        cover = core.zzc_cover_for_input and core.zzc_cover_for_input(lookup_code) or nil
+        if cover and cover.hide_words then
+            local yielded = yield_filtered_input_candidates(input, cover, collect_preedit)
+            if collect_with_code and not yielded then
+                yield_empty_state_candidate(ctx, lookup_code, collect_preedit)
+            end
+            return
+        end
+    end
+    if collect_with_code and collect_lookup_code(ctx, code) ~= code then
+        return
     end
     if code == "" then
         if state_cand then yield(with_reminder(state_cand)) end
         for cand in input:iter() do yield(cand) end
         return
     end
-    yield_input_candidates(input, false, false, collect_preedit)
+    local yielded = yield_input_candidates(input, false, false, collect_preedit)
+    if collect_with_code and not yielded then
+        yield_empty_state_candidate(ctx, code, collect_preedit)
+    end
 end
 
 return filter
