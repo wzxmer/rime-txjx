@@ -244,6 +244,9 @@ local function collect_lookup_code(ctx, code)
         if tostring(code or ""):sub(1, #prefix) == prefix then
             return tostring(code or ""):sub(#prefix + 1)
         end
+        if tostring(code or ""):sub(1, 1) == "\\" then
+            return tostring(code or ""):sub(2)
+        end
     end
     return code
 end

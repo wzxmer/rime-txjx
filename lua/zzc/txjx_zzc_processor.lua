@@ -572,8 +572,9 @@ local function is_cjk_text(text)
     return text and text:match("[\228-\233][\128-\191][\128-\191]") ~= nil
 end
 
-local function capture_current_candidate(ctx, next_input)
+local function capture_current_candidate(ctx, next_input, opts)
     if not ctx then return nil end
+    opts = opts or {}
     local code_hint = collect_lookup_input(ctx.input)
     local cand = current_action_candidate(ctx) or first_candidate(ctx)
     if not is_real_candidate(cand) then return nil end
@@ -587,6 +588,10 @@ local function capture_current_candidate(ctx, next_input)
     end
     if not appended then return nil end
     state.display_word = core.buffer_word() or state.display_word
+    if opts.preserve_input then
+        sync_state(ctx)
+        return appended
+    end
     ctx:clear()
     ctx.input = next_input ~= nil and next_input or "\\"
     sync_state(ctx)
@@ -669,6 +674,7 @@ end
 local function push_collect_code_char(ctx, ch)
     if not (ctx and ch and ch ~= "" and state.stage == "collect") then return false end
     if not ((state.mode == "append" or state.mode == "replace") and (state.target_code or "") ~= "") then return false end
+    if has_visible_menu(ctx) then return false end
     local lookup = collect_lookup_input(ctx.input)
     if #lookup >= 6 then
         ctx.input = collect_display_prefix()
@@ -683,6 +689,17 @@ local function push_collect_code_char(ctx, ch)
         ctx.input = collect_display_prefix() .. lookup
     end
     sync_state(ctx)
+    refresh_context(ctx)
+    return true
+end
+
+local function prepare_collect_lookup_for_capture(ctx)
+    if not (ctx and state.stage == "collect") then return false end
+    if not ((state.mode == "append" or state.mode == "replace") and (state.target_code or "") ~= "") then return false end
+    local input = ctx.input or ""
+    local lookup = collect_lookup_input(input)
+    if lookup == "" or lookup == "\\" or input == lookup then return false end
+    ctx.input = lookup
     refresh_context(ctx)
     return true
 end
@@ -1711,6 +1728,10 @@ local function processor(key_event, env)
         return begin_restore_wait(ctx, state.target_code)
     end
 
+    if state.stage == "collect" and code_char and has_visible_menu(ctx) then
+        return kNoop
+    end
+
     if state.stage == "collect" and code_char and push_collect_code_char(ctx, code_char) then
         return kAccepted
     end
@@ -1808,6 +1829,7 @@ local function processor(key_event, env)
         end
         if is_space(key) then
             if (ctx.input or "") == "" then return kNoop end
+            prepare_collect_lookup_for_capture(ctx)
             local cand = current_action_candidate(ctx) or first_candidate(ctx)
             local cand_len = cand and length_from_candidate_text(cand.text)
             if cand_len and ready_for_length(ctx) then
