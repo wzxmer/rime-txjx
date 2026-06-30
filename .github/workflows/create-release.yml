@@ -13,16 +13,25 @@ jobs:
         shell: bash
         run: |
           BASE_MAJOR=3
-          BASE_MINOR=6
-          BASE_PATCH=9
+          BASE_MINOR=7
+          BASE_PATCH=2
 
-          # 当前这次 run 76 对应 3.6.9
-          BASE_RUN_NUMBER=76
+          # 下一次 run 78 对应 3.7.2；之后每次 +0.0.1，patch 到 9 后进位 minor。
+          BASE_RUN_NUMBER=78
 
           CURRENT_RUN=${{ github.run_number }}
-          PATCH=$(( BASE_PATCH + CURRENT_RUN - BASE_RUN_NUMBER ))
+          VERSION_OFFSET=$(( CURRENT_RUN - BASE_RUN_NUMBER ))
 
-          VERSION="${BASE_MAJOR}.${BASE_MINOR}.${PATCH}"
+          if [ "$VERSION_OFFSET" -lt 0 ]; then
+            echo "CURRENT_RUN ${CURRENT_RUN} is lower than BASE_RUN_NUMBER ${BASE_RUN_NUMBER}" >&2
+            exit 1
+          fi
+
+          TOTAL_PATCH=$(( BASE_PATCH + VERSION_OFFSET ))
+          MINOR=$(( BASE_MINOR + TOTAL_PATCH / 10 ))
+          PATCH=$(( TOTAL_PATCH % 10 ))
+
+          VERSION="${BASE_MAJOR}.${MINOR}.${PATCH}"
           CURRENT_DATE="$(date +'%Y%m%d')"
           RELEASE_TITLE="天行键v${VERSION}"
 
