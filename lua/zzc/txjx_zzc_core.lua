@@ -1,3 +1,7 @@
+-- 天行键 自造词核心模块
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-07-02
+
 local M = {}
 local codec = require("zzc.txjx_zzc_codec")
 local store = require("zzc.txjx_zzc_store")

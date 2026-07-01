@@ -1,3 +1,7 @@
+-- 天行键 缓存注册表模块
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-07-02
+
 local M = {}
 
 local cleaners = {}

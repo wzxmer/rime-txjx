@@ -1,3 +1,7 @@
+-- 天行键 OpenCC 简入台词组分片数据
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-07-02
+
 return {
   ["SQL注入"] = "SQL隱碼攻擊",
   ["SQL注入攻擊"] = "SQL隱碼攻擊",

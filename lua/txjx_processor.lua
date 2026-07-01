@@ -1,6 +1,6 @@
--- 天行键统一按键处理器
+-- 天行键 统一按键处理器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-06-04
+-- 更新：2026-07-02
 
 local string_sub = string.sub
 local string_byte = string.byte
@@ -862,7 +862,9 @@ local function _topup_eval_input(current_input, opts)
     local raw_input = current_input or ""
     local semicolon_input = opts and opts.direct_symbols and _has_semicolon_prefix(raw_input)
     local logical_input = raw_input
-    if semicolon_input then
+    if raw_input:sub(1, 1) == "\\" then
+        logical_input = string_sub(raw_input, 2)
+    elseif semicolon_input then
         logical_input = string_sub(raw_input, 2)
     end
     local input_len = #logical_input
@@ -1002,6 +1004,15 @@ end
 
 local function _topup_auto_fallback(env, ctx, key, clean_key, kc, opts)
     if env._tu_streaming or not opts.auto_fallback or not env._alpha[key] then return false end
+    local zzc_stage = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") or ""
+    local zzc_mode = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_mode") or "") or ""
+    if zzc_processor and zzc_processor.is_active and zzc_processor.is_active(ctx)
+        and zzc_stage == "collect"
+        and zzc_mode == "make"
+        and type(ctx.input) == "string"
+        and ctx.input:sub(1, 1) == "\\" then
+        return false
+    end
     local current_input = ctx.input
     local eval = _topup_eval_input(current_input, opts)
     if eval.raw_len < 1 then return false end
@@ -1029,6 +1040,12 @@ local function _topup_auto_fallback(env, ctx, key, clean_key, kc, opts)
         return kAccepted
     end
 
+    if zzc_processor and zzc_processor.is_active and zzc_processor.is_active(ctx) then
+        if zzc_processor.capture_current_candidate and zzc_processor.capture_current_candidate(ctx, key) then
+            return kAccepted
+        end
+        return false
+    end
     if not _commit_selected_non_completion(ctx) then return false end
     _topup_push_key(env, ctx, key, clean_key, kc, eval.input_len)
     return kAccepted
