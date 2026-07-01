@@ -1,3 +1,7 @@
+-- 天行键统一按键处理器
+-- 作者：@浮生 https://github.com/wzxmer/rime-txjx
+-- 更新：2026-07-02
+
 local core = require("zzc.txjx_zzc_core")
 
 local kAccepted = 1
@@ -94,6 +98,12 @@ local index_keys = {
     ["kp_6"] = 6, ["kp_7"] = 7, ["kp_8"] = 8, ["kp_9"] = 9,
 }
 
+local collect_select_keys = {
+    [";"] = 2, ["semicolon"] = 2, ["Semicolon"] = 2,
+    ["'"] = 3, ["apostrophe"] = 3, ["Apostrophe"] = 3,
+    ["Tab"] = 2, ["tab"] = 2,
+}
+
 local chinese_index_words = {
     ["一"] = 1, ["二"] = 2, ["三"] = 3, ["四"] = 4, ["五"] = 5,
     ["六"] = 6, ["七"] = 7, ["八"] = 8, ["九"] = 9,
@@ -110,6 +120,27 @@ local trigger_keys = {
 local function event_char(key_event)
     local code = key_event.keycode
     if code and code >= 0x20 and code < 0x7f then return string.char(code) end
+    return nil
+end
+
+local function resolve_collect_modifier_select_key(key_event, key)
+    if not key_event then return nil end
+    local ctrl = key_event:ctrl()
+    local alt = key_event:alt()
+    local repr = tostring(key or "")
+    local clean = repr:match("^[Cc]ontrol%+(.*)") or repr:match("^[Aa]lt%+(.*)") or repr
+    local lower = clean:lower()
+    local keycode = key_event.keycode
+    local is_ctrl_key = lower == "control_l" or lower == "control_r" or lower == "control"
+        or keycode == 17 or keycode == 0xffe3 or keycode == 0xffe4
+    local is_alt_key = lower == "alt_l" or lower == "alt_r" or lower == "alt"
+        or keycode == 18 or keycode == 0xffe9 or keycode == 0xffea
+    if (ctrl or is_ctrl_key) and not alt and is_ctrl_key then
+        return 2
+    end
+    if (alt or is_alt_key) and not ctrl and is_alt_key then
+        return 3
+    end
     return nil
 end
 
@@ -1113,6 +1144,10 @@ local function resolve_index_key(key, ch)
     return index_keys[ch or ""] or index_keys[key or ""]
 end
 
+local function resolve_collect_select_key(key, ch)
+    return resolve_index_key(key, ch) or collect_select_keys[ch or ""] or collect_select_keys[key or ""]
+end
+
 local function waiting_length_confirm(ctx)
     if state.stage ~= "collect" or state.mode == "replace" then return false end
     recover_collect_items(ctx)
@@ -1550,6 +1585,15 @@ local function processor(key_event, env)
     end
     local current_input = ctx and ctx.input or ""
     sync_state_from_context_if_needed(ctx)
+    if state.stage == "collect" and has_visible_menu(ctx) then
+        if key_event:release() then
+            local modifier_idx = resolve_collect_modifier_select_key(key_event, key)
+            if modifier_idx then
+                capture_candidate_at(ctx, modifier_idx)
+                return kAccepted
+            end
+        end
+    end
     if key_event:release() then
         return kNoop
     end
@@ -1840,17 +1884,18 @@ local function processor(key_event, env)
     end
 
     if state.stage == "collect" then
-        local idx = resolve_index_key(key, ch)
-        if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
+        local length_idx = resolve_index_key(key, ch)
+        if waiting_length_confirm(ctx) and length_idx and length_idx >= 1 and length_idx <= 9 then
             if direct_len then
                 return handoff_length_to_filter(ctx, direct_len, ch)
             end
-            if invalid_length_digit(idx, direct_len) then
+            if invalid_length_digit(length_idx, direct_len) then
                 reset(ctx)
                 return kAccepted
             end
             return kAccepted
         end
+        local idx = has_visible_menu(ctx) and resolve_collect_select_key(key, ch) or nil
         if idx and idx >= 1 and idx <= 9 then
             if ready_for_length(ctx) then
                 local cand_len, cand_text = selected_length_candidate(ctx, idx)
