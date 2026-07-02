@@ -94,6 +94,19 @@ local function zzc_completion_count(buffer)
     return count
 end
 
+local function push_zzc_append_rows(rows, input_text, buffer, seen)
+    if not rows or not rows[1] then return end
+    for _, row in ipairs(rows) do
+        local word = row.word
+        if word and word ~= "" and not seen[word] then
+            local cand = Candidate("zzc_append", 0, #(input_text or ""), word, "自造词")
+            cand.quality = 8000
+            buffer[#buffer + 1] = cand
+            seen[word] = cand
+        end
+    end
+end
+
 return {
     init = function(env)
         local config = env.engine.schema.config
@@ -121,6 +134,12 @@ return {
         local completion_buffer = {}
         local comp_count = 0
         local zzc_cover = input_text ~= "" and zzc_core.zzc_cover_for_input(input_text) or nil
+        local zzc_stage = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") or ""
+        local zzc_mode = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_mode") or "") or ""
+        local zzc_target = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_target") or "") or ""
+        if not zzc_cover and zzc_stage == "collect" and zzc_target ~= "" and (zzc_mode == "append" or zzc_mode == "replace") then
+            zzc_cover = zzc_core.zzc_cover_for_input(zzc_target)
+        end
         local zzc_completion_rows = nil
         if allow_completion then
             zzc_completion_rows = zzc_core.zzc_completion_rows_for_prefix(input_text, COMPLETION_LIMIT)
@@ -135,6 +154,11 @@ return {
         )
         local remaining_completion_limit = COMPLETION_LIMIT - zzc_completion_count(completion_buffer)
         if remaining_completion_limit < 0 then remaining_completion_limit = 0 end
+        local zzc_append_seen = {}
+        if zzc_cover and zzc_cover.append_rows then
+            push_zzc_append_rows(zzc_cover.append_rows, input_text, zzc_append_buffer, zzc_append_seen)
+            zzc_append_size = #zzc_append_buffer
+        end
 
         for cand in input:iter() do
             if cand.type == "history" then
@@ -142,8 +166,19 @@ return {
                 goto continue
             end
             if cand.type == "zzc_append" then
-                zzc_append_size = zzc_append_size + 1
-                zzc_append_buffer[zzc_append_size] = cand
+                local existing = zzc_append_seen[cand.text]
+                if existing then
+                    if cand.comment and cand.comment ~= "" and cand.comment ~= "自造词" then
+                        existing.comment = cand.comment
+                    end
+                    if cand.preedit and cand.preedit ~= "" then
+                        existing.preedit = cand.preedit
+                    end
+                else
+                    zzc_append_size = zzc_append_size + 1
+                    zzc_append_buffer[zzc_append_size] = cand
+                    zzc_append_seen[cand.text] = cand
+                end
                 goto continue
             end
             if type(cand.type) == "string" and cand.type:match("^zzc_") then
