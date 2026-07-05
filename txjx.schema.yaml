@@ -136,6 +136,7 @@ jderfen:
   tag: jderfen
   dictionary: liangfen
   enable_sentence: true
+  enable_completion: false
   enable_user_dict: false
   prefix: "v"
   tips: "〔二分〕"
@@ -157,6 +158,7 @@ gbk:
   tag: gbk
   dictionary: txjx.gbk
   enable_sentence: true
+  enable_completion: false
   enable_user_dict: false
   prefix: "o"
 

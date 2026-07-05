@@ -143,7 +143,7 @@ end
 
 local _SymCN = {
     ["slash"]      = { plain = "/", shift = "？" },
-    ["backslash"]  = { plain = "、", shift = "·" },
+    ["backslash"]  = { plain = "\\", shift = "·" },
     ["minus"]      = { plain = "-", shift = "——" },
     ["equal"]      = { plain = "＝", shift = "+" },
     ["semicolon"]  = { plain = "；", shift = "：" },
@@ -1433,9 +1433,10 @@ local function processor(key_event, env)
         return kNoop
     end
     
-    local key = CHAR_CACHE[kc] or clean_key
-    local is_code_key = env._alpha and env._alpha[key]
-    local plain_code_key = _plain_code_key(env, key, clean_key, kc)
+    local raw_key = CHAR_CACHE[kc] or clean_key
+    local plain_code_key = _plain_code_key(env, raw_key, clean_key, kc)
+    local key = plain_code_key or raw_key
+    local is_code_key = plain_code_key ~= nil or (env._alpha and env._alpha[key])
     if _cold_start_push_code_key(env, ctx, key_event, plain_code_key, sf, caps_on) then
         return kAccepted
     end
@@ -1468,7 +1469,7 @@ local function processor(key_event, env)
         return kAccepted
     end
 
-    if not env._tu_streaming and env._alpha[key] then
+    if not env._tu_streaming and is_code_key then
         local current_input = ctx.input
         local eval = _topup_eval_input(current_input, opts)
         local input_len = eval.input_len

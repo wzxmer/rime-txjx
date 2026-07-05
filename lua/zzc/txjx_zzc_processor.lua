@@ -1686,8 +1686,8 @@ local function processor(key_event, env)
         if current_input == "\\" then
             if is_enter_key(key) then
                 set_pending_trigger(ctx, false)
-                if commit_current_candidate(ctx, env) then return kAccepted end
                 if ctx then ctx:clear() end
+                if env and env.engine then env.engine:commit_text("\\") end
                 return kAccepted
             end
             if is_backspace(key) or key == "Escape" or key == "escape" then
@@ -1923,9 +1923,7 @@ local function processor(key_event, env)
                     return finalize_current(ctx, env, { direct_code = state.target_code })
                 end
             elseif state.mode == "make" and #state.items > 0 then
-                sync_state(ctx)
-                refresh_context(ctx)
-                return kAccepted
+                return finalize_current(ctx, env)
             end
             reset(ctx)
             return kAccepted
