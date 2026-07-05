@@ -8,12 +8,15 @@
 - macOS 撤回合并：运行 `Mac_撤回合并`
 - Linux 合并：运行 `python3 zzc/Linux_词库合并.py`
 - Linux 撤回合并：运行 `python3 zzc/Linux_撤回合并.py`
+- iOS 快捷指令合并：免费方案用 a-Shell 运行 `iOS_词库合并.py`，Pythonista 也可运行同一脚本
 
 Windows 只保留 `.exe`。macOS 保留无扩展入口，后续可在 Mac 上转成真正可执行文件。Linux 保留 `.py` 脚本。
 
 旧的 `apply_zzc.py`、`gen_char_parts.py`、`.cmd`、`.bat` 入口已经废弃，不要恢复。
 
-合并入口可以放在方案根目录，也可以放在 `zzc/` 目录。脚本会自动检查脚本所在目录和上级目录里的 `*.zzc.dict.yaml`。
+合并入口可以放在方案根目录，也可以放在 `zzc/` 目录。脚本会自动检查脚本所在目录和上级目录里的 `*.zzc.dict.yaml`。`Mac_词库合并` 也支持 `TXJX_ZZC_ROOT` / `TXJX_ZZC_STATE_DIR` 环境变量，供 iOS 快捷指令包装脚本指定最终合并目录和 `zzc_state` 目录。
+
+iOS 入口只做路径配置和调用合并核心，不改合并算法。免费方案见 `a-Shell快捷指令合并说明.md`，Pythonista 方案见 `iOS快捷指令合并说明.md`。首次运行选择最终合并目录：iCloud 用户选 iCloud `RimeUserData` 或方案目录；非 iCloud 用户选应用文件里的 `RimeUserData` 或方案目录。若选择的是 `RimeUserData` 父目录，脚本会向下查找一级；只有一个含 `*.zzc.dict.yaml` 的方案目录时自动使用它，多个方案时要求用户直接选择具体方案目录。`zzc_state` 默认绑定为最终合并目录下的 `zzc_state/`，避免码表写到 iCloud 但 reset/runtime 清到本地应用文件，或反过来。
 
 按 `*.zzc.dict.yaml` 前缀选择合并目标：
 
@@ -49,7 +52,7 @@ Lua 运行中只实时写 `runtime_ops.tsv`，并更新 `effective_state.tsv` �
 
 session 创建时不再作为主要写入点，只做上述补偿清理。运行中和 session 结束时都不压缩操作链，以保留完整操作记录；手动合并脚本负责 compact。自造词后如果要让重新部署读取到 `*.zzc.dict.yaml`，先收起键盘结束当前 session，再重新部署。
 
-合并脚本成功后会重置 `*.zzc.dict.yaml` 并覆盖写 `zzc_state/zzc_reset.tsv`，文件只保留 `version/schema/mode/reset_token` 四项，不按历史增长。`reset_token` 是随机 128-bit hex，只做相等比对，不依赖电脑或手机时间。手机端下次 session 创建时，如果发现新的 `reset_token`，会强制清空本地 `*.zzc.dict.yaml`、`zzc_state/runtime_ops.tsv`、`zzc_state/runtime_exact.tsv`、`zzc_state/effective_state.tsv`、`zzc_state/runtime_ops_appended.tsv`，再覆盖写 `zzc_state/zzc_reset_seen.tsv`。电脑合并后、手机完成重新部署和首次键盘唤起 reset 前，不要继续在手机造词；强制 reset 会丢弃这段窗口内的新运行时操作。
+合并脚本成功后会重置 `*.zzc.dict.yaml` 并覆盖写 `zzc_state/zzc_reset.tsv`，文件只保留 `version/schema/mode/reset_token` 四项，不按历史增长。`reset_token` 是随机 128-bit hex，只做相等比对，不依赖电脑或手机时间。手机端下次键盘唤起时，如果发现新的 `reset_token`，会先强制清空本地 `*.zzc.dict.yaml`、`zzc_state/runtime_ops.tsv`、`zzc_state/runtime_exact.tsv`、`zzc_state/effective_state.tsv`、`zzc_state/runtime_ops_appended.tsv`，再覆盖写 `zzc_state/zzc_reset_seen.tsv` 并刷新 `cache_version.tsv`。reset 完成后可继续正常自造词；同一个 `reset_token` 不会重复清理新周期数据。电脑合并后，手机侧推荐流程是：先收起键盘，再到输入法 App 重新部署，回到输入场景首次唤起键盘自动完成 reset，然后继续造词。
 
 ## 合并行为
 
@@ -81,6 +84,7 @@ session 创建时不再作为主要写入点，只做上述补偿清理。运行
 
 - `\--\`：撤回上一次未合并的 zzc 操作。
 - `\!!!\` / `\！！！\`：清空全部未合并的 zzc 操作。
+- `编码\!!!\` / `编码\！！！\`：同样清空全部未合并的 zzc 操作，编码只作为指令入口。
 - `\!` 后继续输入到 `!!!` 再按 `\`：等价 `\!!!\`，清空全部未合并操作。
 
 ## 常用运行时指令

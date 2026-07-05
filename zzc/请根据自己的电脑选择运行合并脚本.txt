@@ -17,6 +17,13 @@ Linux:
 - Linux_撤回合并.py
 - 需要电脑已安装 Python 3。
 
+iOS:
+- iOS_词库合并.py
+- 免费方案需要安装 a-Shell；Pythonista 也可用。
+- 把 Mac_词库合并 放在同目录或所选方案目录的 zzc/ 目录。
+- 首次运行选择最终合并目录。使用 iCloud 的用户选 iCloud 文件/RimeUserData 或其中的方案目录；不使用 iCloud 的用户选输入法应用文件/RimeUserData 或其中的方案目录。
+- zzc_state 默认使用最终合并目录下的 zzc_state，不要把码表目录和 zzc_state 选到两个不同同步域。
+
 重要文件:
 - ../txjx.zzc.dict.yaml
   自造词操作记录，也是临时 zzc 码表。

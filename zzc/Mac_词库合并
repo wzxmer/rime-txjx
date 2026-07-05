@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import shutil
 import secrets
 import sys
@@ -53,6 +54,25 @@ def has_target_dicts(base: Path, schema: str) -> bool:
 
 
 def discover_layout() -> tuple[Path, Path, Path, str]:
+    root_override = os.environ.get("TXJX_ZZC_ROOT")
+    if root_override:
+        root = Path(root_override).expanduser().resolve()
+        if not root.exists():
+            raise FileNotFoundError(f"missing scheme root: {root}")
+        op_candidates = sorted(root.glob("*.zzc.dict.yaml"))
+        zzc_dir = root / "zzc"
+        if zzc_dir.exists():
+            op_candidates += sorted(zzc_dir.glob("*.zzc.dict.yaml"))
+        if not op_candidates:
+            raise FileNotFoundError(f"missing *.zzc.dict.yaml in {root} or {zzc_dir}")
+        for ops_path in op_candidates:
+            schema = strip_suffix(ops_path.name, ".zzc.dict.yaml")
+            if has_target_dicts(root, schema):
+                return root, zzc_dir if zzc_dir.exists() else ops_path.parent, ops_path, schema
+        ops_path = op_candidates[0]
+        schema = strip_suffix(ops_path.name, ".zzc.dict.yaml")
+        return root, zzc_dir if zzc_dir.exists() else ops_path.parent, ops_path, schema
+
     script_path = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
     start_dir = script_path.parent
     search_dirs = [start_dir, start_dir.parent]
@@ -83,7 +103,7 @@ def discover_layout() -> tuple[Path, Path, Path, str]:
 
 
 ROOT, ZZC_DIR, OPS, SCHEMA = discover_layout()
-STATE_DIR = ROOT / "zzc_state"
+STATE_DIR = Path(os.environ["TXJX_ZZC_STATE_DIR"]).expanduser().resolve() if os.environ.get("TXJX_ZZC_STATE_DIR") else ROOT / "zzc_state"
 ROLLBACK_DIR = ZZC_DIR / "撤回合并"
 RUNTIME_EXACT = STATE_DIR / "runtime_exact.tsv"
 RUNTIME_OPS = STATE_DIR / "runtime_ops.tsv"
