@@ -2,39 +2,34 @@
 patch:
   show_notifications: false
   app_options:
+    # 英文优先应用
+    Code.exe:
+      ascii_mode: true
+    code.exe:
+      ascii_mode: true
+    WindowsTerminal.exe:
+      ascii_mode: true
+    wt.exe:
+      ascii_mode: true
+    cmd.exe:
+      ascii_mode: true
+    powershell.exe:
+      ascii_mode: true
+    pwsh.exe:
+      ascii_mode: true
+    conhost.exe:
+      ascii_mode: true
+    Flow.Launcher.exe:
+      ascii_mode: true
+
     # Codex中使用顶功异常，顶功后下一词首字母可能被旧串携带上屏；仅在此应用启用延迟补键
     # 其他软件若有遇到，也可在此添加相同配置启用延迟补键 txjx_topup_defer
+    Codex.exe:
+      ascii_mode: false
+      txjx_topup_defer: true
     codex.exe:
       ascii_mode: false
       txjx_topup_defer: true
-    excel.exe:
-      ascii_mode: false
-    winword.exe:
-      ascii_mode: false
-    powerpnt.exe:
-      ascii_mode: false
-    outlook.exe:
-      ascii_mode: false
-    onenote.exe:
-      ascii_mode: false
-    msaccess.exe:
-      ascii_mode: false
-    mspub.exe:
-      ascii_mode: false
-    visio.exe:
-      ascii_mode: false
-    msedge.exe:
-      ascii_mode: false
-    qq.exe:
-      ascii_mode: false
-    wechat.exe:
-      ascii_mode: false
-    weixin.exe:
-      ascii_mode: false
-    #chrome.exe:
-    #  ascii_mode: false
-    telegram.exe:
-      ascii_mode: false
 
 
   style/+:
@@ -42,7 +37,7 @@ patch:
     label_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     comment_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     display_tray_icon: false               #win右下角中英图标
-    horizontal: true                     #水平模式
+    horizontal: false                     #水平模式
     preedit_type: composition  #composition 编码 / input 输入码 / preview 首选 / preview_all 内嵌
     label_format: "%s."
     inline_preedit: true
