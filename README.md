@@ -1,5 +1,5 @@
 # 反馈邮箱：wzxmer@outlook.com  浮生 
-## https://fcodex.top/register?aff=VYQAWUDAQGDR 各类大模型特惠推荐， 包售后包稳定（本人也使用）
+## https://fcodex.top/register?aff=VYQAWUDAQGDR 各类大模型特惠推荐， 包售后包稳定
 
 # 方案名为：天行键
 
