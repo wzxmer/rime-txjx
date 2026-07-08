@@ -268,15 +268,28 @@ local function _selected_candidate(ctx)
     return ctx and ctx:get_selected_candidate() or nil
 end
 
+local function _is_raw_input_candidate(ctx, cand)
+    local input = ctx and (ctx.input or "") or ""
+    if input == "" or not cand or cand.text ~= input then return false end
+    local cand_type = cand.type
+    if cand.get_genuine then
+        local ok, genuine = pcall(function() return cand:get_genuine() end)
+        if ok and genuine and genuine.type then cand_type = genuine.type end
+    end
+    return cand_type == "raw" or cand_type == "ascii" or string_match(input, "^[a-z;']+$") ~= nil
+end
+
 local function _selected_is_non_completion(ctx)
     local cand = _selected_candidate(ctx)
-    return cand and not (_is_completion_candidate and _is_completion_candidate(cand)) or false
+    return cand and not (_is_completion_candidate and _is_completion_candidate(cand))
+        and not _is_raw_input_candidate(ctx, cand) or false
 end
 
 local function _commit_selected_non_completion(ctx)
     local cand = _selected_candidate(ctx)
     if not cand then return false end
     if _is_completion_candidate and _is_completion_candidate(cand) then return false end
+    if _is_raw_input_candidate(ctx, cand) then return false end
     ctx:commit()
     return true
 end
@@ -367,8 +380,10 @@ local function _topup_flush_key(env, ctx)
     if not key then return false end
     local pending_input = env._tu_pending_input
     if pending_input and ctx and (ctx.input or "") ~= pending_input then
-        _topup_clear_pending_key(env)
-        return false
+        if ctx:is_composing() or (ctx.input or "") ~= "" then
+            _topup_clear_pending_key(env)
+            return false
+        end
     end
     _topup_clear_pending_key(env)
     _push_code_input(env, ctx, key)
@@ -441,8 +456,7 @@ local function _cold_start_push_code_key(env, ctx, key_event, key, sf, caps_on)
 end
 
 local function _topup_push_key(env, ctx, key, clean_key, kc, input_len)
-    local max_len = env._tu_max or 6
-    if platform.should_defer_topup(env.engine and env.engine.schema and env.engine.schema.config, ctx) and input_len >= 2 and input_len < max_len then
+    if input_len and input_len >= 1 then
         _topup_queue_key(env, ctx, key, clean_key, kc)
         _space_guard_note(env, ctx, ctx and (ctx.input or "") or "", key)
     else
@@ -635,6 +649,14 @@ local function _clear_append_candidate(env, ctx)
     state.clear_append(env, ctx)
 end
 
+local function _clear_commit_transition_state(env, ctx)
+    _topup_clear_queued_keys(env)
+    env._af_seed = nil
+    env._shift_inline_ascii = nil
+    _space_guard_clear(env)
+    _clear_append_candidate(env, ctx)
+end
+
 local function _set_append_candidate(env, ctx, suffix)
     return state.set_append(env, ctx, suffix)
 end
@@ -720,14 +742,14 @@ end
 
 local function _has_non_completion_candidate(ctx)
     local selected = ctx:get_selected_candidate()
-    if selected then return not _is_completion_candidate(selected) end
+    if selected then return not _is_completion_candidate(selected) and not _is_raw_input_candidate(ctx, selected) end
 
     local comp = ctx.composition and ctx.composition:back()
     local menu = comp and comp.menu
     if not menu then return false end
 
     local ok, cand = pcall(function() return menu:get_candidate_at(0) end)
-    return ok and cand and not _is_completion_candidate(cand) or false
+    return ok and cand and not _is_completion_candidate(cand) and not _is_raw_input_candidate(ctx, cand) or false
 end
 
 local function _direct_symbols_completion_is_candidate(env, ctx)
@@ -927,7 +949,8 @@ local function _space_guard_process(env, ctx, key_event, clean_key, repr, kc, no
         if not expected then return nil end
         env._space_guard_wait = nil
         local current = ctx.input or ""
-        if current == expected and ctx:is_composing() and _space_guard_selected_current(ctx, #current) then
+        local selected_current = ctx:is_composing() and _space_guard_selected_current(ctx, #current)
+        if current == expected and selected_current then
             _commit_selected_candidate(ctx)
         end
         _space_guard_clear(env)
@@ -1112,8 +1135,8 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
             env._calc_equal_allow_next = (ctx.input or "") == "="
         end
         if kn and env._sw == kn then env._sw = nil; return kAccepted end
+        if kn and env._dc == kn then env._dc = nil; return kAccepted end
         if direct_symbols_off then
-            if kn and env._dc == kn then env._dc = nil; return kAccepted end
             env._dc = nil
         end
         return kNoop
@@ -1123,20 +1146,20 @@ local function _smart_process(key_event, env, kn, sf, clean_key, opts)
     if kn == "period" and not sf and not ctx:is_composing() then
         if env._standalone_period_after_digit then
             env._standalone_period_after_digit = nil
-            _topup_clear_queued_keys(env)
-            env._af_seed = nil
-            env._shift_inline_ascii = nil
-            _space_guard_clear(env)
-            _clear_append_candidate(env, ctx)
+            _clear_commit_transition_state(env, ctx)
             env.engine:commit_text(".")
             return kAccepted
         end
-        _topup_clear_queued_keys(env)
-        env._af_seed = nil
-        env._shift_inline_ascii = nil
-        _space_guard_clear(env)
-        _clear_append_candidate(env, ctx)
+        _clear_commit_transition_state(env, ctx)
         env.engine:commit_text("。")
+        return kAccepted
+    end
+
+    if kn == "period" and not sf and ctx:is_composing() then
+        _clear_commit_transition_state(env, ctx)
+        ctx:commit()
+        env.engine:commit_text("。")
+        env._dc = kn
         return kAccepted
     end
 
