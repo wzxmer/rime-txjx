@@ -4,6 +4,7 @@
 
 local config_util = require("common.txjx_config")
 local candidate_util = require("common.txjx_candidate")
+local registry = require("common.txjx_cache_registry")
 local zzc_core = require("zzc.txjx_zzc_core")
 
 local type = type
@@ -11,7 +12,22 @@ local COMPLETION_LIMIT = 30
 local COMPLETION_MAX_CODE_LEN = 5
 local DEFAULT_MAX_SCAN_CANDIDATES = 50
 local DEFAULT_MAX_DEFERRED_CANDIDATES = 30
-local direct_symbols_cache
+local direct_symbols_cache = {}
+
+local function clear_direct_symbols_cache(schema_id)
+    if schema_id and schema_id ~= "" then
+        local had_cache = direct_symbols_cache[schema_id] ~= nil
+        direct_symbols_cache[schema_id] = nil
+        return had_cache
+    end
+    local had_cache = next(direct_symbols_cache) ~= nil
+    direct_symbols_cache = {}
+    return had_cache
+end
+
+registry.register("completion", function()
+    return clear_direct_symbols_cache()
+end)
 
 local function is_reverse_lookup_context(ctx, env)
     return config_util.is_reverse_context(ctx, env and env._reverse_tags, env and env._reverse_prefixes)
@@ -101,10 +117,13 @@ local function load_direct_symbols(schema_id)
 end
 
 local function direct_symbols_state(env)
-    if not direct_symbols_cache then
-        direct_symbols_cache = load_direct_symbols(env and env.engine and env.engine.schema and env.engine.schema.schema_id or "txjx")
+    local schema_id = env and env._completion_schema_id
+        or (env and env.engine and env.engine.schema and env.engine.schema.schema_id)
+        or "txjx"
+    if not direct_symbols_cache[schema_id] then
+        direct_symbols_cache[schema_id] = load_direct_symbols(schema_id)
     end
-    return direct_symbols_cache
+    return direct_symbols_cache[schema_id]
 end
 
 local function zzc_completion_visible(cover, text)
@@ -232,6 +251,7 @@ end
 return {
     init = function(env)
         local config = env.engine.schema.config
+        env._completion_schema_id = env.engine.schema.schema_id or "txjx"
         env._danzi_first = not (config:get_bool("translator/enable_sentence") or false)
         env._max_scan_candidates = config:get_int("txjx_completion/max_scan_candidates") or DEFAULT_MAX_SCAN_CANDIDATES
         env._max_deferred_candidates = config:get_int("txjx_completion/max_deferred_candidates") or DEFAULT_MAX_DEFERRED_CANDIDATES
@@ -369,6 +389,8 @@ return {
     end,
 
     fini = function(env)
+        clear_direct_symbols_cache(env._completion_schema_id)
+        env._completion_schema_id = nil
         env._danzi_first = nil
         env._max_scan_candidates = nil
         env._max_deferred_candidates = nil
