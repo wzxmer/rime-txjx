@@ -9,6 +9,8 @@ local zzc_core = require("zzc.txjx_zzc_core")
 local type = type
 local COMPLETION_LIMIT = 30
 local COMPLETION_MAX_CODE_LEN = 5
+local DEFAULT_MAX_SCAN_CANDIDATES = 50
+local DEFAULT_MAX_DEFERRED_CANDIDATES = 30
 local direct_symbols_cache
 
 local function is_reverse_lookup_context(ctx, env)
@@ -231,6 +233,8 @@ return {
     init = function(env)
         local config = env.engine.schema.config
         env._danzi_first = not (config:get_bool("translator/enable_sentence") or false)
+        env._max_scan_candidates = config:get_int("txjx_completion/max_scan_candidates") or DEFAULT_MAX_SCAN_CANDIDATES
+        env._max_deferred_candidates = config:get_int("txjx_completion/max_deferred_candidates") or DEFAULT_MAX_DEFERRED_CANDIDATES
         env._reverse_tags, env._reverse_prefixes = config_util.collect_reverse_context(
             config,
             env.engine.schema.schema_id or "",
@@ -284,7 +288,12 @@ return {
             zzc_append_size = #zzc_append_buffer
         end
 
+        local max_scan_candidates = env._max_scan_candidates
+        local max_deferred_candidates = env._max_deferred_candidates
+        local scanned = 0
         for cand in input:iter() do
+            scanned = scanned + 1
+            if max_scan_candidates > 0 and scanned > max_scan_candidates then break end
             if cand.type == "history" then
                 yield(cand)
                 goto continue
@@ -338,7 +347,7 @@ return {
                     local text_len = candidate_util.utf8_len(cand.text)
                     if text_len == 1 then
                         yield(cand)
-                    elseif text_len and text_len > 1 then
+                    elseif text_len and text_len > 1 and (max_deferred_candidates == 0 or buffer_size < max_deferred_candidates) then
                         buffer_size = buffer_size + 1
                         buffer[buffer_size] = cand
                     end
@@ -361,6 +370,8 @@ return {
 
     fini = function(env)
         env._danzi_first = nil
+        env._max_scan_candidates = nil
+        env._max_deferred_candidates = nil
         env._reverse_tags = nil
         env._reverse_prefixes = nil
     end

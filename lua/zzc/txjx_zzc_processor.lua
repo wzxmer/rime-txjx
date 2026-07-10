@@ -117,6 +117,26 @@ local trigger_keys = {
     ["|"] = true,
 }
 
+local function normalize_trigger_key(key)
+    if type(key) ~= "string" then return key end
+    local clean = key
+    local changed = true
+    while changed do
+        changed = false
+        local stripped = clean:match("^[Ss]hift%+(.*)")
+            or clean:match("^[Rr]elease%+(.*)")
+        if stripped and stripped ~= clean then
+            clean = stripped
+            changed = true
+        end
+    end
+    local payload = clean:match("^[Cc]haracter%((.*)%)$")
+    if payload == "\\" or payload == "\\\\" or payload == "|" or payload == "backslash" then
+        return "\\"
+    end
+    return clean
+end
+
 local function event_char(key_event)
     local code = key_event.keycode
     if code and code >= 0x20 and code < 0x7f then return string.char(code) end
@@ -147,7 +167,7 @@ end
 local function is_trigger(key, ch)
     if trigger_keys[ch or ""] or trigger_keys[key or ""] then return true end
     if type(key) == "string" then
-        local clean = key:match("^[Ss]hift%+(.*)") or key
+        local clean = normalize_trigger_key(key)
         return trigger_keys[clean] or trigger_keys[clean:lower()]
     end
     return false
@@ -1585,6 +1605,9 @@ local function processor(key_event, env)
     end
     local current_input = ctx and ctx.input or ""
     sync_state_from_context_if_needed(ctx)
+    local ch = event_char(key_event)
+    local shifted = key_event:shift()
+    local keycode = key_event.keycode
     if state.stage == "collect" and has_visible_menu(ctx) then
         if key_event:release() then
             local modifier_idx = resolve_collect_modifier_select_key(key_event, key)
@@ -1595,12 +1618,30 @@ local function processor(key_event, env)
         end
     end
     if key_event:release() then
+        if is_trigger(key, ch) then
+            if state.stage == "command_wait" then
+                return handle_command_wait(ctx, key, ch, shifted, keycode)
+            end
+            if state.stage == "shorten_wait" then
+                local idx = tonumber(state.shorten_idx or 1) or 1
+                shorten_candidate_at(ctx, state.target_code, idx)
+                return kAccepted
+            end
+            if state.stage == "collect"
+                and (state.mode == "replace" or state.mode == "append") then
+                if (ctx.input or "") ~= "" and (ctx.input or "") ~= "\\" then
+                    capture_current_candidate(ctx)
+                end
+                if #state.items > 0 then
+                    return finalize_current(ctx, env, { direct_code = state.target_code })
+                end
+                reset(ctx)
+                return kAccepted
+            end
+        end
         return kNoop
     end
     if key_event:ctrl() or key_event:alt() then return kNoop end
-    local ch = event_char(key_event)
-    local shifted = key_event:shift()
-    local keycode = key_event.keycode
     local code_char = resolve_code_char(key, ch)
     local direct_len = resolve_length_key(key, ch)
 
@@ -1619,6 +1660,10 @@ local function processor(key_event, env)
     end
     if not state.active then
         restore_state_from_context(ctx)
+    end
+    if state.active and is_enter_key(key) then
+        reset(ctx)
+        return kAccepted
     end
     if state.stage == "resolve_code" then
         if is_backspace(key) or key == "Escape" or key == "escape" then

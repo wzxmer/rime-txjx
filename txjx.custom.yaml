@@ -9,15 +9,21 @@ patch:
   translator/enable_completion: true # 启用逐码提示（逐键提示）
   translator/encode_commit_history: true # 历史上屏
   hint_text: ''                     # 顶功提示符（空表示无提示）
+  zzc/hint_text: '自造词ing'        # 自造词提示符（空表示无提示）
+  zzc/candidate_hint_text: '自造词'  # 已生效自造词候选提示符（空表示无提示）
   menu/page_size: 5                 # 候选词显示数量
   txjx/history_size: 5              # i键历史候选保存数量
+  txjx_completion/max_scan_candidates: 50
+  txjx_completion/max_deferred_candidates: 30
+  reverse_hint/use_pron_map: true
+  reverse_hint/pron_map_file: txjx.cx.dict.yaml
   txjx/direct_symbols_fast_leaf: false # 设置成false后，快符会顶功上屏补全候选内容
   ascii_composer/switch_key/Shift_L: commit_code # 单按 Shift 切换中英；Shift+字母临时英文
   ascii_composer/switch_key/Shift_R: commit_code # 单按 Shift 切换中英；Shift+字母临时英文
   
   # ==================== 功能开关默认状态 ====================
   # 说明：0=选择第一个状态，1=选择第二个状态
-  switches/@0/reset: 1              # [ 中文, 英文 ]
+  switches/@0/reset: 0              # [ 中文, 英文 ]
   # switches/@1/reset: 0            # [ 简体, 繁體 ]
   # switches/@2/reset: 0            # [ 提示关, 提示开 ]
   switches/@3/reset: 1              # [ 表情关, 表情开 ]

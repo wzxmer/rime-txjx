@@ -4,6 +4,8 @@
 
 local core = require("zzc.txjx_zzc_core")
 local COLLECT_CANDIDATE_LIMIT = 30
+local DEFAULT_ZZC_HINT_TEXT = "自造词ing"
+local DEFAULT_ZZC_CANDIDATE_HINT_TEXT = "自造词"
 
 
 local length_inputs = {
@@ -144,7 +146,21 @@ local function maybe_finalize_from_input(ctx, input_text, env, input)
     return true
 end
 
-local function state_candidate(ctx, code)
+local function zzc_hint_text(env)
+    if env and env._zzc_hint_text ~= nil then
+        return env._zzc_hint_text
+    end
+    return DEFAULT_ZZC_HINT_TEXT
+end
+
+local function zzc_candidate_hint_text(env)
+    if env and env._zzc_candidate_hint_text ~= nil then
+        return env._zzc_candidate_hint_text
+    end
+    return DEFAULT_ZZC_CANDIDATE_HINT_TEXT
+end
+
+local function state_candidate(ctx, code, env)
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_word = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_word") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
@@ -225,7 +241,7 @@ local function state_candidate(ctx, code)
     end
     local end_pos = #code
     if end_pos < 1 then end_pos = 1 end
-    local comment = "自造词ing"
+    local comment = zzc_hint_text(env)
     if prop_stage == "resolve_notice" and prop_target ~= "" then
         comment = "已选编码 " .. prop_target
     end
@@ -359,14 +375,14 @@ with_reminder = function(cand)
     return cand
 end
 
-local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
+local function yield_zzc_cover_candidates(input_text, cover, preedit_text, env)
     cover = cover or core.zzc_cover_for_input(input_text)
     if not cover then return nil end
     local first = true
     local yielded = false
     if cover.rows then
         for _, row in ipairs(cover.rows) do
-            local cand = Candidate("zzc_cover", 0, #input_text, row.word, "自造词")
+            local cand = Candidate("zzc_cover", 0, #input_text, row.word, zzc_candidate_hint_text(env))
             cand.quality = 10060
             if first then
                 cand.preedit = preedit_text or cand.preedit
@@ -380,11 +396,11 @@ local function yield_zzc_cover_candidates(input_text, cover, preedit_text)
     return cover
 end
 
-local function yield_append_candidates(input_text, cover)
+local function yield_append_candidates(input_text, cover, env)
     if not cover or not cover.append_rows then return false end
     local yielded = false
     for _, row in ipairs(cover.append_rows) do
-        local cand = Candidate("zzc_append", 0, #input_text, row.word, "自造词")
+        local cand = Candidate("zzc_append", 0, #input_text, row.word, zzc_candidate_hint_text(env))
         cand.quality = 8000
         yield(with_reminder(cand))
         yielded = true
@@ -450,7 +466,7 @@ local function filter(input, env)
     if maybe_finalize_from_input(ctx, code, env, input) then
         return
     end
-    local state_cand = state_candidate(ctx, code)
+    local state_cand = state_candidate(ctx, code, env)
     local prop_target = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_target") or ""
     local collect_with_code = prop_stage == "collect"
         and (prop_mode == "replace" or prop_mode == "append")
@@ -497,18 +513,18 @@ local function filter(input, env)
     if code ~= "" and (not state_cand or collect_with_code) then
         local cover = core.zzc_order_for_input and core.zzc_order_for_input(lookup_code) or core.zzc_cover_for_input(lookup_code)
         if cover and cover.has_order then
-            local yielded = yield_zzc_cover_candidates(code, cover, collect_preedit) ~= nil
-            yielded = yield_append_candidates(code, cover) or yielded
+            local yielded = yield_zzc_cover_candidates(code, cover, collect_preedit, env) ~= nil
+            yielded = yield_append_candidates(code, cover, env) or yielded
             yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
             return
         end
-        cover = yield_zzc_cover_candidates(code, cover, collect_preedit)
+        cover = yield_zzc_cover_candidates(code, cover, collect_preedit, env)
         if cover then
             local yielded = cover.rows and cover.rows[1] ~= nil
             if not yielded then
                 yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
             end
-            yielded = yield_append_candidates(code, cover) or yielded
+            yielded = yield_append_candidates(code, cover, env) or yielded
             if cover.rows and cover.rows[1] then
                 yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
             end
@@ -531,5 +547,20 @@ local function filter(input, env)
     local yielded = yield_input_candidates(input, false, false, collect_preedit)
 end
 
-return filter
+local function init(env)
+    if not env then return end
+    local config = env and env.engine and env.engine.schema and env.engine.schema.config
+    if config and config.get_string then
+        env._zzc_hint_text = config:get_string("zzc/hint_text")
+        env._zzc_candidate_hint_text = config:get_string("zzc/candidate_hint_text")
+    end
+    if env._zzc_hint_text == nil then
+        env._zzc_hint_text = DEFAULT_ZZC_HINT_TEXT
+    end
+    if env._zzc_candidate_hint_text == nil then
+        env._zzc_candidate_hint_text = DEFAULT_ZZC_CANDIDATE_HINT_TEXT
+    end
+end
+
+return { init = init, func = filter }
 
