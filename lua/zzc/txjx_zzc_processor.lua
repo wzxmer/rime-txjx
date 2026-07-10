@@ -5,13 +5,12 @@
 local core = require("zzc.txjx_zzc_core")
 local state_model = require("zzc.txjx_zzc_state")
 local keys = require("zzc.txjx_zzc_keys")
+local candidates = require("zzc.txjx_zzc_candidates")
 
 local kAccepted = 1
 local kNoop = 2
 
 local state = state_model.new()
-local current_action_candidate
-local first_candidate
 local reset
 local refresh_context
 local command_candidate_snapshot
@@ -167,48 +166,13 @@ local function recover_collect_items(ctx)
     return false
 end
 
-local function menu_candidate_at(menu, index)
-    local ok, cand = pcall(function() return menu:get_candidate_at(index) end)
-    if not ok then return nil end
-    return cand
-end
-
-first_candidate = function(ctx)
-    if not ctx or not ctx.composition or ctx.composition:empty() then return nil end
-    local seg = ctx.composition:back()
-    local menu = seg and seg.menu
-    if not menu then return nil end
-    return menu_candidate_at(menu, 0)
-end
-
-local function selected_candidate(ctx)
-    if not ctx or not ctx.has_menu or not ctx:has_menu() then return nil end
-    local ok, cand = pcall(function() return ctx:get_selected_candidate() end)
-    return ok and cand or nil
-end
-
 local candidate_type = core.candidate_type
 local is_real_candidate = core.is_real_candidate
-
-local function first_real_candidate(ctx)
-    if not ctx or not ctx.composition or ctx.composition:empty() then return nil end
-    local seg = ctx.composition:back()
-    local menu = seg and seg.menu
-    if not menu then return nil end
-    for i = 0, 9 do
-        local cand = menu_candidate_at(menu, i)
-        if not cand then break end
-        if is_real_candidate(cand) then
-            return cand
-        end
-    end
-    return nil
-end
-
-current_action_candidate = function(ctx)
-    local cand = selected_candidate(ctx)
-    if is_real_candidate(cand) then return cand end
-    return first_real_candidate(ctx)
+local menu_candidate_at = candidates.menu_candidate_at
+local first_candidate = candidates.first_candidate
+local selected_candidate = candidates.selected_candidate
+local function current_action_candidate(ctx)
+    return candidates.current_action_candidate(ctx, is_real_candidate)
 end
 
 local function probe_first_candidate(ctx, code)
