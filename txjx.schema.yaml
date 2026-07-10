@@ -52,6 +52,7 @@ engine:
     - lua_filter@*txjx_reverse_hint
     - lua_filter@*txjx_filter
     - lua_filter@*txjx_opencc_filter
+    - lua_filter@*txjx_newline
     - uniquifier
 
 # ============ 开关 ============
