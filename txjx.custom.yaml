@@ -27,11 +27,11 @@ patch:
   
   # ==================== 功能开关默认状态 ====================
   # 说明：0=选择第一个状态，1=选择第二个状态。
-  # 推荐原则：学习提示开启；可能干扰正常候选或产生意外上屏的功能关闭。
+  # 推荐原则：常用体验和学习提示开启；可能产生意外上屏的功能关闭。
   switches/@0/reset: 0              # 中文
   switches/@1/reset: 0              # 简体
   switches/@2/reset: 1              # 逐码提示开
-  switches/@3/reset: 0              # 表情关，保持候选简洁
+  switches/@3/reset: 1              # 表情开
   switches/@4/reset: 1              # 快符开
   switches/@5/reset: 1              # ; 次选开
   switches/@6/reset: 1              # 计算开
