@@ -3,11 +3,12 @@
 -- 更新：2026-07-02
 
 local core = require("zzc.txjx_zzc_core")
+local state_model = require("zzc.txjx_zzc_state")
 
 local kAccepted = 1
 local kNoop = 2
 
-local state = { active = false, stage = "off", items = {}, mode = "make", target_code = "", origin_input = "", display_word = "", replaced_word = "", command_candidates = {}, shorten_idx = 1 }
+local state = state_model.new()
 local current_action_candidate
 local first_candidate
 local reset
@@ -15,72 +16,17 @@ local refresh_context
 local command_candidate_snapshot
 local collect_lookup_input
 
-local zzc_props = {
-    "_txjx_zzc_stage",
-    "_txjx_zzc_word",
-    "_txjx_zzc_items",
-    "_txjx_zzc_len",
-    "_txjx_zzc_pending",
-    "_txjx_zzc_mode",
-    "_txjx_zzc_target",
-    "_txjx_zzc_origin",
-    "_txjx_zzc_display",
-    "_txjx_zzc_replaced",
-    "_txjx_zzc_cmd_candidates",
-    "_txjx_zzc_shorten_idx",
-}
-
-local probe_props = {
-    "_txjx_zzc_stage",
-    "_txjx_zzc_word",
-    "_txjx_zzc_items",
-    "_txjx_zzc_len",
-    "_txjx_zzc_pending",
-    "_txjx_zzc_mode",
-    "_txjx_zzc_target",
-    "_txjx_zzc_origin",
-    "_txjx_zzc_display",
-    "_txjx_zzc_replaced",
-}
+local zzc_props = state_model.props
+local probe_props = state_model.probe_props
 
 
 local function reset_state_fields()
-    state.active = false
-    state.stage = "off"
-    state.items = {}
-    state.mode = "make"
-    state.target_code = ""
-    state.origin_input = ""
-    state.display_word = ""
-    state.replaced_word = ""
-    state.command_candidates = {}
-    state.shorten_idx = 1
-    core.set_state_items(state.items)
-    core.set_current_stage(state.stage)
+    state_model.reset_fields(state, core)
 end
 
-local function clear_props(ctx, props)
-    if not (ctx and ctx.set_property) then return end
-    for _, name in ipairs(props or zzc_props) do
-        ctx:set_property(name, "")
-    end
-end
-
-local function snapshot_props(ctx, props)
-    local out = {}
-    if not (ctx and ctx.get_property) then return out end
-    for _, name in ipairs(props or zzc_props) do
-        out[name] = ctx:get_property(name) or ""
-    end
-    return out
-end
-
-local function restore_props(ctx, snapshot, props)
-    if not (ctx and ctx.set_property) then return end
-    for _, name in ipairs(props or zzc_props) do
-        ctx:set_property(name, snapshot and snapshot[name] or "")
-    end
-end
+local clear_props = state_model.clear_props
+local snapshot_props = state_model.snapshot_props
+local restore_props = state_model.restore_props
 
 local length_keys = {
     ["3"] = 3, ["4"] = 4, ["5"] = 5, ["6"] = 6,
@@ -347,24 +293,7 @@ local function clear_state_only(ctx)
 end
 
 local function sync_state(ctx)
-    core.set_state_items(state.items)
-    core.set_current_stage(state.stage)
-    if ctx and ctx.set_property then
-        ctx:set_property("_txjx_zzc_stage", state.stage ~= "off" and state.stage or "")
-        local current_word = core.buffer_word() or ""
-        if current_word == "" and not (state.stage == "collect" and state.mode == "replace") then
-            current_word = state.display_word or ""
-        end
-        ctx:set_property("_txjx_zzc_word", current_word)
-        ctx:set_property("_txjx_zzc_items", core.serialize_items(state.items))
-        ctx:set_property("_txjx_zzc_mode", state.mode or "make")
-        ctx:set_property("_txjx_zzc_target", state.target_code or "")
-        ctx:set_property("_txjx_zzc_origin", state.origin_input or "")
-        ctx:set_property("_txjx_zzc_display", state.display_word or "")
-        ctx:set_property("_txjx_zzc_replaced", state.replaced_word or "")
-        ctx:set_property("_txjx_zzc_cmd_candidates", table.concat(state.command_candidates or {}, "\n"))
-        ctx:set_property("_txjx_zzc_shorten_idx", tostring(state.shorten_idx or 1))
-    end
+    state_model.sync(ctx, state, core)
 end
 
 refresh_context = function(ctx)
@@ -393,14 +322,8 @@ local function code_page_key_should_fallthrough(ctx, input, key, ch, shifted)
     return is_minus_key(key, ch) or is_unshifted_equal_key(key, ch, shifted)
 end
 
-local function set_pending_trigger(ctx, enabled)
-    if not (ctx and ctx.set_property) then return end
-    ctx:set_property("_txjx_zzc_pending", enabled and "1" or "")
-end
-
-local function pending_trigger(ctx)
-    return ctx and ctx.get_property and ctx:get_property("_txjx_zzc_pending") == "1"
-end
+local set_pending_trigger = state_model.set_pending_trigger
+local pending_trigger = state_model.pending_trigger
 
 
 
@@ -416,61 +339,15 @@ local function fallback_to_trigger(ctx)
 end
 
 local function restore_state_from_context(ctx)
-    if not (ctx and ctx.get_property) then return false end
-    local prop_stage = ctx:get_property("_txjx_zzc_stage") or ""
-    local prop_word = ctx:get_property("_txjx_zzc_word") or ""
-    local prop_items = ctx:get_property("_txjx_zzc_items") or ""
-    local prop_mode = ctx:get_property("_txjx_zzc_mode") or ""
-    local prop_target = ctx:get_property("_txjx_zzc_target") or ""
-    local prop_origin = ctx:get_property("_txjx_zzc_origin") or ""
-    local prop_display = ctx:get_property("_txjx_zzc_display") or ""
-    local prop_replaced = ctx:get_property("_txjx_zzc_replaced") or ""
-    local prop_cmd_candidates = ctx:get_property("_txjx_zzc_cmd_candidates") or ""
-    local prop_shorten_idx = tonumber(ctx:get_property("_txjx_zzc_shorten_idx") or "") or 1
-    if prop_stage == "" and prop_word == "" and prop_items == "" then return false end
-    local replace_placeholder = prop_stage == "collect"
-        and prop_mode == "replace"
-        and prop_target ~= ""
-        and prop_items == ""
-        and prop_word ~= ""
-        and prop_word == prop_display
-    local items = core.deserialize_items(prop_items)
-    if (not items or #items == 0) and prop_word ~= "" and not replace_placeholder then
-        items = core.items_from_text(prop_word) or {}
-    end
-    state.active = true
-    state.stage = prop_stage ~= "" and prop_stage or "collect"
-    state.items = items or {}
-    state.mode = prop_mode ~= "" and prop_mode or "make"
-    state.target_code = prop_target or ""
-    state.origin_input = prop_origin or ""
-    state.display_word = prop_display ~= "" and prop_display or prop_word or ""
-    state.replaced_word = prop_replaced or ""
-    state.shorten_idx = prop_shorten_idx
-    state.command_candidates = {}
-    for line in prop_cmd_candidates:gmatch("[^\n]+") do
-        state.command_candidates[#state.command_candidates + 1] = line
-    end
-    core.set_state_items(state.items)
-    core.set_current_stage(state.stage)
-    return true
+    return state_model.restore_from_context(ctx, state, core)
 end
 
 local function sync_state_from_context_if_needed(ctx)
-    if not (ctx and ctx.get_property) then return false end
-    local prop_stage = ctx:get_property("_txjx_zzc_stage") or ""
-    if prop_stage == "" then return false end
-    if (not state.active) or state.stage ~= prop_stage then
-        return restore_state_from_context(ctx)
-    end
-    return false
+    return state_model.sync_from_context_if_needed(ctx, state, core)
 end
 
 local function context_has_active_state(ctx)
-    if not (ctx and ctx.get_property) then return false end
-    return (ctx:get_property("_txjx_zzc_stage") or "") ~= ""
-        or (ctx:get_property("_txjx_zzc_word") or "") ~= ""
-        or (ctx:get_property("_txjx_zzc_items") or "") ~= ""
+    return state_model.context_has_active_state(ctx)
 end
 
 local function show_selected_code_notice(ctx, word, code)
