@@ -21,6 +21,10 @@ patch:
       ascii_mode: true
     Flow.Launcher.exe:
       ascii_mode: true
+    Google Chrome.exe:
+      ascii_mode: true
+    chrome.exe:
+      ascii_mode: true
 
   style/+:
     font_face: ".萍方-简" #"苹方-简,HYZhengYuan,TH-Tshyn-P2,Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
