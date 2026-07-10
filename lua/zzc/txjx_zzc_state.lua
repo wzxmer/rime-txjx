@@ -17,7 +17,6 @@ M.fields = {
     replaced = "_txjx_zzc_replaced",
     cmd_candidates = "_txjx_zzc_cmd_candidates",
     shorten_idx = "_txjx_zzc_shorten_idx",
-    finalize = "_txjx_zzc_finalize",
 }
 
 M.props = {

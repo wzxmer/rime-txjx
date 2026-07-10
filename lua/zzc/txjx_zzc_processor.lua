@@ -1265,17 +1265,6 @@ local function finalize_with_length(ctx, len, env)
     return finalize_current(ctx, env, { len = len, direct_code = direct_code })
 end
 
-local function handoff_length_to_filter(ctx, len, ch)
-    if not ctx or not len then return kAccepted end
-    if ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
-    local suffix = ch and ch ~= "" and ch or tostring(len)
-    local word = core.buffer_word() or state.display_word or ""
-    ctx.input = "\\" .. word .. suffix
-    sync_state(ctx)
-    refresh_context(ctx)
-    return kAccepted
-end
-
 local function push_code_char(ctx, ch)
     if not ctx or not ch or ch == "" then return end
     local pushed = false
@@ -1475,10 +1464,6 @@ local function processor(key_event, env)
     local ctx = env.engine.context
     if state.active and not context_has_active_state(ctx) then
         clear_state_only(ctx)
-    end
-    if ctx and ctx.get_property and ctx:get_property("_txjx_zzc_finalize") == "1" then
-        clear_state_only(ctx)
-        if ctx.set_property then ctx:set_property("_txjx_zzc_finalize", "") end
     end
     local current_input = ctx and ctx.input or ""
     sync_state_from_context_if_needed(ctx)
@@ -1756,7 +1741,7 @@ local function processor(key_event, env)
         local idx = resolve_index_key(key, ch)
         if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
             if direct_len then
-                return handoff_length_to_filter(ctx, direct_len, ch)
+                return finalize_with_length(ctx, direct_len, env)
             end
             if invalid_length_digit(idx, direct_len) then
                 reset(ctx)
@@ -1809,7 +1794,7 @@ local function processor(key_event, env)
         local length_idx = resolve_index_key(key, ch)
         if waiting_length_confirm(ctx) and length_idx and length_idx >= 1 and length_idx <= 9 then
             if direct_len then
-                return handoff_length_to_filter(ctx, direct_len, ch)
+                return finalize_with_length(ctx, direct_len, env)
             end
             if invalid_length_digit(length_idx, direct_len) then
                 reset(ctx)
@@ -1823,7 +1808,7 @@ local function processor(key_event, env)
                 local cand_len, cand_text = selected_length_candidate(ctx, idx)
                 if cand_len then
                     if ctx then ctx:clear() end
-                    return handoff_length_to_filter(ctx, cand_len, cand_text)
+                    return finalize_with_length(ctx, cand_len, env)
                 end
             end
             capture_candidate_at(ctx, idx)
@@ -1832,7 +1817,7 @@ local function processor(key_event, env)
     end
 
     if direct_len and state.mode ~= "replace" and waiting_length_confirm(ctx) then
-        return handoff_length_to_filter(ctx, direct_len, ch)
+        return finalize_with_length(ctx, direct_len, env)
     end
 
     if state.stage == "collect" then
@@ -1857,7 +1842,7 @@ local function processor(key_event, env)
             local cand_len = cand and length_from_candidate_text(cand.text)
             if cand_len and ready_for_length(ctx) then
                 ctx:clear()
-                return handoff_length_to_filter(ctx, cand_len, cand.text)
+                return finalize_with_length(ctx, cand_len, env)
             end
             local text = capture_current_candidate(ctx)
             if not text then return kAccepted end

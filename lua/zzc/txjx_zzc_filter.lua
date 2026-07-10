@@ -7,30 +7,6 @@ local COLLECT_CANDIDATE_LIMIT = 30
 local DEFAULT_ZZC_HINT_TEXT = "自造词ing"
 local DEFAULT_ZZC_CANDIDATE_HINT_TEXT = "自造词"
 
-
-local length_inputs = {
-    ["3"] = 3, ["4"] = 4, ["5"] = 5, ["6"] = 6,
-    ["三"] = 3, ["四"] = 4, ["五"] = 5, ["六"] = 6,
-}
-local function split_length_input(input)
-    input = input or ""
-    local last_char = input
-    local prefix = ""
-    if utf8 and utf8.len and utf8.len(input) and utf8.len(input) > 1 then
-        local start = utf8.offset(input, -1)
-        last_char = start and input:sub(start) or input
-        prefix = start and input:sub(1, start - 1) or ""
-    elseif #input > 1 then
-        last_char = input:sub(-1)
-        prefix = input:sub(1, -2)
-    end
-    return prefix, length_inputs[last_char]
-end
-
-local function is_cjk_text(text)
-    return text and text:match("[\228-\233][\128-\191][\128-\191]") ~= nil
-end
-
 local is_real_candidate = core.is_real_candidate
 
 local function is_collect_candidate(cand)
@@ -41,110 +17,6 @@ local function is_collect_candidate(cand)
 end
 
 local with_reminder
-
-local function maybe_finalize_from_input(ctx, input_text, env, input)
-    local prefix, len = split_length_input(input_text)
-    local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
-    local prop_word = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_word") or ""
-    local prop_items = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_items") or ""
-    local literal_prefix = prefix or ""
-    local has_literal_trigger = literal_prefix:sub(1, 1) == "\\"
-    if has_literal_trigger then
-        literal_prefix = literal_prefix:sub(2)
-    end
-    local literal_length_input = has_literal_trigger and literal_prefix ~= "" and is_cjk_text(literal_prefix) and not literal_prefix:match("^[A-Za-z;']+$")
-    if not len or (core.current_stage() == "off" and prop_stage == "" and prop_word == "" and not literal_length_input) then return false end
-    if ctx and ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
-    if (not core.state_items or #core.state_items == 0) and prop_items ~= "" then
-        local items = core.deserialize_items(prop_items)
-        if items and #items > 0 then
-            core.set_state_items(items)
-            if core.current_stage() == "off" then core.set_current_stage("collect") end
-        end
-    end
-    if prefix:sub(1, 1) == "\\" then
-        prefix = prefix:sub(2)
-    end
-    if prefix and prefix ~= "" then
-        local current = core.buffer_word() or ""
-        if current == "" or prefix:sub(1, #current) ~= current then
-            if is_cjk_text(prefix) and not prefix:match("^[A-Za-z;']+$") then
-                local items, err = core.items_from_text(prefix)
-                if not items and err and tostring(err):match("^ambiguous_char:") then
-                    items = core.raw_items_from_text(prefix)
-                end
-                if not items then return false end
-                core.set_state_items(items)
-            else
-                if not input then return false end
-                local first
-                for cand in input:iter() do
-                    first = cand
-                    break
-                end
-                if not is_real_candidate(first) or not is_cjk_text(first.text) then return false end
-                local ok = core.append_candidate_text(first.text, nil)
-                if not ok then return false end
-            end
-        end
-    end
-    local word = core.buffer_word() or ""
-    if word == "" and prop_word ~= "" then
-        word = prop_word
-        if not core.state_items or #core.state_items == 0 then
-            local items = core.items_from_text(word)
-            if items then core.set_state_items(items) end
-        end
-    end
-    if word == "" then return false end
-    local direct_code = prefix and prefix:match("^[A-Za-z;']+$") and prefix or nil
-    local code
-    if direct_code and #direct_code == len then
-        code = core.save_word_at_code(core.state_items or {}, direct_code)
-    else
-        code = core.enqueue_pending(core.state_items or {}, len)
-    end
-    if not code then
-        local choices = core.code_choices_for_text(word, len, 9)
-        if choices and choices[1] then
-            if #choices == 1 then
-                local choice = choices[1]
-                code = core.save_word_at_code(choice.items or core.state_items or {}, choice.code)
-            end
-        end
-        if not code and choices and choices[1] then
-            local rows = {}
-            for _, choice in ipairs(choices) do
-                rows[#rows + 1] = choice.word .. "\t" .. choice.code
-            end
-            if ctx and ctx.set_property then
-                ctx:set_property("_txjx_zzc_stage", "resolve_code")
-                ctx:set_property("_txjx_zzc_word", word)
-                ctx:set_property("_txjx_zzc_items", core.serialize_items(core.state_items or {}))
-                ctx:set_property("_txjx_zzc_len", tostring(len))
-                ctx:set_property("_txjx_zzc_mode", "make")
-                ctx:set_property("_txjx_zzc_cmd_candidates", table.concat(rows, "\n"))
-            end
-            core.set_current_stage("resolve_code")
-            return false
-        end
-    end
-    if not code then
-        return false
-    end
-    ctx:clear()
-    core.set_state_items({})
-    core.set_current_stage("off")
-    if ctx and ctx.set_property then
-        ctx:set_property("_txjx_zzc_stage", "")
-        ctx:set_property("_txjx_zzc_word", "")
-        ctx:set_property("_txjx_zzc_items", "")
-        ctx:set_property("_txjx_zzc_len", "")
-        ctx:set_property("_txjx_zzc_finalize", "1")
-    end
-    env.engine:commit_text(word)
-    return true
-end
 
 local function zzc_hint_text(env)
     if env and env._zzc_hint_text ~= nil then
@@ -463,9 +335,6 @@ local function filter(input, env)
     local code = ctx and ctx.input or ""
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
-    if maybe_finalize_from_input(ctx, code, env, input) then
-        return
-    end
     local state_cand = state_candidate(ctx, code, env)
     local prop_target = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_target") or ""
     local collect_with_code = prop_stage == "collect"
@@ -563,4 +432,3 @@ local function init(env)
 end
 
 return { init = init, func = filter }
-
