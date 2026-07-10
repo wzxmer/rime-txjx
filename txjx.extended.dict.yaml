@@ -34,6 +34,7 @@ import_tables:
   - txjx.core
   - txjx.danzi
   - txjx
+  - txjx.fjcy
 # ---------------------------------------
 
 ## 自定义词库：自己做的词库，自己维护
