@@ -993,6 +993,14 @@ local function finalize_with_length(ctx, len, env)
     return finalize_current(ctx, env, { len = len, direct_code = direct_code })
 end
 
+local function finalize_literal_length(ctx, env, len)
+    if not len or state.stage ~= "collect" or state.mode ~= "make" then return false end
+    if not waiting_length_confirm(ctx) then return false end
+    if ctx and ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
+    finalize_current(ctx, env, { len = len })
+    return state.stage ~= "collect"
+end
+
 local function push_code_char(ctx, ch)
     if not ctx or not ch or ch == "" then return end
     local pushed = false
@@ -1569,8 +1577,7 @@ local function processor(key_event, env)
             local cand = current_action_candidate(ctx) or first_candidate(ctx)
             local cand_len = cand and length_from_candidate_text(cand.text)
             if cand_len and ready_for_length(ctx) then
-                ctx:clear()
-                return finalize_with_length(ctx, cand_len, env)
+                return finalize_current(ctx, env, { len = cand_len })
             end
             local text = capture_current_candidate(ctx)
             if not text then return kAccepted end
@@ -1647,4 +1654,5 @@ return {
     fini = fini,
     is_active = module_is_active,
     capture_current_candidate = module_capture_current_candidate,
+    finalize_literal_length = finalize_literal_length,
 }
