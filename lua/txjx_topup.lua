@@ -1,4 +1,4 @@
--- 天行键顶功 pending 与自动回退
+-- 天行键顶功与自动回退
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
 -- 更新：2026-07-10
 
@@ -8,10 +8,10 @@ local type = type
 local zzc_processor = require("zzc.txjx_zzc_processor")
 local key_event_util = require("txjx_key_event")
 local commit_guard = require("txjx_commit_guard")
-local processor_state = require("txjx_processor_state")
 
 local M = {}
 local kAccepted = 1
+local kNoop = 2
 local CHAR_CACHE = key_event_util.char_cache
 
 function M.ready(env, ctx)
@@ -40,77 +40,12 @@ function M.exec(env)
             return true, next_input ~= nil
         end
     end
-    if not commit_guard.commit_selected_non_completion(ctx) and env._tu_ac then ctx:clear() end
-    return true, false
-end
-
-function M.queue_key(env, ctx, key, clean_key, keycode)
-    env._txjx_processor = env._txjx_processor or {}
-    env._txjx_processor.pending = {
-        key = key,
-        clean_key = clean_key,
-        keycode = keycode,
-        input = ctx and (ctx.input or "") or "",
-    }
-end
-
-function M.clear_pending(env)
-    processor_state.clear_pending(env)
-end
-
-function M.clear_queued(env)
-    M.clear_pending(env)
-end
-
-function M.flush_key(env, ctx)
-    local pending = env._txjx_processor and env._txjx_processor.pending
-    if not pending then return false end
-    local key = pending.key
-    local pending_input = pending.input
-    if pending_input and ctx and (ctx.input or "") ~= pending_input then
-        if ctx:is_composing() or (ctx.input or "") ~= "" then
-            M.clear_pending(env)
-            return false
-        end
+    if commit_guard.commit_selected_non_completion(ctx) then return true, false, true end
+    if env._tu_ac then
+        ctx:clear()
+        return true, false, true
     end
-    M.clear_pending(env)
-    commit_guard.push_code_input(env, ctx, key)
-    return true
-end
-
-function M.handle_queued_release(env, ctx, clean_key, keycode)
-    local pending = env._txjx_processor and env._txjx_processor.pending
-    if pending and (clean_key == pending.clean_key or keycode == pending.keycode) then
-        return M.flush_key(env, ctx)
-    end
-    return false
-end
-
-function M.is_pending_event(env, key, keycode)
-    local pending = env._txjx_processor and env._txjx_processor.pending
-    return pending and key == pending.key and keycode == pending.keycode or false
-end
-
-function M.flush_plain_alpha_press(env, ctx, key_event, key, shift, caps_on)
-    if not M.has_pending(env) or key_event:release() or shift or caps_on then return false end
-    if key_event:ctrl() or key_event:alt() or key_event:super() then return false end
-    if type(key) ~= "string" or #key ~= 1 then return false end
-    local byte = string_byte(key, 1)
-    if byte < 97 or byte > 122 or not (env._alpha and env._alpha[key]) then return false end
-    if not M.flush_key(env, ctx) then return false end
-    commit_guard.push_code_input(env, ctx, key)
-    return true
-end
-
-function M.flush_pending_digit_press(env, ctx, key_event, shift, clean_key, keycode, repr)
-    if not M.has_pending(env) or key_event:release() or shift then return false end
-    if key_event:ctrl() or key_event:alt() or key_event:super() then return false end
-    if not key_event_util.digit_char(clean_key, keycode, repr) then return false end
-    return M.flush_key(env, ctx)
-end
-
-function M.has_pending(env)
-    return env._txjx_processor and env._txjx_processor.pending ~= nil or false
+    return true, false, false
 end
 
 function M.plain_code_key(env, key, clean_key, keycode)
@@ -132,15 +67,6 @@ function M.plain_code_key(env, key, clean_key, keycode)
         elseif byte >= 97 and byte <= 122 then code_key = clean_key end
     end
     return code_key and env._alpha[code_key] and code_key or nil
-end
-
-function M.push_key(env, ctx, key, clean_key, keycode, input_len)
-    if input_len and input_len >= 1 then
-        M.queue_key(env, ctx, key, clean_key, keycode)
-        commit_guard.note_space(env, ctx, ctx and (ctx.input or "") or "", key)
-    else
-        commit_guard.push_code_input(env, ctx, key)
-    end
 end
 
 function M.eval_input(current_input, opts)
@@ -173,7 +99,7 @@ function M.fixed_rule_would_commit(env, current_input, key, opts)
     return eval.input_len >= (env._tu_min or 4) and not previous_is_topup and not is_topup
 end
 
-function M.auto_fallback(env, ctx, key, clean_key, keycode, opts)
+function M.auto_fallback(env, ctx, key, opts)
     if env._tu_streaming or not opts.auto_fallback or not env._alpha[key] then return false end
     local zzc_stage = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") or ""
     local zzc_mode = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_mode") or "") or ""
@@ -206,8 +132,8 @@ function M.auto_fallback(env, ctx, key, clean_key, keycode, opts)
         return false
     end
     if not commit_guard.commit_selected_non_completion(ctx) then return false end
-    M.push_key(env, ctx, key, clean_key, keycode, eval.input_len)
-    return kAccepted
+    commit_guard.note_space(env, ctx, "", key)
+    return kNoop
 end
 
 return M

@@ -10,6 +10,7 @@ local commit_guard = require("txjx_commit_guard")
 
 local M = {}
 local kAccepted = 1
+local kNoop = 2
 local CHAR_CACHE = key_event_util.char_cache
 local symbol_code_state
 
@@ -186,7 +187,7 @@ function M.commit_unique_if_leaf(env, ctx, engine)
     return M.commit_first(env, ctx, engine)
 end
 
-function M.handle_alpha_press(env, ctx, key, clean_key, keycode, opts, topup_push_key)
+function M.handle_alpha_press(env, ctx, key, opts)
     if env._tu_streaming or not opts.direct_symbols or not env._alpha[key] then return false end
     local current_input = ctx.input or ""
     if not M.is_input(current_input) then return false end
@@ -208,8 +209,8 @@ function M.handle_alpha_press(env, ctx, key, clean_key, keycode, opts, topup_pus
         ctx:pop_input(1)
         if (ctx.input or "") ~= current_input then return kAccepted end
         if not current_candidate or not M.commit_first(env, ctx, env.engine) then return false end
-        topup_push_key(env, ctx, key, clean_key, keycode, #current_input - 1)
-        return kAccepted
+        commit_guard.note_space(env, ctx, "", key)
+        return kNoop
     end
     return kAccepted
 end

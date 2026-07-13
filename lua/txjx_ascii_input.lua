@@ -7,7 +7,6 @@ local type = type
 local state = require("common.txjx_state")
 local key_event_util = require("txjx_key_event")
 local commit_guard = require("txjx_commit_guard")
-local topup = require("txjx_topup")
 
 local M = {}
 local kAccepted = 1
@@ -80,18 +79,15 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
     local keycode = key_event.keycode
     if ctx:is_composing() and M.get_append_suffix(env, ctx)
         and key_event_util.is_append_delete(clean_key, repr, keycode) then
-        topup.clear_queued(env)
         if key_event:release() then return kAccepted end
         if M.pop_append_suffix(env, ctx) then return kAccepted end
     end
     if key_event_util.is_topup_cancel(clean_key, repr, keycode) then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         M.clear_append(env, ctx)
         return kNoop
     end
     if key_event_util.is_enter(clean_key, repr, keycode) then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event:release() then return kAccepted end
         if M.commit_append(env, ctx, env.engine) then return kAccepted end
@@ -105,7 +101,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         return kNoop
     end
     if key_event_util.is_shift(clean_key, repr, keycode) then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event:release() and env._shift_symbol_release_guard then
             env._shift_symbol_release_guard = nil
@@ -115,7 +110,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         return kNoop
     end
     if key_event_util.is_caps(clean_key, repr, keycode) then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event_util.repr_has_lock(repr) then
             env._caps_lock_on = true
@@ -157,14 +151,12 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         and key_event_util.bare_upper_alpha_char(clean_key, keycode, repr) or nil
     if bare_upper and ((ctx.input or "") == "" or env._shift_inline_ascii) then
         env._shift_inline_ascii = true
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         ctx:push_input(bare_upper)
         return kAccepted
     end
     if not ascii_mode and shift and no_modifier and key_event_util.is_alpha(env, key_name, clean_key, keycode) then
         env._shift_inline_ascii = true
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         return kNoop
     end
@@ -172,7 +164,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         env._shift_inline_ascii = nil
     elseif not key_event:release() and no_modifier and not caps_on
         and key_event_util.shift_inline_alpha(env, ctx, shift, key_name, clean_key, keycode) then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         return kNoop
     end
@@ -195,7 +186,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         append_suffix = M.symbol_char(key_name, false, true)
     end
     if append_suffix then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event:release() then return kAccepted end
         if M.set_append(env, ctx, append_suffix) then return kAccepted end
@@ -203,7 +193,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
     local uppercase = (not ascii_mode and not shift and no_modifier and caps_on)
         and key_event_util.uppercase_char(clean_key, keycode) or nil
     if uppercase then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event:release() then return kAccepted end
         if ctx:is_composing() then ctx:commit() end
@@ -213,7 +202,6 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
     local caps_symbol = (not ascii_mode and no_modifier and caps_on)
         and M.symbol_char(key_name, shift, caps_on) or nil
     if caps_symbol then
-        topup.clear_queued(env)
         commit_guard.clear_space(env)
         if key_event:release() then return kAccepted end
         if ctx:is_composing() then ctx:commit() end

@@ -39,8 +39,6 @@ local function _collect_reverse_prefixes(config, schema_id, include_aux)
     return config_util.collect_reverse_prefixes(config, schema_id, include_aux)
 end
 
-local _commit_selected_non_completion = commit_guard.commit_selected_non_completion
-
 local function _is_memory_tool_input(input)
     return input == "=mem" or input == "=mem!"
 end
@@ -50,15 +48,7 @@ local _space_guard_note = commit_guard.note_space
 local _push_code_input = commit_guard.push_code_input
 
 local _topup_exec = topup.exec
-local _topup_clear_pending_key = topup.clear_pending
-local _topup_clear_queued_keys = topup.clear_queued
-local _topup_flush_key = topup.flush_key
-local _topup_handle_queued_release = topup.handle_queued_release
-local _topup_is_pending_key_event = topup.is_pending_event
-local _topup_flush_plain_alpha_press = topup.flush_plain_alpha_press
-local _topup_flush_pending_digit_press = topup.flush_pending_digit_press
 local _plain_code_key = topup.plain_code_key
-local _topup_push_key = topup.push_key
 
 local _is_space_key = key_event_util.is_space
 local _uppercase_char = key_event_util.uppercase_char
@@ -66,8 +56,8 @@ local _alpha_upper_char = key_event_util.alpha_upper_char
 
 local _commit_direct_symbols_unique_if_leaf = direct_symbols.commit_unique_if_leaf
 
-local function _handle_direct_symbols_alpha_press(env, ctx, key, clean_key, kc, opts)
-    return direct_symbols.handle_alpha_press(env, ctx, key, clean_key, kc, opts, _topup_push_key)
+local function _handle_direct_symbols_alpha_press(env, ctx, key, opts)
+    return direct_symbols.handle_alpha_press(env, ctx, key, opts)
 end
 
 local _topup_eval_input = topup.eval_input
@@ -89,28 +79,15 @@ local function processor(key_event, env)
         local alpha = _alpha_upper_char(clean_key, kc) or _uppercase_char(clean_key, kc)
         if _is_space_key(kc, clean_key, repr) or alpha then
             ctx:clear()
-            _topup_clear_queued_keys(env)
             _space_guard_clear(env)
             return kNoop
         end
     end
-    _topup_flush_pending_digit_press(env, ctx, key_event, sf, clean_key, kc, repr)
     local ascii_result, frame = ascii_input.process_front(key_event, env, kn, sf, clean_key, repr)
     if ascii_result then return ascii_result end
     local ascii_mode = frame.ascii_mode
     local no_modifier = frame.no_modifier
     local caps_on = frame.caps_on
-    if no_modifier and not sf and not caps_on and not key_event:release()
-        and _is_space_key(kc, clean_key, repr) then
-        local had_pending = topup.has_pending(env)
-        if had_pending then
-            _topup_flush_key(env, ctx)
-            if ctx:is_composing() and ctx:has_menu() and _commit_selected_non_completion(ctx) then
-                env._space_commit_release_guard = true
-                return kAccepted
-            end
-        end
-    end
     local opts = {
         smarttwo = ctx:get_option("smarttwo"),
         direct_symbols = ctx:get_option("direct_symbols"),
@@ -128,7 +105,6 @@ local function processor(key_event, env)
     end
 
     if key_event:release() then
-        if _topup_handle_queued_release(env, ctx, clean_key, kc) then return kAccepted end
         if ctx:has_menu() then
             if kc == 0xffe3 or kc == 0xffe4 then -- Ctrl
                  if _commit_menu_index(ctx, env.engine, 1) then return kAccepted end
@@ -142,12 +118,10 @@ local function processor(key_event, env)
     end
 
     if key_event:ctrl() or key_event:alt() then
-        _topup_clear_pending_key(env)
         _space_guard_clear(env)
         return kNoop
     end
     if kc < 32 or kc >= 127 then
-        _topup_clear_pending_key(env)
         if not _is_space_key(kc, clean_key, repr) then _space_guard_clear(env) end
         return kNoop
     end
@@ -156,12 +130,6 @@ local function processor(key_event, env)
     local plain_code_key = _plain_code_key(env, raw_key, clean_key, kc)
     local key = plain_code_key or raw_key
     local is_code_key = plain_code_key ~= nil or (env._alpha and env._alpha[key])
-    if topup.has_pending(env) and not _topup_is_pending_key_event(env, key, kc) and not is_code_key then
-        _topup_clear_pending_key(env)
-    end
-    if _topup_flush_plain_alpha_press(env, ctx, key_event, key, sf, caps_on) then
-        return kAccepted
-    end
     if _passthrough_alpha_key(env, ctx, sf, key, clean_key, kc) then
         return kNoop
     end
@@ -172,17 +140,11 @@ local function processor(key_event, env)
         return kAccepted
     end
 
-    local direct_symbols_result = _handle_direct_symbols_alpha_press(env, ctx, key, clean_key, kc, opts)
+    local direct_symbols_result = _handle_direct_symbols_alpha_press(env, ctx, key, opts)
     if direct_symbols_result then return direct_symbols_result end
 
-    if is_code_key and _topup_flush_key(env, ctx) then
-        _push_code_input(env, ctx, key)
-        return kAccepted
-    end
-
-    if _topup_auto_fallback(env, ctx, key, clean_key, kc, opts) then
-        return kAccepted
-    end
+    local auto_fallback_result = _topup_auto_fallback(env, ctx, key, opts)
+    if auto_fallback_result then return auto_fallback_result end
 
     if not env._tu_streaming and is_code_key then
         local current_input = ctx.input
@@ -200,31 +162,25 @@ local function processor(key_event, env)
         if not eval.semicolon_input and not (env._tu_cmd and is_ftu) then
             if is_ptu and not is_tu then
                 env._txjx_zzc_follow_key = key
-                local executed, consumed_follow = _topup_exec(env)
-                if not executed then return kAccepted end
+                local executed, consumed_follow, transitioned = _topup_exec(env)
                 env._txjx_zzc_follow_key = nil
-                if not consumed_follow then
-                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
-                end
-                return kAccepted
+                if not executed or consumed_follow or not transitioned then return kAccepted end
+                _space_guard_note(env, ctx, "", key)
+                return kNoop
             elseif not is_ptu and not is_tu and input_len >= min_len then
                 env._txjx_zzc_follow_key = key
-                local executed, consumed_follow = _topup_exec(env)
-                if not executed then return kAccepted end
+                local executed, consumed_follow, transitioned = _topup_exec(env)
                 env._txjx_zzc_follow_key = nil
-                if not consumed_follow then
-                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
-                end
-                return kAccepted
+                if not executed or consumed_follow or not transitioned then return kAccepted end
+                _space_guard_note(env, ctx, "", key)
+                return kNoop
             elseif input_len >= env._tu_max then
                 env._txjx_zzc_follow_key = key
-                local executed, consumed_follow = _topup_exec(env)
-                if not executed then return kAccepted end
+                local executed, consumed_follow, transitioned = _topup_exec(env)
                 env._txjx_zzc_follow_key = nil
-                if not consumed_follow then
-                    _topup_push_key(env, ctx, key, clean_key, kc, input_len)
-                end
-                return kAccepted
+                if not executed or consumed_follow or not transitioned then return kAccepted end
+                _space_guard_note(env, ctx, "", key)
+                return kNoop
             end
         end
     end

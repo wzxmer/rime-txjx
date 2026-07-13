@@ -10,7 +10,6 @@ local config_util = require("common.txjx_config")
 local key_event_util = require("txjx_key_event")
 local commit_guard = require("txjx_commit_guard")
 local ascii_input = require("txjx_ascii_input")
-local topup = require("txjx_topup")
 
 local M = {}
 local kAccepted = 1
@@ -89,7 +88,6 @@ local function is_calc_context(ctx, opts)
 end
 
 local function clear_transition(env, ctx)
-    topup.clear_queued(env)
     env._shift_inline_ascii = nil
     commit_guard.clear_space(env)
     ascii_input.clear_append(env, ctx)
