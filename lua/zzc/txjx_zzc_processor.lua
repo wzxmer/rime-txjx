@@ -1,6 +1,6 @@
 -- 天行键 自造词按键处理器
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-07-02
+-- 更新：2026-07-19
 
 local core = require("zzc.txjx_zzc_core")
 local state_model = require("zzc.txjx_zzc_state")
@@ -17,7 +17,6 @@ local command_candidate_snapshot
 local collect_lookup_input
 
 local zzc_props = state_model.props
-local probe_props = state_model.probe_props
 
 local function reset_state_fields()
     state_model.reset_fields(state, core)
@@ -169,51 +168,27 @@ end
 local candidate_type = core.candidate_type
 local is_real_candidate = core.is_real_candidate
 local menu_candidate_at = candidates.menu_candidate_at
+local menu_candidates = candidates.menu_candidates
 local first_candidate = candidates.first_candidate
 local selected_candidate = candidates.selected_candidate
 local function current_action_candidate(ctx)
     return candidates.current_action_candidate(ctx, is_real_candidate)
 end
 
+local function probe_exact_candidates(ctx, code)
+    if not ctx or not code or code == "" then return nil, "missing_code" end
+    local rows, meta = command_candidate_snapshot(ctx, code, {
+        exact_only = true,
+        force_probe = true,
+        limit = 200,
+    })
+    if meta and meta.truncated then return nil, "candidate_scan_limit" end
+    return rows or {}
+end
+
 local function probe_first_candidate(ctx, code)
-    if not ctx or not code or code == "" then return nil end
-    local cover = core.cover_for_probe and core.cover_for_probe(code, { ignore_order = true }) or nil
-    if cover and cover.rows and cover.rows[1] and cover.rows[1].word then
-        return cover.rows[1].word
-    end
-    local old_input = ctx.input or ""
-    local old_props = snapshot_props(ctx, probe_props)
-    local old_core_stage = core.current_stage and core.current_stage() or "off"
-    local text = nil
-    local ok = pcall(function()
-        if core.set_current_stage then core.set_current_stage("off") end
-        clear_props(ctx, probe_props)
-        ctx.input = code
-        refresh_context(ctx)
-        if ctx.composition and not ctx.composition:empty() then
-            local seg = ctx.composition:back()
-            local menu = seg and seg.menu
-            if menu then
-                for i = 0, 9 do
-                    local cand = menu_candidate_at(menu, i)
-                    if not cand then break end
-                    if is_real_candidate(cand)
-                        and (not cover or not cover.hide_words or not cover.hide_words[cand.text]) then
-                        text = cand.text
-                        break
-                    end
-                end
-            end
-        end
-    end)
-    pcall(function()
-        ctx:clear()
-        ctx.input = old_input
-        if core.set_current_stage then core.set_current_stage(old_core_stage) end
-        restore_props(ctx, old_props, probe_props)
-        refresh_context(ctx)
-    end)
-    return text
+    local rows = probe_exact_candidates(ctx, code)
+    return rows and rows[1] or nil
 end
 
 local function length_from_candidate_text(text)
@@ -624,6 +599,8 @@ end
 
 command_candidate_snapshot = function(ctx, code, opts)
     opts = opts or {}
+    local limit = opts.limit or 9
+    local meta = { truncated = false }
     local out = {}
     local seen = {}
     local cover = core.zzc_cover_for_input and core.zzc_cover_for_input(code or "")
@@ -659,15 +636,22 @@ command_candidate_snapshot = function(ctx, code, opts)
     end
     local function collect_from_menu(menu)
         if not menu then return end
-        for i = 0, 8 do
-            local cand = menu_candidate_at(menu, i)
-            if not cand then break end
+        local rows, extra = menu_candidates(menu, limit)
+        local function collect(cand, mark_truncated)
+            if not cand then return false end
             local cand_type = candidate_type(cand)
             local zzc_candidate = cand_type == "zzc_saved" or cand_type == "zzc_cover" or cand_type == "zzc_append"
+            local completion = core.is_completion_hint_candidate(cand) or cand_type == "zzc_completion"
+            if opts.exact_only and completion then return false end
+            local exact_candidate = cand_type == "zzc_append"
+                or (is_real_candidate(cand) and (cand.preedit == code or zzc_candidate))
+            if mark_truncated and exact_candidate then meta.truncated = true end
+            local accepted = false
             if cand_type == "zzc_append" then
                 if is_real_candidate(cand) and cand.text and cand.text ~= "" and not seen[cand.text] and not append_seen[cand.text] then
                     append_out[#append_out + 1] = cand.text
                     append_seen[cand.text] = true
+                    accepted = true
                 end
             elseif is_real_candidate(cand)
                 and (cand.preedit == code or zzc_candidate)
@@ -678,10 +662,17 @@ command_candidate_snapshot = function(ctx, code, opts)
                         and (not cover.hide_words or not cover.hide_words[cand.text]))) then
                 out[#out + 1] = cand.text
                 seen[cand.text] = true
+                accepted = true
             end
+            return accepted
         end
+        for _, cand in ipairs(rows) do
+            collect(cand, false)
+        end
+        collect(extra, true)
     end
-    if ctx and ctx.composition and not ctx.composition:empty() then
+    if not opts.force_probe
+        and ctx and ctx.composition and not ctx.composition:empty() then
         local seg = ctx.composition:back()
         collect_from_menu(seg and seg.menu)
     end
@@ -689,7 +680,7 @@ command_candidate_snapshot = function(ctx, code, opts)
     if cover and cover.append_rows then add_append_rows(cover.append_rows) end
     if not ctx or not code or code == "" then
         flush_append_rows()
-        return out
+        return out, meta
     end
     local old_input = ctx.input or ""
     local old_props = snapshot_props(ctx)
@@ -714,7 +705,7 @@ command_candidate_snapshot = function(ctx, code, opts)
         restore_props(ctx, old_props)
         refresh_context(ctx)
     end)
-    return out
+    return out, meta
 end
 
 local function promote_candidate_at(ctx, target_code, idx)
@@ -758,7 +749,9 @@ local function shorten_candidate_at(ctx, source_code, idx)
     if word and target_code and target_code ~= "" then
         pcall(core.move_word_to_code, word, source_code, target_code, function(code)
             return probe_first_candidate(ctx, code)
-        end, nil)
+        end, nil, function(code)
+            return probe_exact_candidates(ctx, code)
+        end)
     end
     if ctx then ctx:clear() end
     reset(ctx)
@@ -815,6 +808,7 @@ local function commit_command_deletes(ctx)
     if digits == "" then digits = "1" end
     local code = state.target_code or ""
     local snapshot = state.command_candidates
+    local words, seen = {}, {}
     for d in digits:gmatch("%d") do
         local idx = tonumber(d)
         if idx and idx >= 1 and idx <= 9 then
@@ -822,10 +816,16 @@ local function commit_command_deletes(ctx)
                 snapshot = command_candidate_snapshot(ctx, code, { force_probe = true })
             end
             local word = snapshot and snapshot[idx]
-            if word and code ~= "" then
-                local ok, err = core.delete_word_at_code(word, code)
+            if word and code ~= "" and not seen[word] then
+                seen[word] = true
+                words[#words + 1] = word
             end
         end
+    end
+    if words[1] and code ~= "" then
+        local ok, err = core.delete_words_at_code(words, code, function(probe_code)
+            return probe_exact_candidates(ctx, probe_code)
+        end)
     end
     reset(ctx)
     return kAccepted
@@ -877,6 +877,8 @@ local function commit_code_choice(ctx, env, idx)
     end
     local saved_code = core.save_word_at_code(items, code, nil, function(probe_code)
         return probe_first_candidate(ctx, probe_code)
+    end, function(probe_code)
+        return probe_exact_candidates(ctx, probe_code)
     end)
     if not saved_code then
         state.stage = "collect"
@@ -928,6 +930,8 @@ local function finalize_current(ctx, env, opts)
         end
         saved_code, err = core.enqueue_replace(state.items, state.target_code, replaced_word, function(code)
             return probe_first_candidate(ctx, code)
+        end, function(code)
+            return probe_exact_candidates(ctx, code)
         end)
     else
         local len = opts.len or default_length_for_items(state.items)
@@ -940,10 +944,14 @@ local function finalize_current(ctx, env, opts)
         if direct_code and #direct_code == len then
             saved_code, err = core.save_word_at_code(state.items, direct_code, nil, function(code)
                 return probe_first_candidate(ctx, code)
+            end, function(code)
+                return probe_exact_candidates(ctx, code)
             end)
         else
             saved_code, err = core.enqueue_pending(state.items, len, function(code)
                 return probe_first_candidate(ctx, code)
+            end, function(code)
+                return probe_exact_candidates(ctx, code)
             end)
         end
         if not saved_code and err == "missing_parts" then
@@ -953,6 +961,8 @@ local function finalize_current(ctx, env, opts)
                     local choice = choices[1]
                     saved_code, err = core.save_word_at_code(choice.items or state.items, choice.code, nil, function(code)
                         return probe_first_candidate(ctx, code)
+                    end, function(code)
+                        return probe_exact_candidates(ctx, code)
                     end)
                 end
             end

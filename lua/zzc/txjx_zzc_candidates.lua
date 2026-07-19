@@ -1,6 +1,6 @@
 -- 天行键 自造词候选访问模块
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-07-10
+-- 更新：2026-07-19
 
 local M = {}
 
@@ -9,6 +9,21 @@ function M.menu_candidate_at(menu, index)
     local ok, cand = pcall(function() return menu:get_candidate_at(index) end)
     if not ok then return nil end
     return cand
+end
+
+function M.menu_candidates(menu, limit)
+    limit = limit or 10
+    if not menu or limit < 1 then return {}, nil end
+    pcall(function()
+        if menu.prepare then menu:prepare(limit + 1) end
+    end)
+    local out = {}
+    for index = 0, limit - 1 do
+        local cand = M.menu_candidate_at(menu, index)
+        if not cand then return out, nil end
+        out[#out + 1] = cand
+    end
+    return out, M.menu_candidate_at(menu, limit)
 end
 
 function M.first_candidate(ctx)

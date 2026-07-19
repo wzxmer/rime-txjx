@@ -1,9 +1,10 @@
 -- 天行键 自造词核心模块
 -- 作者：@浮生 https://github.com/wzxmer/rime-txjx
--- 更新：2026-07-02
+-- 更新：2026-07-19
 
 local M = {}
 local codec = require("zzc.txjx_zzc_codec")
+local chain = require("zzc.txjx_zzc_chain")
 local store = require("zzc.txjx_zzc_store")
 
 local char_parts
@@ -1140,23 +1141,25 @@ local function enqueue_snapshot(snapshot)
     return first_code, first_word
 end
 
-function M.enqueue_pending(items, len, probe_first)
+function M.enqueue_pending(items, len, probe_first, probe_words)
     local code, err = M.code_for_items(items, len)
     if not code then return nil, err end
-    return M.save_word(items, len, probe_first)
+    return M.save_word(items, len, probe_first, probe_words)
 end
 
-function M.enqueue_replace(items, target_code, replaced_word, probe_first)
+function M.enqueue_replace(items, target_code, replaced_word, probe_first, probe_words)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
-    return M.save_word_at_code(items, target_code, replaced_word, probe_first)
+    return M.save_word_at_code(items, target_code, replaced_word, probe_first, probe_words)
 end
 
-function M.move_word_to_code(word, source_code, target_code, probe_first, replaced_word)
+function M.move_word_to_code(word, source_code, target_code, probe_first, replaced_word, probe_words)
     if not word or word == "" then return nil, "missing_word" end
     if not source_code or source_code == "" then return nil, "missing_source_code" end
     if not target_code or target_code == "" then return nil, "missing_target_code" end
-    local snapshot = build_replace_snapshot(word, target_code, replaced_word, probe_first, "move")
-    snapshot[#snapshot + 1] = { op = "delete", mark = "!", word = word, code = source_code }
+    local snapshot, snapshot_err = build_replace_snapshot(
+        word, target_code, replaced_word, probe_first, probe_words,
+        "move", { source_code })
+    if not snapshot then return nil, snapshot_err end
     local saved_code, saved_word = enqueue_snapshot(snapshot)
     return saved_code, saved_word
 end
@@ -1214,13 +1217,33 @@ function M.undo_all_pending()
     return true, had_records
 end
 
-function M.delete_word_at_code(word, code)
-    if not word or word == "" then return nil, "missing_word" end
+function M.delete_words_at_code(words, code, probe_exact)
+    if not words or not words[1] then return nil, "missing_words" end
     if not code or code == "" then return nil, "missing_code" end
-    local record = { op = "delete", mark = "!", word = word, code = code, tx = new_tx() }
-    local ok, err = append_ops_record(record)
+    local records, warning
+    if type(probe_exact) == "function" then
+        records, warning = chain.plan_delete(words, code, probe_exact)
+    else
+        records = {}
+        local seen = {}
+        for _, word in ipairs(words) do
+            if word and word ~= "" and not seen[word] then
+                seen[word] = true
+                records[#records + 1] = {
+                    op = "delete", mark = "!", word = word, code = code,
+                }
+            end
+        end
+    end
+    if not records or not records[1] then return nil, warning or "missing_words" end
+    local ok, err = append_ops_records(records)
     if not ok then return nil, err end
-    return true, record.tx
+    return true, records[1].tx, warning
+end
+
+function M.delete_word_at_code(word, code, probe_exact)
+    if not word or word == "" then return nil, "missing_word" end
+    return M.delete_words_at_code({ word }, code, probe_exact)
 end
 
 function M.flush_runtime_ops()
@@ -1338,10 +1361,6 @@ local function append_next_code(word, code)
     return code .. p
 end
 
-local function build_direct_snapshot(word, code, op)
-    return { { op = op or "make", mark = "+", word = word, code = code } }
-end
-
 function M.append_word_at_code(items, target_code)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
     local word = M.word_from_items(items)
@@ -1376,44 +1395,35 @@ function M.restore_word_at_code(word, code)
     return true, record.tx
 end
 
-build_replace_snapshot = function(word, code, replaced_word, probe_first, op)
-    local snapshot = build_direct_snapshot(word, code, op)
-    if (not replaced_word or replaced_word == "") and probe_first then
-        local ok, probed = pcall(function() return probe_first(code) end)
-        if ok and probed and probed ~= "" then replaced_word = probed end
-    end
-    local displaced_word = replaced_word
-    local displaced_code = code
-    local visiting = {}
-    while displaced_word and displaced_word ~= "" and displaced_word ~= word and not visiting[displaced_word] do
-        visiting[displaced_word] = true
-        local next_code = append_next_code(displaced_word, displaced_code)
-        if next_code then
-            snapshot[#snapshot + 1] = { op = "move", mark = "-", word = displaced_word, code = next_code }
-            snapshot[#snapshot + 1] = { op = "delete", mark = "!", word = displaced_word, code = displaced_code }
-            if #next_code >= 6 then break end
-            local next_word = nil
-            if probe_first then
-                local ok, probed = pcall(function() return probe_first(next_code) end)
-                if ok and probed and probed ~= "" then next_word = probed end
-            end
-            if not next_word or next_word == displaced_word or next_word == word then break end
-            displaced_word = next_word
-            displaced_code = next_code
-        else
-            break
-        end
-    end
-    return snapshot
+build_replace_snapshot = function(word, code, replaced_word, probe_first, probe_words, op, source_codes)
+    return chain.plan_replace({
+        word = word,
+        code = code,
+        replaced_word = replaced_word,
+        probe_first = probe_first,
+        probe_words = probe_words,
+        next_code = append_next_code,
+        source_codes = source_codes,
+        op = op,
+    })
 end
 
-local function save_word_to_code(items, code, replaced_word, probe_first)
+local function save_word_to_code(items, code, replaced_word, probe_first, probe_words)
     local word = M.word_from_items(items)
     if not code then
         return nil, "missing_code"
     end
+    local full_code = M.code_for_items(items, 6)
+    local source_codes = {}
+    if full_code and full_code:sub(1, #code) == code then
+        for length = #code + 1, #full_code do
+            source_codes[#source_codes + 1] = full_code:sub(1, length)
+        end
+    end
     local op = replaced_word and replaced_word ~= "" and "replace" or "make"
-    local snapshot = build_replace_snapshot(word, code, replaced_word, probe_first, op)
+    local snapshot, snapshot_err = build_replace_snapshot(
+        word, code, replaced_word, probe_first, probe_words, op, source_codes)
+    if not snapshot then return nil, snapshot_err end
     local saved_code, err = enqueue_snapshot(snapshot)
     if not saved_code then
         return nil, err
@@ -1421,16 +1431,16 @@ local function save_word_to_code(items, code, replaced_word, probe_first)
     return code, word
 end
 
-function M.save_word(items, len, probe_first)
+function M.save_word(items, len, probe_first, probe_words)
     local code, err = M.code_for_items(items, len)
     if not code then
         return nil, err
     end
-    return save_word_to_code(items, code, nil, probe_first)
+    return save_word_to_code(items, code, nil, probe_first, probe_words)
 end
 
-function M.save_word_at_code(items, code, replaced_word, probe_first)
-    return save_word_to_code(items, code, replaced_word, probe_first)
+function M.save_word_at_code(items, code, replaced_word, probe_first, probe_words)
+    return save_word_to_code(items, code, replaced_word, probe_first, probe_words)
 end
 
 function M.zzc_cover_for_input(input, opts)
