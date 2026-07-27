@@ -148,6 +148,52 @@ local function append_delete_once(records, word, code)
     }
 end
 
+local function remove_source_duplicates(
+    records, word, source_codes, probe_words, removed, added)
+    local deleted_sources = {}
+    for _, source_code in ipairs(source_codes or {}) do
+        local source_words, probe_err = visible_words(
+            probe_words, source_code, removed, added)
+        if probe_words and not source_words then return nil, probe_err end
+        if words_contain(source_words, word) then
+            append_delete_once(records, word, source_code)
+            mark_removed(removed, source_code, word)
+            deleted_sources[#deleted_sources + 1] = source_code
+        end
+    end
+    for _, source_code in ipairs(deleted_sources) do
+        local remaining, probe_err = visible_words(
+            probe_words, source_code, removed, added)
+        if probe_words and not remaining then return nil, probe_err end
+        if not remaining[1] then
+            local warning = compact_gap(
+                records, source_code, probe_words, removed, added)
+            if warning then return nil, warning end
+        end
+    end
+    return true
+end
+
+function M.plan_append(opts)
+    opts = opts or {}
+    local word = opts.word
+    local code = opts.code
+    if not word or word == "" then return nil, "missing_word" end
+    if not code or code == "" then return nil, "missing_code" end
+    if (opts.source_codes or {})[1]
+        and type(opts.probe_words) ~= "function" then return nil, "missing_probe" end
+
+    local records = {
+        { op = "append", mark = "+", append = true, word = word, code = code },
+    }
+    local removed, added = {}, {}
+    mark_added(added, code, word)
+    local ok, err = remove_source_duplicates(
+        records, word, opts.source_codes, opts.probe_words, removed, added)
+    if not ok then return nil, err end
+    return records
+end
+
 function M.plan_replace(opts)
     opts = opts or {}
     local word = opts.word
@@ -199,27 +245,9 @@ function M.plan_replace(opts)
     end
 
     mark_added(added, code, word)
-    local deleted_sources = {}
-    for _, source_code in ipairs(opts.source_codes or {}) do
-        local source_words, probe_err = visible_words(
-            opts.probe_words, source_code, removed, added)
-        if opts.probe_words and not source_words then return nil, probe_err end
-        if words_contain(source_words, word) then
-            append_delete_once(records, word, source_code)
-            mark_removed(removed, source_code, word)
-            deleted_sources[#deleted_sources + 1] = source_code
-        end
-    end
-    for _, source_code in ipairs(deleted_sources) do
-        local remaining, probe_err = visible_words(
-            opts.probe_words, source_code, removed, added)
-        if opts.probe_words and not remaining then return nil, probe_err end
-        if not remaining[1] then
-            local warning = compact_gap(
-                records, source_code, opts.probe_words, removed, added)
-            if warning then return nil, warning end
-        end
-    end
+    local ok, err = remove_source_duplicates(
+        records, word, opts.source_codes, opts.probe_words, removed, added)
+    if not ok then return nil, err end
     return records
 end
 

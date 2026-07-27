@@ -149,6 +149,31 @@ test("replace removes non-first duplicate and continues chain", function()
     assert(signature:find("-:乙词:abcdaa", 1, true), signature)
 end)
 
+test("replace removes duplicate from terminal six-code bucket", function()
+    local records = assert(chain.plan_replace({
+        word = "新词",
+        code = "abcd",
+        replaced_word = "四码原词",
+        probe_words = probe_from({
+            abcda = { "五码原词" },
+            abcdaa = { "六码原词", "新词" },
+        }),
+        next_code = function(word, code)
+            if word == "四码原词" and code == "abcd" then return "abcda" end
+            if word == "五码原词" and code == "abcda" then return "abcdaa" end
+        end,
+        source_codes = { "abcda", "abcdaa" },
+    }))
+    equal(record_signature(records), table.concat({
+        "+:新词:abcd",
+        "-:四码原词:abcda", "!:四码原词:abcd",
+        "-:五码原词:abcdaa", "!:五码原词:abcda",
+        "!:新词:abcdaa",
+    }, "|"), "terminal duplicate")
+    local signature = record_signature(records)
+    assert(not signature:find("!:六码原词:abcdaa", 1, true), signature)
+end)
+
 test("replace compacts an unrelated vacated source branch", function()
     local records = assert(chain.plan_replace({
         word = "新词",
@@ -218,6 +243,50 @@ test("replace aborts when source compaction probe is uncertain", function()
     })
     equal(records, nil, "source compaction records")
     equal(err, "candidate_scan_limit", "source compaction error")
+end)
+
+test("append removes only the matching terminal duplicate", function()
+    local records = assert(chain.plan_append({
+        word = "新词",
+        code = "abcd",
+        probe_words = probe_from({
+            abcda = { "五码原词" },
+            abcdaa = { "六码原词", "新词" },
+        }),
+        source_codes = { "abcda", "abcdaa" },
+    }))
+    equal(record_signature(records), table.concat({
+        "+:新词:abcd",
+        "!:新词:abcdaa",
+    }, "|"), "append terminal duplicate")
+end)
+
+test("append compacts an emptied duplicate source", function()
+    local records = assert(chain.plan_append({
+        word = "新词",
+        code = "abcd",
+        probe_words = probe_from({
+            abcda = { "新词" },
+            abcdaa = { "补位词" },
+        }),
+        source_codes = { "abcda", "abcdaa" },
+    }))
+    equal(record_signature(records), table.concat({
+        "+:新词:abcd",
+        "!:新词:abcda",
+        "-:补位词:abcda", "!:补位词:abcdaa",
+    }, "|"), "append source compaction")
+end)
+
+test("append aborts on uncertain source probe", function()
+    local records, err = chain.plan_append({
+        word = "新词",
+        code = "abcd",
+        probe_words = probe_from({}, { abcda = "candidate_scan_limit" }),
+        source_codes = { "abcda", "abcdaa" },
+    })
+    equal(records, nil, "uncertain append records")
+    equal(err, "candidate_scan_limit", "uncertain append error")
 end)
 
 test("menu reader exposes one extra candidate", function()

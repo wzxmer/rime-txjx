@@ -96,6 +96,16 @@ function M.is_completion_hint_candidate(cand)
         or (type(comment) == "string" and comment:match("^~[A-Za-z;']+$") ~= nil)
 end
 
+function M.snapshot_candidate_kind(cand, code, exact_only)
+    local cand_type = M.candidate_type(cand)
+    if exact_only and (cand_type == "zzc_completion" or M.is_completion_hint_candidate(cand)) then return nil end
+    if not M.is_real_candidate(cand) then return nil end
+    if cand_type == "zzc_append" then return "append" end
+    local zzc_candidate = cand_type == "zzc_saved" or cand_type == "zzc_cover"
+    if exact_only or cand.preedit == code or zzc_candidate then return "normal" end
+    return nil
+end
+
 function M.candidate_visible_under_cover(cand, cover)
     if not M.is_collect_selectable_candidate(cand) then return false end
     if not cover or not cand or not cand.text then return true end
@@ -1361,11 +1371,24 @@ local function append_next_code(word, code)
     return code .. p
 end
 
-function M.append_word_at_code(items, target_code)
+function M.append_word_at_code(items, target_code, probe_words)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
     local word = M.word_from_items(items)
     if not word or word == "" then return nil, "missing_word" end
-    local snapshot = { { op = "append", mark = "+", append = true, word = word, code = target_code } }
+    local full_code = M.code_for_items(items, 6)
+    local source_codes = {}
+    if full_code and full_code:sub(1, #target_code) == target_code then
+        for length = #target_code + 1, #full_code do
+            source_codes[#source_codes + 1] = full_code:sub(1, length)
+        end
+    end
+    local snapshot, snapshot_err = chain.plan_append({
+        word = word,
+        code = target_code,
+        probe_words = probe_words,
+        source_codes = source_codes,
+    })
+    if not snapshot then return nil, snapshot_err end
     local _, err = enqueue_snapshot(snapshot)
     if err then
         return nil, err

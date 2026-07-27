@@ -80,23 +80,6 @@ function M.event_char(key_event)
     return nil
 end
 
-function M.resolve_collect_modifier_select_key(key_event, key)
-    if not key_event then return nil end
-    local ctrl = key_event:ctrl()
-    local alt = key_event:alt()
-    local repr = tostring(key or "")
-    local clean = repr:match("^[Cc]ontrol%+(.*)") or repr:match("^[Aa]lt%+(.*)") or repr
-    local lower = clean:lower()
-    local keycode = key_event.keycode
-    local is_ctrl_key = lower == "control_l" or lower == "control_r" or lower == "control"
-        or keycode == 17 or keycode == 0xffe3 or keycode == 0xffe4
-    local is_alt_key = lower == "alt_l" or lower == "alt_r" or lower == "alt"
-        or keycode == 18 or keycode == 0xffe9 or keycode == 0xffea
-    if (ctrl or is_ctrl_key) and not alt and is_ctrl_key then return 2 end
-    if (alt or is_alt_key) and not ctrl and is_alt_key then return 3 end
-    return nil
-end
-
 function M.is_trigger(key, ch)
     if trigger_keys[ch or ""] or trigger_keys[key or ""] then return true end
     if type(key) ~= "string" then return false end

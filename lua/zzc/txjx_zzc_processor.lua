@@ -34,7 +34,6 @@ local chinese_index_words = {
 }
 
 local event_char = keys.event_char
-local resolve_collect_modifier_select_key = keys.resolve_collect_modifier_select_key
 local is_trigger = keys.is_trigger
 local is_code_char = keys.is_code_char
 local resolve_code_char = keys.resolve_code_char
@@ -640,23 +639,18 @@ command_candidate_snapshot = function(ctx, code, opts)
         local function collect(cand, mark_truncated)
             if not cand then return false end
             local cand_type = candidate_type(cand)
-            local zzc_candidate = cand_type == "zzc_saved" or cand_type == "zzc_cover" or cand_type == "zzc_append"
-            local completion = core.is_completion_hint_candidate(cand) or cand_type == "zzc_completion"
-            if opts.exact_only and completion then return false end
-            local exact_candidate = cand_type == "zzc_append"
-                or (is_real_candidate(cand) and (cand.preedit == code or zzc_candidate))
-            if mark_truncated and exact_candidate then meta.truncated = true end
+            local kind = core.snapshot_candidate_kind(cand, code, opts.exact_only)
+            if mark_truncated and kind then meta.truncated = true end
             local accepted = false
-            if cand_type == "zzc_append" then
-                if is_real_candidate(cand) and cand.text and cand.text ~= "" and not seen[cand.text] and not append_seen[cand.text] then
+            if kind == "append" then
+                if cand.text and cand.text ~= "" and not seen[cand.text] and not append_seen[cand.text] then
                     append_out[#append_out + 1] = cand.text
                     append_seen[cand.text] = true
                     accepted = true
                 end
-            elseif is_real_candidate(cand)
-                and (cand.preedit == code or zzc_candidate)
+            elseif kind == "normal"
                 and not seen[cand.text]
-                and (zzc_candidate
+                and (cand_type == "zzc_saved" or cand_type == "zzc_cover"
                     or not cover
                     or ((not cover.keep_words or not cover.keep_words[cand.text])
                         and (not cover.hide_words or not cover.hide_words[cand.text]))) then
@@ -912,7 +906,10 @@ local function finalize_current(ctx, env, opts)
     local saved_code, err
     if state.mode == "append" and state.target_code ~= "" then
         local saved_word_or_err
-        saved_code, saved_word_or_err = core.append_word_at_code(state.items, state.target_code)
+        saved_code, saved_word_or_err = core.append_word_at_code(
+            state.items, state.target_code, function(code)
+                return probe_exact_candidates(ctx, code)
+            end)
         if saved_code then
             err = nil
         else
@@ -1216,15 +1213,6 @@ local function processor(key_event, env)
     local ch = event_char(key_event)
     local shifted = key_event:shift()
     local keycode = key_event.keycode
-    if state.stage == "collect" and has_visible_menu(ctx) then
-        if key_event:release() then
-            local modifier_idx = resolve_collect_modifier_select_key(key_event, key)
-            if modifier_idx then
-                capture_candidate_at(ctx, modifier_idx)
-                return kAccepted
-            end
-        end
-    end
     if key_event:release() then
         if is_trigger(key, ch) then
             if state.stage == "command_wait" then

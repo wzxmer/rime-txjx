@@ -47,10 +47,28 @@ local first_word = core.word_from_items(first_items)
 local second_word = core.word_from_items(second_items)
 
 assert(core.save_word_at_code(first_items, "abcd", nil, function() return nil end, function() return {} end))
-assert(core.append_word_at_code(second_items, "abcd"))
+local function append_probe(code)
+    if code == "abcdou" then return { "六码原词", second_word } end
+    return {}
+end
+
+local before_append = #runtime_records()
+assert(core.append_word_at_code(second_items, "abcd", append_probe))
 local current = cover("abcd")
 equal(current.rows[1].word, first_word, "make remains normal candidate")
 equal(current.append_rows[1].word, second_word, "append remains trailing candidate")
+assert(cover("abcdou").hide_words[second_word], "append hides terminal duplicate")
+
+local append_records = runtime_records()
+equal(#append_records, before_append + 2, "append transaction record count")
+equal(append_records[#append_records - 1].tx, append_records[#append_records].tx,
+    "append duplicate cleanup transaction")
+assert(core.undo_last_tx())
+equal(#runtime_records(), before_append, "single undo removes append and duplicate cleanup")
+assert(not cover("abcdou").hide_words[second_word], "undo restores terminal duplicate")
+
+assert(core.append_word_at_code(second_items, "abcd", append_probe))
+current = cover("abcd")
 
 assert(core.reorder_words_at_code({ second_word, first_word }, "abcd"))
 current = cover("abcd")
