@@ -423,16 +423,20 @@ def insert_rows_by_code(
     return inserted_by_path
 
 
-def prune_rollback_logs() -> None:
-    if not ROLLBACK_DIR.exists():
-        return
+def prune_rollback_logs(rollback_dir: Path | None = None) -> list[Path]:
+    rollback_dir = rollback_dir or ROLLBACK_DIR
+    if not rollback_dir.exists():
+        return []
     logs = sorted(
-        [p for p in ROLLBACK_DIR.iterdir() if p.is_dir() and p.name.lower() != "logs"],
+        [p for p in rollback_dir.iterdir() if p.is_dir() and p.name.lower() != "logs"],
         key=lambda p: p.name,
         reverse=True,
     )
+    removed = []
     for old in logs[KEEP_ROLLBACKS:]:
-        shutil.rmtree(old, ignore_errors=True)
+        shutil.rmtree(old)
+        removed.append(old)
+    return removed
 
 
 def backup_if_exists(path: Path, backup_dir: Path, manifest: list[str], key: str) -> None:
@@ -445,7 +449,7 @@ def backup_if_exists(path: Path, backup_dir: Path, manifest: list[str], key: str
 
 
 def create_rollback_log(ops_count: int, keep_count: int) -> Path:
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     log_dir = ROLLBACK_DIR / stamp
     dict_dir = log_dir / "dicts"
     state_dir = log_dir / "state"
@@ -483,7 +487,6 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
             shutil.copy2(path, dict_dir / path.name)
 
     write_text(log_dir / "manifest.txt", "\n".join(manifest) + "\n")
-    prune_rollback_logs()
     return log_dir
 
 
@@ -558,6 +561,9 @@ def clear_runtime_cache() -> None:
 def main() -> int:
     started = perf_counter()
     print(f"scheme root: {ROOT}")
+    pruned = prune_rollback_logs()
+    if pruned:
+        print(f"pruned rollback backups: {len(pruned)}")
     char_count = rebuild_char_parts()
     print(f"rebuilt char_parts.tsv: {char_count} chars")
 
