@@ -14,12 +14,9 @@ function M.init(env)
     env._ks = {}
     env._sw = nil
     env._dc = nil
-    env._tc = nil
-    env._tc_pending = true
     M.clear_space_guard(env)
-    env._caps_blocked = nil
     env._caps_lock_on = nil
-    env._shift_symbol_release_guard = nil
+    env._shift_release_guard = nil
     env._shift_inline_ascii = nil
     env._calc_equal_allow_next = nil
 end
@@ -41,9 +38,8 @@ function M.fini(env)
     env._space_guard_enabled = nil
     env._direct_symbols_fast_leaf = nil
     M.clear_space_guard(env)
-    env._caps_blocked = nil
     env._caps_lock_on = nil
-    env._shift_symbol_release_guard = nil
+    env._shift_release_guard = nil
     env._shift_inline_ascii = nil
     env._calc_equal_allow_next = nil
 end

@@ -6,8 +6,8 @@ local string_byte = string.byte
 local string_sub = string.sub
 local type = type
 local zzc_processor = require("zzc.txjx_zzc_processor")
-local key_event_util = require("txjx_key_event")
-local commit_guard = require("txjx_commit_guard")
+local key_event_util = require("input.txjx_key_event")
+local commit_guard = require("input.txjx_commit_guard")
 
 local M = {}
 local kAccepted = 1
@@ -15,18 +15,6 @@ local kNoop = 2
 local CHAR_CACHE = key_event_util.char_cache
 
 function M.ready(env, ctx)
-    if env._tc then
-        env._tc = env._tc + 1
-        if env._tc > 200 then env._tc = 81 end
-    elseif env._tc_pending then
-        env._tc_pending = false
-        local reverse_key = ctx:get_property("_rvk")
-        if not reverse_key or reverse_key == "" then env._tc = 0 end
-    end
-    if env._tc and env._tc >= 80 then
-        if ctx:is_composing() then ctx:clear() end
-        return false
-    end
     return true
 end
 

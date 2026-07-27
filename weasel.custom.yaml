@@ -21,17 +21,35 @@ patch:
       ascii_mode: true
     Flow.Launcher.exe:
       ascii_mode: true
+    flow.launcher.exe:
+      ascii_mode: true
     Google Chrome.exe:
       ascii_mode: true
     chrome.exe:
       ascii_mode: true
+    weixin.exe:
+      ascii_mode: false
+    wechatappex.exe:
+      ascii_mode: false
+    codex-monitor.exe:
+      ascii_mode: false
+    threadfleet.exe:
+      ascii_mode: false
+    QQ.exe:
+      ascii_mode: false
+    qq.exe:
+      ascii_mode: false
+    Telegram.exe:
+      ascii_mode: false
+    telegram.exe:
+      ascii_mode: false
 
   style/+:
     font_face: ".萍方-简" #"苹方-简,HYZhengYuan,TH-Tshyn-P2,Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     label_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     comment_font_face: ".萍方-简" #"Alibaba PuHuiTi 2.0 PingFang SC Medium 霞鹜文楷,"
     display_tray_icon: false               #win右下角中英图标
-    horizontal: false                     #水平模式
+    horizontal: true                     #水平模式
     preedit_type: composition  #composition 编码 / input 输入码 / preview 首选 / preview_all 内嵌
     label_format: "%s."
     inline_preedit: true

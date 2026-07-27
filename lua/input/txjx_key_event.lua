@@ -177,6 +177,15 @@ function M.alpha_upper_char(clean_key, keycode)
     return nil
 end
 
+function M.alpha_lower_char(clean_key, keycode)
+    if keycode >= 65 and keycode <= 90 then return CHAR_CACHE[keycode + 32] end
+    if keycode >= 97 and keycode <= 122 then return CHAR_CACHE[keycode] end
+    if type(clean_key) == "string" and string_match(clean_key, "^[A-Za-z]$") then
+        return string.lower(clean_key)
+    end
+    return nil
+end
+
 function M.bare_upper_alpha_char(clean_key, keycode, repr)
     if keycode >= 65 and keycode <= 90 then return CHAR_CACHE[keycode] end
     if type(clean_key) == "string" and #clean_key == 1 then

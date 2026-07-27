@@ -21,7 +21,9 @@ patch:
   reverse_hint/pron_map_file: txjx.cx.dict.yaml
   txjx/direct_symbols_fast_leaf: false          # 快符使用正常补全和顶功流程
 
-  # 单按 Shift 切换中英文；Shift+字母可临时输入大写英文
+  # 单按 Shift 切换中英文；被 Lua 处理的 Shift 组合键不会触发模式切换
+  ascii_composer/good_old_caps_lock: true
+  ascii_composer/switch_key/Caps_Lock: noop
   ascii_composer/switch_key/Shift_L: commit_code
   ascii_composer/switch_key/Shift_R: commit_code
   

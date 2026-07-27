@@ -5,17 +5,24 @@
 local string_find = string.find
 local string_match = string.match
 local string_sub = string.sub
+local math_floor = math.floor
+local tonumber = tonumber
 local type = type
-local key_event_util = require("txjx_key_event")
+local key_event_util = require("input.txjx_key_event")
 local platform = require("common.txjx_platform")
-local processor_state = require("txjx_processor_state")
+local processor_state = require("input.txjx_processor_state")
 
 local M = {}
 local kAccepted = 1
 local RAW_INPUT_PATTERN = "^[a-z;" .. string.char(39) .. "]+$"
+local PLAIN_CODE_PATTERN = "^[a-z][a-z;" .. string.char(39) .. "]*$"
+local NON_PLAIN_TAGS = {
+    "expression", "punct", "reverse_lookup", "jderfen", "gbk",
+    "uppercase", "email", "url",
+}
 
-function M.guard_shift_symbol_release(env, shift)
-    if shift then env._shift_symbol_release_guard = true end
+function M.guard_shift_release(env, shift)
+    if shift then env._shift_release_guard = true end
 end
 
 function M.selected_candidate(ctx)
@@ -69,6 +76,56 @@ function M.has_non_completion_candidate(ctx)
     if not menu then return false end
     local ok, cand = pcall(function() return menu:get_candidate_at(0) end)
     return ok and cand and not M.is_completion_candidate(cand) and not M.is_raw_input_candidate(ctx, cand) or false
+end
+
+local function segment_has_tag(segment, tag)
+    if not segment or not segment.has_tag then return false end
+    local ok, has_tag = pcall(function() return segment:has_tag(tag) end)
+    return ok and has_tag == true
+end
+
+local function ordinary_candidate_menu(ctx)
+    if not ctx or not ctx.is_composing or not ctx:is_composing() then return nil end
+    if not ctx.has_menu or not ctx:has_menu() then return nil end
+    local input = ctx.input or ""
+    if not string_match(input, PLAIN_CODE_PATTERN) then return nil end
+    if ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") ~= "" then return nil end
+    local segment = ctx.composition and ctx.composition:back()
+    if not segment or not segment.menu or not segment_has_tag(segment, "abc") then return nil end
+    if (tonumber(segment.selected_index) or 0) ~= 0 then return nil end
+    for _, tag in ipairs(NON_PLAIN_TAGS) do
+        if segment_has_tag(segment, tag) then return nil end
+    end
+    return segment.menu
+end
+
+function M.commit_overflow_digit(ctx, engine, digit)
+    local ordinal = digit == "0" and 10 or tonumber(digit)
+    if not ordinal or ordinal < 1 or ordinal > 10 or not engine then return false end
+    local menu = ordinary_candidate_menu(ctx)
+    if not menu then return false end
+    local page_size = 5
+    local page_ok, configured_page_size = pcall(function()
+        return engine.schema and tonumber(engine.schema.page_size) or nil
+    end)
+    if page_ok and configured_page_size and configured_page_size >= 1 then
+        page_size = math_floor(configured_page_size)
+    end
+    if ordinal <= page_size then
+        pcall(function()
+            if menu.prepare then menu:prepare(ordinal) end
+        end)
+        local ok, requested = pcall(function() return menu:get_candidate_at(ordinal - 1) end)
+        if not ok or requested then return false end
+    end
+    local first_ok, first = pcall(function() return menu:get_candidate_at(0) end)
+    if not first_ok or not first or not first.text or first.text == ""
+        or M.is_completion_candidate(first) or M.is_raw_input_candidate(ctx, first) then
+        return false
+    end
+    ctx:clear()
+    engine:commit_text(first.text .. digit)
+    return true
 end
 
 function M.clear_space(env)

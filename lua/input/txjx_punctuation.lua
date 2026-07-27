@@ -7,9 +7,9 @@ local string_find = string.find
 local string_sub = string.sub
 local type = type
 local config_util = require("common.txjx_config")
-local key_event_util = require("txjx_key_event")
-local commit_guard = require("txjx_commit_guard")
-local ascii_input = require("txjx_ascii_input")
+local key_event_util = require("input.txjx_key_event")
+local commit_guard = require("input.txjx_commit_guard")
+local ascii_input = require("input.txjx_ascii_input")
 
 local M = {}
 local kAccepted = 1
@@ -94,7 +94,7 @@ local function clear_transition(env, ctx)
 end
 
 function M.process(key_event, env, key_name, shift, clean_key, opts)
-    if key_event:alt() or key_event:super() then return kNoop end
+    if key_event:ctrl() or key_event:alt() or key_event:super() then return kNoop end
     local ctx = env.engine.context
     local keycode = key_event.keycode
     local repr = key_event:repr()
@@ -182,7 +182,7 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
         if key_name == "period" and not shift and not ctx:is_composing() then return kNoop end
         if not (key_name == "equal" and not shift and opts.jisuanqi) then
             if commit_symbol(SYMBOL_CN, key_name, shift, env.engine, ctx) then
-                commit_guard.guard_shift_symbol_release(env, shift)
+                commit_guard.guard_shift_release(env, shift)
                 env._dc = key_name
                 return kAccepted
             end
@@ -199,7 +199,7 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
     if not opts.jisuanqi then
         if (key_name == "equal" or key_name == "minus") and ctx:has_menu() and not shift then return kNoop end
         if commit_symbol(CALCULATOR_OFF, key_name, shift, env.engine, ctx) then
-            commit_guard.guard_shift_symbol_release(env, shift)
+            commit_guard.guard_shift_release(env, shift)
             return kAccepted
         end
     end
@@ -207,7 +207,7 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
         if key_name == "semicolon" and not shift then return kNoop end
         if key_name == "apostrophe" then return kNoop end
         if commit_symbol(SMART_OFF, key_name, shift, env.engine, ctx) then
-            commit_guard.guard_shift_symbol_release(env, shift)
+            commit_guard.guard_shift_release(env, shift)
             return kAccepted
         end
     end

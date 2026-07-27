@@ -5,8 +5,8 @@
 local string_byte = string.byte
 local type = type
 local state = require("common.txjx_state")
-local key_event_util = require("txjx_key_event")
-local commit_guard = require("txjx_commit_guard")
+local key_event_util = require("input.txjx_key_event")
+local commit_guard = require("input.txjx_commit_guard")
 
 local M = {}
 local kAccepted = 1
@@ -102,29 +102,18 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
     end
     if key_event_util.is_shift(clean_key, repr, keycode) then
         commit_guard.clear_space(env)
-        if key_event:release() and env._shift_symbol_release_guard then
-            env._shift_symbol_release_guard = nil
+        if key_event:release() and env._shift_release_guard then
+            env._shift_release_guard = nil
             return kAccepted
         end
-        if not key_event:release() then env._shift_symbol_release_guard = nil end
+        if not key_event:release() then env._shift_release_guard = nil end
         return kNoop
     end
     if key_event_util.is_caps(clean_key, repr, keycode) then
         commit_guard.clear_space(env)
-        if key_event_util.repr_has_lock(repr) then
-            env._caps_lock_on = true
-        elseif key_event:release() then
-            env._caps_lock_on = false
-        end
-        if env._caps_blocked then
-            if key_event:release() then env._caps_blocked = nil end
-            if ctx:is_composing() then return kAccepted end
-            env._caps_blocked = nil
-            return kNoop
-        end
-        if ctx:is_composing() then
-            env._caps_blocked = true
-            return kAccepted
+        env._caps_lock_on = key_event_util.is_caps_on(key_event)
+        if not key_event:release() then
+            if ctx:is_composing() then ctx:commit() end
         end
         return kNoop
     end
@@ -151,12 +140,15 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         and key_event_util.bare_upper_alpha_char(clean_key, keycode, repr) or nil
     if bare_upper and ((ctx.input or "") == "" or env._shift_inline_ascii) then
         env._shift_inline_ascii = true
+        env._shift_release_guard = true
         commit_guard.clear_space(env)
         ctx:push_input(bare_upper)
         return kAccepted
     end
-    if not ascii_mode and shift and no_modifier and key_event_util.is_alpha(env, key_name, clean_key, keycode) then
+    if not ascii_mode and shift and not caps_on and no_modifier
+        and key_event_util.is_alpha(env, key_name, clean_key, keycode) then
         env._shift_inline_ascii = true
+        env._shift_release_guard = true
         commit_guard.clear_space(env)
         return kNoop
     end
@@ -190,14 +182,17 @@ function M.process_front(key_event, env, key_name, shift, clean_key, repr)
         if key_event:release() then return kAccepted end
         if M.set_append(env, ctx, append_suffix) then return kAccepted end
     end
-    local uppercase = (not ascii_mode and not shift and no_modifier and caps_on)
-        and key_event_util.uppercase_char(clean_key, keycode) or nil
-    if uppercase then
+    local caps_alpha = (not ascii_mode and no_modifier and caps_on and not key_event:release())
+        and (shift and key_event_util.alpha_lower_char(clean_key, keycode)
+            or key_event_util.alpha_upper_char(clean_key, keycode)) or nil
+    if caps_alpha then
         commit_guard.clear_space(env)
-        if key_event:release() then return kAccepted end
         if ctx:is_composing() then ctx:commit() end
-        env.engine:commit_text(uppercase)
-        return kAccepted
+        if shift then
+            env.engine:commit_text(caps_alpha)
+            return kAccepted
+        end
+        return kNoop
     end
     local caps_symbol = (not ascii_mode and no_modifier and caps_on)
         and M.symbol_char(key_name, shift, caps_on) or nil

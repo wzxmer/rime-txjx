@@ -5,8 +5,8 @@
 local string_byte = string.byte
 local string_sub = string.sub
 local type = type
-local key_event_util = require("txjx_key_event")
-local commit_guard = require("txjx_commit_guard")
+local key_event_util = require("input.txjx_key_event")
+local commit_guard = require("input.txjx_commit_guard")
 
 local M = {}
 local kAccepted = 1
