@@ -139,7 +139,7 @@ def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
+        f.write(text if text else "\n")
     tmp.replace(path)
 
 

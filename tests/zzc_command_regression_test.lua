@@ -33,6 +33,13 @@ local function runtime_records()
     return out
 end
 
+local function read_all(path)
+    local file = assert(io.open(path, "rb"))
+    local content = file:read("*a")
+    file:close()
+    return content
+end
+
 local function cover(code)
     return core.zzc_cover_for_input(code) or {
         rows = {}, append_rows = {}, hide_words = {}, restore_rows = {},
@@ -103,5 +110,16 @@ equal(#runtime_records(), before_chain, "single undo removes full compaction cha
 
 assert(core.undo_all_pending())
 equal(#runtime_records(), 0, "clear removes all runtime operations")
+
+assert(core.save_word_at_code(first_items, "abcd", nil, function() return nil end, function() return {} end))
+local flush_ok, flush_changed = core.flush_runtime_ops()
+assert(flush_ok and flush_changed, "flush must clear a non-empty runtime batch")
+for _, name in ipairs({ "runtime_ops.tsv", "runtime_exact.tsv" }) do
+    local content = read_all(data_dir .. "/zzc_state/" .. name):gsub("\r\n", "\n")
+    equal(content, "\n", name .. " keeps an iCloud-safe empty representation")
+end
+assert(core.undo_all_pending())
+local effective_content = read_all(data_dir .. "/zzc_state/effective_state.tsv"):gsub("\r\n", "\n")
+equal(effective_content, "\n", "effective_state.tsv keeps an iCloud-safe empty representation")
 
 print("zzc_command_regression_test: PASS")

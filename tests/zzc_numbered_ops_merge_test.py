@@ -78,6 +78,9 @@ def test_txjx_numbered_files_are_merged_and_removed() -> None:
         write_dict(root / "txjx.dict.yaml", "txjx", ["原词\tccc"])
         write_dict(root / "txjx.fjcy.dict.yaml", "txjx.fjcy", ["旧分词\tfff"])
         write_ops(root / "txjx.zzc.dict.yaml", "txjx", ["099\tadd\t主词\tzzz\t+"])
+        state_dir = root / "zzc_state"
+        state_dir.mkdir()
+        (state_dir / "runtime_ops.tsv").write_text("", encoding="utf-8")
         write_ops(root / "txjx.zzc.dict(1).yaml", "txjx", ["100\tadd\t甲词\taaa\t+"])
         write_ops(
             root / "txjx.zzc.dict(2).yaml",
@@ -103,6 +106,8 @@ def test_txjx_numbered_files_are_merged_and_removed() -> None:
         assert not (root / "txjx.zzc.dict(2).yaml").exists()
         assert ignored.exists()
         assert "removed numbered zzc files: 2" in result.stdout
+        for name in ("runtime_ops.tsv", "runtime_exact.tsv", "effective_state.tsv"):
+            assert (state_dir / name).read_bytes() == b"\n"
 
         rollback_logs = [path for path in (root / "zzc" / "撤回合并").iterdir() if path.is_dir()]
         assert len(rollback_logs) == 1, rollback_logs

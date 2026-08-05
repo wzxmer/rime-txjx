@@ -48,7 +48,7 @@ Linux/macOS 合并脚本按 Python 3.7+ 兼容写法维护，避免依赖 Python
 
 Lua 运行中只实时写 `runtime_ops.tsv`，并更新 `effective_state.tsv` 给当前会话显示使用，不立即改写 `*.zzc.dict.yaml`。
 
-键盘收起或 Rime session 结束时，Lua 会把 `zzc_state/runtime_ops.tsv` 追加写入 `*.zzc.dict.yaml`，再清空 `runtime_ops.tsv`、`runtime_exact.tsv` 和 `effective_state.tsv`，并刷新 `cache_version.tsv`。追加成功后会记录 `runtime_ops_appended.tsv` 签名；如果清空运行时文件失败，下次 session 创建时只重试清理，不重复追加同一批操作。
+键盘收起或 Rime session 结束时，Lua 会把 `zzc_state/runtime_ops.tsv` 追加写入 `*.zzc.dict.yaml`，再清空 `runtime_ops.tsv`、`runtime_exact.tsv` 和 `effective_state.tsv`，并刷新 `cache_version.tsv`。逻辑空文件使用单个换行存储，避免 Windows iCloud Drive 排除首次创建的 0 字节文件；读取时仍按空表处理。追加成功后会记录 `runtime_ops_appended.tsv` 签名；如果清空运行时文件失败，下次 session 创建时只重试清理，不重复追加同一批操作。
 
 session 创建时不再作为主要写入点，只做上述补偿清理。运行中和 session 结束时都不压缩操作链，以保留完整操作记录；手动合并脚本负责 compact。自造词后如果要让重新部署读取到 `*.zzc.dict.yaml`，先收起键盘结束当前 session，再重新部署。
 
