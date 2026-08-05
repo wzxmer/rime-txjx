@@ -16,6 +16,8 @@ schema:
 # ============ 引擎 ============
 engine:
   processors:
+    # 打字统计必须先于 ZZZC 和主输入链，确保被消费的按键也能计入。
+    - lua_processor@*txjx_typing_stats_processor
     - lua_processor@*zzc.txjx_zzc_processor
     - lua_processor@*txjx_processor
     - ascii_composer
@@ -37,6 +39,8 @@ engine:
     - fallback_segmentor
 
   translators:
+    # 独立 =tj 统计；放在 = 工具入口前，避免加载低频扩展核心。
+    - lua_translator@*txjx_typing_stats_translator
     - lua_translator@*txjx_core
     - table_translator
     - reverse_lookup_translator

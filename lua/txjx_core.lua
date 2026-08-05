@@ -79,6 +79,8 @@ local function translator(input, seg, env)
     end
 
     if string_sub(input, 1, 1) == "=" then
+        -- =tj 由独立统计 translator 处理，不能因此加载 ext_core/计算器。
+        if input == "=tj" then return end
         local ctx = env and env.engine and env.engine.context
         if ctx and ctx.get_option and not ctx:get_option("jisuanqi") then
             return
