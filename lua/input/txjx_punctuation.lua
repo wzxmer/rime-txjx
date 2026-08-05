@@ -94,10 +94,23 @@ local function clear_transition(env, ctx)
 end
 
 function M.process(key_event, env, key_name, shift, clean_key, opts)
+    if key_name == "equal" and key_event:release() then
+        env._calc_equal_down = nil
+    elseif key_name ~= "equal" and not key_event:release() then
+        env._calc_equal_down = nil
+    end
     if key_event:ctrl() or key_event:alt() or key_event:super() then return kNoop end
     local ctx = env.engine.context
     local keycode = key_event.keycode
     local repr = key_event:repr()
+    local calc_context = is_calc_context(ctx, opts)
+    if key_name == "equal" then
+        if not key_event:release() and opts and opts.jisuanqi
+            and ((ctx.input or "") == "" or calc_context) then
+            if env._calc_equal_down then return kAccepted end
+            env._calc_equal_down = true
+        end
+    end
     if key_name == "grave" and not shift and not key_event:ctrl() then
         if key_event:release() then return kAccepted end
         ctx:push_input("`")
@@ -108,27 +121,16 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
         env.engine:commit_text(CHAR_CACHE[keycode])
         return kAccepted
     end
-    if not key_event:release() and is_calc_context(ctx, opts)
+    if not key_event:release() and calc_context
         and not key_event_util.is_space(keycode, clean_key, repr) then
         local char = calc_char(key_name, shift, keycode, clean_key, repr)
         if char then
-            if char == "=" and (ctx.input or "") == "=" then
-                if env._calc_equal_allow_next then
-                    ctx:push_input(char)
-                    env._calc_equal_allow_next = nil
-                else
-                    env._calc_equal_allow_next = false
-                end
-                return kAccepted
-            end
-            env._calc_equal_allow_next = nil
             ctx:push_input(char)
             return kAccepted
         end
     end
     local direct_symbols_off = not opts.direct_symbols
     if key_event:release() then
-        if key_name == "equal" then env._calc_equal_allow_next = (ctx.input or "") == "=" end
         if key_name and env._sw == key_name then env._sw = nil; return kAccepted end
         if key_name and env._dc == key_name then env._dc = nil; return kAccepted end
         if direct_symbols_off then env._dc = nil end

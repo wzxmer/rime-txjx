@@ -180,6 +180,8 @@ function Fixture:native_process(key, event)
         if self.context:is_composing() then self.context:pop_input(1) end
     elseif key == "Escape" then
         self.context:clear()
+    elseif key == "=" then
+        self.context:push_input("=")
     end
 end
 
@@ -352,6 +354,25 @@ test("period commits candidate before punctuation", function()
     equal(sim.committed[1], "PQ", "period candidate")
     equal(sim.committed[2], "\227\128\130", "period punctuation")
     equal(sim.context.input, "", "period clears composition")
+end)
+
+test("calculator equal dedup state stays within one key sequence", function()
+    local sim = Fixture.new({}, { jisuanqi = true })
+
+    sim:press("=")
+    sim:press("=", { release = true })
+    sim.context:clear()
+
+    sim:press("=")
+    sim:press("=")
+    equal(sim.context.input, "=", "stale state cannot admit duplicate first-key down")
+
+    sim:press("=", { release = true })
+    sim:press("=")
+    equal(sim.context.input, "==", "separate equal key sequences remain valid")
+
+    sim:press("=")
+    equal(sim.context.input, "==", "duplicate down on the second key sequence is ignored")
 end)
 
 print(string.format("input_process_simulation_test: PASS (%d scenarios)", passed))
