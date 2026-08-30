@@ -116,7 +116,12 @@ function M.commit_overflow_digit(ctx, engine, digit)
             if menu.prepare then menu:prepare(ordinal) end
         end)
         local ok, requested = pcall(function() return menu:get_candidate_at(ordinal - 1) end)
-        if not ok or requested then return false end
+        if not ok then return false end
+        if requested
+            and not M.is_completion_candidate(requested)
+            and not M.is_raw_input_candidate(ctx, requested) then
+            return false
+        end
     end
     local first_ok, first = pcall(function() return menu:get_candidate_at(0) end)
     if not first_ok or not first or not first.text or first.text == ""

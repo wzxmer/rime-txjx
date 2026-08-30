@@ -1,6 +1,6 @@
 -- 普通候选数字越界续键
--- 必须位于 selector 之后：先让 selector 基于过滤后的最终候选选重，
--- 只有 selector 未消费数字时，才提交首选并保留该数字。
+-- 必须位于 selector 之前：真实候选让 selector 继续处理，
+-- completion/raw 候选不占用越界序号。
 
 local key_event_util = require("input.txjx_key_event")
 local commit_guard = require("input.txjx_commit_guard")

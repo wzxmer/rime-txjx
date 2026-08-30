@@ -25,9 +25,9 @@ engine:
     - key_binder
     - speller
     - punctuator
-    - selector
-    # selector 先处理过滤后的最终候选；未命中时再执行数字越界续键。
+    # 先处理真实候选的数字越界；completion/raw 候选不占用越界序号。
     - lua_processor@*txjx_candidate_overflow_processor
+    - selector
     - navigator
     - express_editor
 
