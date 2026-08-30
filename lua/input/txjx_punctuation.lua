@@ -130,6 +130,7 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
         end
     end
     local direct_symbols_off = not opts.direct_symbols
+    local plain_digit = not shift and key_event_util.digit_char(clean_key, keycode, repr)
     if key_event:release() then
         if key_name and env._sw == key_name then env._sw = nil; return kAccepted end
         if key_name and env._dc == key_name then env._dc = nil; return kAccepted end
@@ -190,6 +191,7 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
             end
         end
         if not env._tu_streaming and ctx:has_menu()
+            and not plain_digit
             and not key_event_util.is_alpha(env, key_name, clean_key, keycode) then
             local segment = ctx.composition:back()
             if segment and segment.menu:get_candidate_at(0) and not segment.menu:get_candidate_at(1) then

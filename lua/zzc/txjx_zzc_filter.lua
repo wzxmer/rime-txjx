@@ -3,8 +3,6 @@
 -- 更新：2026-07-02
 
 local core = require("zzc.txjx_zzc_core")
-local processor = require("zzc.txjx_zzc_processor")
-local length_inputs = require("zzc.txjx_zzc_keys").length_keys
 local COLLECT_CANDIDATE_LIMIT = 30
 local DEFAULT_ZZC_HINT_TEXT = "自造词ing"
 local DEFAULT_ZZC_CANDIDATE_HINT_TEXT = "自造词"
@@ -19,23 +17,6 @@ local function is_collect_candidate(cand)
 end
 
 local with_reminder
-
-local function literal_length_input(ctx, input_text)
-    if not (ctx and ctx.get_property and type(input_text) == "string") then return nil end
-    if ctx:get_property("_txjx_zzc_stage") ~= "collect" or ctx:get_property("_txjx_zzc_mode") ~= "make" then return nil end
-    local word = ctx:get_property("_txjx_zzc_word") or ""
-    if word == "" then return nil end
-    local suffix
-    if utf8 and utf8.offset then
-        local start = utf8.offset(input_text, -1)
-        suffix = start and input_text:sub(start) or input_text
-    else
-        suffix = input_text:sub(-1)
-    end
-    local len = length_inputs[suffix]
-    if not len or input_text ~= "\\" .. word .. suffix then return nil end
-    return len
-end
 
 local function zzc_hint_text(env)
     if env and env._zzc_hint_text ~= nil then
@@ -357,13 +338,6 @@ local function filter(input, env)
     local code = ctx and ctx.input or ""
     local prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
     local prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
-    local literal_len = literal_length_input(ctx, code)
-    if literal_len and processor.finalize_literal_length(ctx, env, literal_len) then
-        code = ctx and ctx.input or ""
-        prop_stage = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_stage") or ""
-        prop_mode = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_mode") or ""
-        if prop_stage ~= "resolve_code" then return end
-    end
     local state_cand = state_candidate(ctx, code, env)
     local prop_target = ctx and ctx.get_property and ctx:get_property("_txjx_zzc_target") or ""
     local collect_with_code = prop_stage == "collect"

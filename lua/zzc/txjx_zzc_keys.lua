@@ -4,7 +4,8 @@
 
 local M = {}
 
-M.length_keys = {
+-- Candidate text may still use a literal length marker during menu confirmation.
+M.candidate_length_keys = {
     ["3"] = 3, ["4"] = 4, ["5"] = 5, ["6"] = 6,
     ["三"] = 3, ["四"] = 4, ["五"] = 5, ["六"] = 6,
     ["KP_3"] = 3, ["KP_4"] = 4, ["KP_5"] = 5, ["KP_6"] = 6,
@@ -182,6 +183,13 @@ function M.is_enter_key(key)
     return lower == "return" or lower == "enter"
 end
 
+function M.resolve_collect_punctuation(key, ch, shifted)
+    if shifted then return nil end
+    if ch == "," or key == "comma" or key == "," then return "，" end
+    if ch == "." or key == "period" or key == "." then return "。" end
+    return nil
+end
+
 function M.is_null_key(key)
     return key == "0x0000"
 end
@@ -195,10 +203,6 @@ function M.is_reserved_key(key, ch)
     if type(key) ~= "string" then return false end
     local clean = strip_shift(key)
     return symbol_keys[clean] or symbol_keys[clean:lower()]
-end
-
-function M.resolve_length_key(key, ch)
-    return M.length_keys[ch or ""] or M.length_keys[key or ""]
 end
 
 function M.resolve_index_key(key, ch)

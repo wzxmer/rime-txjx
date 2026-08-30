@@ -3,11 +3,19 @@
 -- 更新：2026-07-19
 
 local M = {}
+local codec = require("zzc.txjx_zzc_codec")
 
 M.shape_keys = { "a", "i", "o", "u", "v" }
 
 local function utf8_length(text)
-    local ok, length = pcall(function() return utf8.len(text or "") end)
+    local ok, length = pcall(function()
+        local count = 0
+        for _, codepoint in utf8.codes(text or "") do
+            local ch = utf8.char(codepoint)
+            if not codec.is_literal_punctuation(ch) then count = count + 1 end
+        end
+        return count
+    end)
     return ok and length or nil
 end
 

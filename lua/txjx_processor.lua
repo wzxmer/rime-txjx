@@ -46,8 +46,6 @@ end
 local _space_guard_clear = commit_guard.clear_space
 local _space_guard_note = commit_guard.note_space
 local _push_code_input = commit_guard.push_code_input
-local _commit_overflow_digit = commit_guard.commit_overflow_digit
-
 local _topup_exec = topup.exec
 local _plain_code_key = topup.plain_code_key
 
@@ -96,13 +94,6 @@ local function processor(key_event, env)
 
     local space_result = (not sf) and _space_guard_process(env, ctx, key_event, clean_key, repr, kc, no_modifier) or nil
     if space_result then return space_result end
-
-    local overflow_digit = not ascii_mode and no_modifier and not sf and not caps_on
-        and not key_event:release() and key_event_util.digit_char(clean_key, kc, repr) or nil
-    if overflow_digit and _commit_overflow_digit(ctx, env.engine, overflow_digit) then
-        _space_guard_clear(env)
-        return kAccepted
-    end
 
     local sm_result = punctuation.process(key_event, env, kn, sf, clean_key, opts)
     if sm_result == kAccepted then

@@ -26,7 +26,7 @@ local clear_props = state_model.clear_props
 local snapshot_props = state_model.snapshot_props
 local restore_props = state_model.restore_props
 
-local length_keys = keys.length_keys
+local candidate_length_keys = keys.candidate_length_keys
 
 local chinese_index_words = {
     ["一"] = 1, ["二"] = 2, ["三"] = 3, ["四"] = 4, ["五"] = 5,
@@ -47,6 +47,7 @@ local is_plus_key = keys.is_plus_key
 local is_bang_key = keys.is_bang_key
 local is_backspace = keys.is_backspace
 local is_enter_key = keys.is_enter_key
+local resolve_collect_punctuation = keys.resolve_collect_punctuation
 local is_null_key = keys.is_null_key
 local is_ascii_mode = keys.is_ascii_mode
 local is_zzc_reserved_key = keys.is_reserved_key
@@ -191,7 +192,7 @@ local function probe_first_candidate(ctx, code)
 end
 
 local function length_from_candidate_text(text)
-    return length_keys[text or ""]
+    return candidate_length_keys[text or ""]
 end
 
 local function append_text(text, code_hint)
@@ -756,24 +757,13 @@ local function startswith(text, prefix)
     return type(text) == "string" and type(prefix) == "string" and text:sub(1, #prefix) == prefix
 end
 
-local resolve_length_key = keys.resolve_length_key
 local resolve_index_key = keys.resolve_index_key
 local resolve_collect_select_key = keys.resolve_collect_select_key
-
-local function waiting_length_confirm(ctx)
-    if state.stage ~= "collect" or state.mode == "replace" then return false end
-    recover_collect_items(ctx)
-    return state.items and #state.items >= 2
-end
 
 local function ready_for_length(ctx)
     if state.stage ~= "collect" or state.mode == "replace" then return false end
     recover_collect_items(ctx)
     return state.items and #state.items >= 2
-end
-
-local function invalid_length_digit(idx, len)
-    return idx and idx >= 1 and idx <= 9 and not len
 end
 
 local function selected_length_candidate(ctx, idx)
@@ -790,7 +780,10 @@ local function selected_length_candidate(ctx, idx)
 end
 
 local function default_length_for_items(items)
-    local n = #(items or {})
+    local n = 0
+    for _, item in ipairs(items or {}) do
+        if not core.is_literal_punctuation(item.text) then n = n + 1 end
+    end
     if n == 2 then return 4 end
     if n == 3 then return 3 end
     if n >= 4 then return 4 end
@@ -898,7 +891,11 @@ end
 
 local function finalize_current(ctx, env, opts)
     opts = opts or {}
-    if #state.items < 1 then
+    local content_count = 0
+    for _, item in ipairs(state.items or {}) do
+        if not core.is_literal_punctuation(item.text) then content_count = content_count + 1 end
+    end
+    if content_count < 1 then
         reset(ctx)
         return kAccepted
     end
@@ -933,7 +930,7 @@ local function finalize_current(ctx, env, opts)
     else
         local len = opts.len or default_length_for_items(state.items)
         if not len then return kAccepted end
-        if #state.items < 2 then
+        if content_count < 2 then
             sync_state(ctx)
             return kAccepted
         end
@@ -998,14 +995,6 @@ local function finalize_with_length(ctx, len, env)
         capture_current_candidate(ctx)
     end
     return finalize_current(ctx, env, { len = len, direct_code = direct_code })
-end
-
-local function finalize_literal_length(ctx, env, len)
-    if not len or state.stage ~= "collect" or state.mode ~= "make" then return false end
-    if not waiting_length_confirm(ctx) then return false end
-    if ctx and ctx.set_property then ctx:set_property("_txjx_zzc_len", tostring(len)) end
-    finalize_current(ctx, env, { len = len })
-    return state.stage ~= "collect"
 end
 
 local function push_code_char(ctx, ch)
@@ -1239,8 +1228,6 @@ local function processor(key_event, env)
     end
     if key_event:ctrl() or key_event:alt() then return kNoop end
     local code_char = resolve_code_char(key, ch)
-    local direct_len = resolve_length_key(key, ch)
-
     if current_input == "" and code_char and composition_empty(ctx) then
         local prop_stage = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") or ""
         if state.active or prop_stage ~= "" then
@@ -1431,7 +1418,7 @@ local function processor(key_event, env)
         if is_trigger(key, ch) and (ctx.input or "") ~= "" then
             return kNoop
         end
-        if core.current_stage() ~= "off" and (direct_len or is_space(key) or is_backspace(key) or key == "Escape" or key == "escape") then
+        if core.current_stage() ~= "off" and (is_space(key) or is_backspace(key) or key == "Escape" or key == "escape") then
             state.active = true
             state.stage = core.current_stage()
             state.items = core.state_items or state.items
@@ -1465,6 +1452,24 @@ local function processor(key_event, env)
         if command_result then return command_result end
     end
 
+    if state.stage == "collect" then
+        local punctuation = resolve_collect_punctuation(key, ch, shifted)
+        if punctuation then
+            if (ctx.input or "") ~= "" and (ctx.input or "") ~= "\\"
+                and not capture_current_candidate(ctx) then
+                return kAccepted
+            end
+            state.items[#state.items + 1] = { text = punctuation, parts = nil, literal = true }
+            core.set_state_items(state.items)
+            state.display_word = core.buffer_word() or state.display_word
+            ctx:clear()
+            ctx.input = "\\"
+            sync_state(ctx)
+            refresh_context(ctx)
+            return kAccepted
+        end
+    end
+
     if state.stage == "collect" and code_char and (ctx.input or "") == "\\" then
         ctx:clear()
         sync_state(ctx)
@@ -1472,17 +1477,6 @@ local function processor(key_event, env)
     end
 
     if state.stage == "collect" and (ctx.input or "") == "\\" and ch and ch ~= "" and not is_trigger(key, ch) then
-        local idx = resolve_index_key(key, ch)
-        if waiting_length_confirm(ctx) and idx and idx >= 1 and idx <= 9 then
-            if direct_len then
-                return finalize_with_length(ctx, direct_len, env)
-            end
-            if invalid_length_digit(idx, direct_len) then
-                reset(ctx)
-                return kAccepted
-            end
-            return kAccepted
-        end
         if is_zzc_reserved_key(key, ch) then
             return kAccepted
         end
@@ -1525,17 +1519,6 @@ local function processor(key_event, env)
     end
 
     if state.stage == "collect" then
-        local length_idx = resolve_index_key(key, ch)
-        if waiting_length_confirm(ctx) and length_idx and length_idx >= 1 and length_idx <= 9 then
-            if direct_len then
-                return finalize_with_length(ctx, direct_len, env)
-            end
-            if invalid_length_digit(length_idx, direct_len) then
-                reset(ctx)
-                return kAccepted
-            end
-            return kAccepted
-        end
         local idx = has_visible_menu(ctx) and resolve_collect_select_key(key, ch) or nil
         if idx and idx >= 1 and idx <= 9 then
             if ready_for_length(ctx) then
@@ -1548,10 +1531,6 @@ local function processor(key_event, env)
             capture_candidate_at(ctx, idx)
             return kAccepted
         end
-    end
-
-    if direct_len and state.mode ~= "replace" and waiting_length_confirm(ctx) then
-        return finalize_with_length(ctx, direct_len, env)
     end
 
     if state.stage == "collect" then
@@ -1652,5 +1631,4 @@ return {
     fini = fini,
     is_active = module_is_active,
     capture_current_candidate = module_capture_current_candidate,
-    finalize_literal_length = finalize_literal_length,
 }

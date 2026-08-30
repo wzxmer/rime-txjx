@@ -26,6 +26,8 @@ engine:
     - speller
     - punctuator
     - selector
+    # selector 先处理过滤后的最终候选；未命中时再执行数字越界续键。
+    - lua_processor@*txjx_candidate_overflow_processor
     - navigator
     - express_editor
 

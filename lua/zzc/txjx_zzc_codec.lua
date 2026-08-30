@@ -4,6 +4,15 @@
 
 local M = {}
 
+local literal_punctuation = {
+    ["，"] = true,
+    ["。"] = true,
+}
+
+function M.is_literal_punctuation(text)
+    return literal_punctuation[text or ""] == true
+end
+
 function M.utf8_chars(text)
     local chars = {}
     local start = 1
@@ -62,17 +71,22 @@ function M.code_at(items, n)
 end
 
 function M.code_for_items(items, len)
-    local n = #items
+    local encoded = {}
+    for _, item in ipairs(items or {}) do
+        if item.parts then
+            encoded[#encoded + 1] = item
+        elseif not M.is_literal_punctuation(item.text) then
+            return nil, "missing_parts"
+        end
+    end
+    local n = #encoded
     if n < 2 then return nil, "too_short" end
     len = tonumber(len)
     if not len then return nil, "bad_length" end
     if n == 2 and (len < 4 or len > 6) then return nil, "bad_length" end
     if n == 3 and (len < 3 or len > 6) then return nil, "bad_length" end
     if n >= 4 and (len < 4 or len > 6) then return nil, "bad_length" end
-    for _, item in ipairs(items or {}) do
-        if not item.parts then return nil, "missing_parts" end
-    end
-    return M.code_at(items, n):sub(1, len)
+    return M.code_at(encoded, n):sub(1, len)
 end
 
 function M.word_from_items(items)
@@ -105,7 +119,11 @@ function M.deserialize_items(text)
             if s ~= "" and y ~= "" and p ~= "" then
                 parts = { s = s, y = y, p = p, code = code ~= "" and code or (s .. y .. p) }
             end
-            items[#items + 1] = { text = ch, parts = parts }
+            items[#items + 1] = {
+                text = ch,
+                parts = parts,
+                literal = M.is_literal_punctuation(ch),
+            }
         end
     end
     return items

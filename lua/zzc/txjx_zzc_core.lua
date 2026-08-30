@@ -424,20 +424,27 @@ end
 
 function M.items_from_text(text, hints)
     local items = {}
-    for index, ch in ipairs(utf8_chars(text)) do
-        local hint = nil
-        if type(hints) == "table" then
-            if hints.code_prefix or hints.s or hints.y or hints.p then
-                hint = index == 1 and hints or nil
-            else
-                hint = hints[index]
+    local part_index = 0
+    for _, ch in ipairs(utf8_chars(text)) do
+        if codec.is_literal_punctuation(ch) then
+            items[#items + 1] = { text = ch, parts = nil, literal = true }
+        else
+            part_index = part_index + 1
+            local index = part_index
+            local hint = nil
+            if type(hints) == "table" then
+                if hints.code_prefix or hints.s or hints.y or hints.p then
+                    hint = index == 1 and hints or nil
+                else
+                    hint = hints[index]
+                end
+            elseif index == 1 then
+                hint = hints
             end
-        elseif index == 1 then
-            hint = hints
+            local part, err = M.parts_for_char(ch, hint)
+            if not part then return nil, err end
+            items[#items + 1] = { text = ch, parts = part }
         end
-        local part, err = M.parts_for_char(ch, hint)
-        if not part then return nil, err end
-        items[#items + 1] = { text = ch, parts = part }
     end
     return items
 end
@@ -457,18 +464,21 @@ function M.code_choices_for_text(text, len, limit)
     len = tonumber(len)
     if not text or text == "" or not len then return nil, "bad_input" end
     local chars = utf8_chars(text)
-    local n = #chars
+    local n = 0
+    for _, ch in ipairs(chars) do
+        if not codec.is_literal_punctuation(ch) then n = n + 1 end
+    end
     if n < 2 then return nil, "too_short" end
     if n == 2 and (len < 4 or len > 6) then return nil, "bad_length" end
     if n == 3 and (len < 3 or len > 6) then return nil, "bad_length" end
     if n >= 4 and (len < 4 or len > 6) then return nil, "bad_length" end
 
     local choices, seen = {}, {}
-    local items = {}
+    local items, encoded = {}, {}
     local function walk(index)
         if #choices >= limit then return end
-        if index > n then
-            local code = code_at(items, n):sub(1, len)
+        if index > #chars then
+            local code = code_at(encoded, n):sub(1, len)
             if not seen[code] then
                 seen[code] = true
                 local frozen = {}
@@ -480,11 +490,19 @@ function M.code_choices_for_text(text, len, limit)
             return
         end
         local ch = chars[index]
+        if codec.is_literal_punctuation(ch) then
+            items[index] = { text = ch, parts = nil, literal = true }
+            walk(index + 1)
+            items[index] = nil
+            return
+        end
         local options = M.load_char_parts(ch)[ch]
         if not options or not options[1] then return end
         for _, part in ipairs(options) do
             items[index] = { text = ch, parts = part }
+            encoded[#encoded + 1] = items[index]
             walk(index + 1)
+            encoded[#encoded] = nil
             if #choices >= limit then break end
         end
         items[index] = nil
@@ -645,6 +663,10 @@ end
 
 local function new_tx()
     return os.date("%Y%m%d%H%M%S") .. string.format("%03d", math.floor((os.clock() * 1000) % 1000))
+end
+
+function M.is_literal_punctuation(text)
+    return codec.is_literal_punctuation(text)
 end
 
 pending_record_from_line = function(line)
