@@ -1,6 +1,7 @@
 package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
 
 local processor = require("txjx_processor")
+local overflow_processor = require("txjx_candidate_overflow_processor")
 local processor_state = require("input.txjx_processor_state")
 
 local kAccepted = 1
@@ -188,7 +189,11 @@ end
 function Fixture:press(key, modifiers)
     local event = self:event(key, modifiers)
     local result = processor.func(event, self.env)
-    if result == kNoop then self:native_process(key, event) end
+    if result == kNoop then
+        self:native_process(key, event)
+        local overflow_result = overflow_processor.func(event, self.env)
+        if overflow_result ~= kNoop then result = overflow_result end
+    end
     self.trace[#self.trace + 1] = {
         key = key,
         result = result,

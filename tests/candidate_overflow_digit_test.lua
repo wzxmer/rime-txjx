@@ -152,6 +152,7 @@ do
         char_cache = {},
         resolve = function() return "3", false, "3", "3" end,
         digit_char = function() return "3" end,
+        effective_caps_on = function() return false end,
         is_reverse_input = function() return false end,
         passthrough_alpha = function() return false end,
         is_space = function() return false end,
@@ -195,9 +196,9 @@ do
             return nil
         end,
     }
-    package.loaded["txjx_processor"] = nil
+    package.loaded["txjx_candidate_overflow_processor"] = nil
 
-    local processor = require("txjx_processor")
+    local processor = require("txjx_candidate_overflow_processor")
     local ctx = {
         input = "abcd",
         is_composing = function() return true end,
@@ -208,11 +209,14 @@ do
         release = function() return false end,
         ctrl = function() return false end,
         alt = function() return false end,
+        super = function() return false end,
+        shift = function() return false end,
+        repr = function() return "3" end,
     }
     equal(processor.func(event, { engine = { context = ctx } }), 1,
-        "processor consumes overflow before punctuation")
+        "standalone overflow processor consumes overflow")
     equal(overflow_calls, 1, "processor calls overflow guard")
-    equal(punctuation_calls, 0, "punctuation does not swallow overflow digit")
+    equal(punctuation_calls, 0, "standalone processor does not invoke punctuation")
 end
 
 print("candidate_overflow_digit_test: PASS")
