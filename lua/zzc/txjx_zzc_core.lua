@@ -17,6 +17,13 @@ local effective_by_code = {}
 local pending_loaded = false
 local pending_version = nil
 local pending_version_check_second = nil
+local pending_codes_sorted = nil
+local pending_codes_epoch = 0
+local completion_prefix_cache = {}
+local COMPLETION_PREFIX_CACHE_LIMIT = 64
+local function touch_pending_data_epoch()
+    pending_codes_epoch = pending_codes_epoch + 1
+end
 local write_file_atomic
 local allow_cache = {}
 local build_replace_snapshot
@@ -785,6 +792,7 @@ local function reload_pending_cache()
     pending_by_code = {}
     effective_projection_by_code = {}
     pending_version_check_second = nil
+    touch_pending_data_epoch()
     return load_pending_cache()
 end
 
@@ -826,6 +834,7 @@ local function append_pending_cache(record)
         pending_by_code[cached.code] = bucket
     end
     bucket[#bucket + 1] = cached
+    touch_pending_data_epoch()
     if update_effective_projection_for_code then update_effective_projection_for_code(cached.code) end
 end
 
@@ -853,6 +862,7 @@ local function rewrite_ops_records(records)
         bucket[#bucket + 1] = record
     end
     pending_loaded = true
+    touch_pending_data_epoch()
     if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     write_pending_version()
     return true
@@ -902,6 +912,7 @@ local function rewrite_runtime_ops_records(records)
         bucket[#bucket + 1] = record
     end
     pending_loaded = true
+    touch_pending_data_epoch()
     if rebuild_effective_projection_index then rebuild_effective_projection_index() end
     write_pending_version()
     return true
@@ -1142,6 +1153,7 @@ end
 update_effective_projection_for_code = function(code)
     if not code or code == "" then return end
     effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
+    touch_pending_data_epoch()
     request_effective_state_write()
 end
 
@@ -1153,6 +1165,7 @@ rebuild_effective_projection_index = function()
                 effective_projection_by_code[code] = build_effective_projection(code, pending_by_code[code] or {})
             end
         end
+        touch_pending_data_epoch()
         request_effective_state_write()
     end)
 end
@@ -1245,6 +1258,7 @@ function M.undo_all_pending()
     effective_projection_by_code = {}
     effective_by_code = {}
     pending_loaded = true
+    touch_pending_data_epoch()
     write_pending_version()
     request_effective_state_write()
     return true, had_records
@@ -1511,21 +1525,51 @@ function M.zzc_order_for_input(input)
     return nil
 end
 
+local function ensure_sorted_pending_codes()
+    if pending_codes_sorted and pending_codes_sorted.epoch == pending_codes_epoch then
+        return pending_codes_sorted.codes
+    end
+    local codes = {}
+    for code in pairs(pending_by_code) do
+        if code and code ~= "" then
+            codes[#codes + 1] = code
+        end
+    end
+    table.sort(codes)
+    pending_codes_sorted = { epoch = pending_codes_epoch, codes = codes }
+    return codes
+end
+
 function M.zzc_completion_rows_for_prefix(prefix, limit)
     if not prefix or prefix == "" then return nil end
     load_pending_cache_current()
+    local hit = completion_prefix_cache[prefix]
+    if hit and hit.epoch == pending_codes_epoch then
+        return hit.rows or nil
+    end
+
+    local codes = ensure_sorted_pending_codes()
+    local lo, hi = 1, #codes
+    while lo <= hi do
+        local mid = (lo + hi) // 2
+        if codes[mid] < prefix then lo = mid + 1 else hi = mid - 1 end
+    end
+
     local rows, seen = {}, {}
-    limit = limit or 30
-    for code, pending in pairs(pending_by_code) do
-        if code ~= prefix and code:sub(1, #prefix) == prefix then
+    local function push(row)
+        if row and row.word and row.word ~= "" and row.code and not seen[row.word] then
+            rows[#rows + 1] = { word = row.word, code = row.code, source = row.source or "zzc_completion" }
+            seen[row.word] = true
+        end
+    end
+    local i = lo
+    while i <= #codes do
+        local code = codes[i]
+        if code:sub(1, #prefix) ~= prefix then break end
+        if code ~= prefix then
+            local pending = pending_by_code[code]
             local cover = effective_by_code[code] or effective_projection_by_code[code] or build_effective_projection(code, pending)
             if cover then
-                local function push(row)
-                    if row and row.word and row.word ~= "" and row.code and not seen[row.word] then
-                        rows[#rows + 1] = { word = row.word, code = row.code, source = row.source or "zzc_completion" }
-                        seen[row.word] = true
-                    end
-                end
                 for _, row in ipairs(cover.rows or {}) do
                     push(row)
                 end
@@ -1534,12 +1578,25 @@ function M.zzc_completion_rows_for_prefix(prefix, limit)
                 end
             end
         end
+        i = i + 1
     end
     table.sort(rows, function(left, right)
         if #left.code ~= #right.code then return #left.code < #right.code end
         if left.code ~= right.code then return left.code < right.code end
         return left.word < right.word
     end)
+
+    if next(completion_prefix_cache) ~= nil and not completion_prefix_cache[prefix] then
+        local count = 0
+        for _ in pairs(completion_prefix_cache) do
+            count = count + 1
+            if count >= COMPLETION_PREFIX_CACHE_LIMIT then
+                completion_prefix_cache = {}
+                break
+            end
+        end
+    end
+    completion_prefix_cache[prefix] = { epoch = pending_codes_epoch, rows = rows[1] and rows or false }
     if not rows[1] then return nil end
     return rows
 end

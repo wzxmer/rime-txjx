@@ -15,7 +15,7 @@ patch:
   zzc/candidate_hint_text: '自造词'     # 自造词候选来源提示
 
   # ==================== 性能与候选配置 ====================
-  txjx_completion/max_scan_candidates: 50      # 每次最多扫描 50 个原始候选
+  txjx_completion/max_scan_candidates: 30      # 每次最多扫描 30 个原始候选（2026-09 从 50 下调，降低补全开启时的候选流成本）
   txjx_completion/max_deferred_candidates: 30  # 单字优先最多暂存 30 个词候选
   reverse_hint/use_pron_map: true               # 优先读取拼音码表，减少逐候选反查
   reverse_hint/pron_map_file: txjx.cx.dict.yaml
