@@ -79,7 +79,7 @@ end
 registry.register("opencc_filter", function()
     reset_runtime_tables(true)
     return true
-end)
+end, true)
 
 local function module_namespace(env)
     local ns = env.name_space or ""

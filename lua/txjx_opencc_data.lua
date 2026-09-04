@@ -398,6 +398,6 @@ end
 
 registry.register("opencc_data", function()
     return M.clear_cache()
-end)
+end, true)
 
 return M

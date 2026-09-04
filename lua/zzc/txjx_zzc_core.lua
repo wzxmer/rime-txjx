@@ -6,6 +6,7 @@ local M = {}
 local codec = require("zzc.txjx_zzc_codec")
 local chain = require("zzc.txjx_zzc_chain")
 local store = require("zzc.txjx_zzc_store")
+local registry = require("common.txjx_cache_registry")
 
 local char_parts
 local char_parts_full_loaded = false
@@ -1318,6 +1319,25 @@ function M.warm_pending_cache()
     load_pending_cache_current()
     return true
 end
+
+-- =mem! 全量释放：清空缓存，下次访问自动从文件重载。
+-- essential=true：哨兵保守释放会跳过——自造词缓存是热路径常驻，
+-- 频繁重载会让大库用户每次重开键盘首键付出解析成本。
+function M.clear_pending_cache()
+    pending_cache = {}
+    pending_by_code = {}
+    effective_projection_by_code = {}
+    effective_by_code = {}
+    pending_codes_sorted = nil
+    completion_prefix_cache = {}
+    pending_loaded = false
+    touch_pending_data_epoch()
+    return true
+end
+
+registry.register("zzc", function()
+    return M.clear_pending_cache()
+end, true)
 
 function M.reorder_words_at_code(words, code)
     if not words or not words[1] then return nil, "missing_words" end

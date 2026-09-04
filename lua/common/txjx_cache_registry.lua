@@ -4,6 +4,9 @@
 
 local M = {}
 
+-- cleaners[name] = { fn = 清理函数, essential = 热路径常驻标记 }
+-- essential=true 的清理器只在手动 =mem! 全量释放时执行；
+-- 哨兵等自动触发的保守释放会跳过它们，避免频繁重载伤体验。
 local cleaners = {}
 local order = {}
 
@@ -14,7 +17,7 @@ local function trim_name(name)
     return name
 end
 
-function M.register(name, cleaner)
+function M.register(name, cleaner, essential)
     name = trim_name(name)
     if not name or type(cleaner) ~= "function" then
         return false
@@ -22,7 +25,7 @@ function M.register(name, cleaner)
     if not cleaners[name] then
         order[#order + 1] = name
     end
-    cleaners[name] = cleaner
+    cleaners[name] = { fn = cleaner, essential = essential and true or false }
     return true
 end
 
@@ -35,19 +38,24 @@ function M.unregister(name)
     return true
 end
 
-function M.clear_all()
+-- conservative=true 时跳过 essential（热路径常驻）清理器
+function M.clear_all(conservative)
     local cleared = 0
     local failed = 0
     for _, name in ipairs(order) do
-        local cleaner = cleaners[name]
-        if cleaner then
-            local ok, did_clear = pcall(cleaner)
-            if ok then
-                if did_clear ~= false then
-                    cleared = cleared + 1
-                end
+        local entry = cleaners[name]
+        if entry then
+            if conservative and entry.essential then
+                -- 保守模式：保留热路径常驻缓存
             else
-                failed = failed + 1
+                local ok, did_clear = pcall(entry.fn)
+                if ok then
+                    if did_clear ~= false then
+                        cleared = cleared + 1
+                    end
+                else
+                    failed = failed + 1
+                end
             end
         end
     end

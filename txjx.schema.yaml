@@ -16,6 +16,8 @@ schema:
 # ============ 引擎 ============
 engine:
   processors:
+    # Hamster(iOS) 键盘收起哨兵：0xFFFFFF 触发全量缓存释放，桌面端不会出现
+    - lua_processor@*txjx_mem_sentinel
     # 打字统计必须先于 ZZZC 和主输入链，确保被消费的按键也能计入。
     - lua_processor@*txjx_typing_stats_processor
     - lua_processor@*zzc.txjx_zzc_processor

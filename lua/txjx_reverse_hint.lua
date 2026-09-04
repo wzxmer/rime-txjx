@@ -6,9 +6,11 @@
 local config_util = require("common.txjx_config")
 local candidate_util = require("common.txjx_candidate")
 local reverse = require("common.txjx_reverse")
+local registry = require("common.txjx_cache_registry")
 
 local M = {}
 local pron_maps = {}
+local pron_modules = {}
 
 local function dirname(path)
     return (path or ""):match("^(.*)[/\\][^/\\]*$") or ""
@@ -98,6 +100,7 @@ local function load_pron_map(path)
             local version = read_dict_version(path)
             if version and version == data.source_version then
                 pron_maps[path] = data.map
+                pron_modules[module_name] = true
                 return data.map
             end
         end
@@ -196,5 +199,17 @@ function M.init(env)
     end
     env._pron_map_path = find_existing_path(dict_file)
 end
+
+-- 注册进 cache_registry：=mem! 与 iOS 哨兵可释放读音表
+registry.register("reverse_hint", function()
+    pron_maps = {}
+    for name in pairs(pron_modules) do
+        if package and package.loaded then
+            package.loaded[name] = nil
+        end
+    end
+    pron_modules = {}
+    return true
+end)
 
 return M
