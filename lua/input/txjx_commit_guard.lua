@@ -33,7 +33,7 @@ function M.candidate_type(cand)
     if not cand then return nil end
     local cand_type = cand.type
     if cand.get_genuine then
-        local ok, genuine = pcall(function() return cand:get_genuine() end)
+        local ok, genuine = pcall(cand.get_genuine, cand)
         if ok and genuine and genuine.type then cand_type = genuine.type end
     end
     return cand_type

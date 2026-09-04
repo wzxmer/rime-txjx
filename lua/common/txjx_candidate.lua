@@ -9,9 +9,7 @@ local type = type
 
 function M.safe_genuine(cand)
     if not cand or not cand.get_genuine then return cand end
-    local ok, genuine = pcall(function()
-        return cand:get_genuine()
-    end)
+    local ok, genuine = pcall(cand.get_genuine, cand)
     if ok and genuine then return genuine end
     return cand
 end
