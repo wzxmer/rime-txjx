@@ -432,6 +432,8 @@ local function init(env)
     if env._zzc_candidate_hint_text == nil then
         env._zzc_candidate_hint_text = DEFAULT_ZZC_CANDIDATE_HINT_TEXT
     end
+    -- 预热自造词缓存：把 pending 解析从部署后第一键挪到方案加载时
+    pcall(function() core.warm_pending_cache() end)
 end
 
 return { init = init, func = filter }

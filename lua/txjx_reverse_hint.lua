@@ -60,9 +60,48 @@ local function merge_pron(old, new)
     return old .. "_" .. new
 end
 
+-- 预编译读音数据模块名（tools/gen_cx_pron_data.lua 生成），如 txjx_cx_pron_data
+local function pron_data_module_name(path)
+    local filename = path:match("[^/\\]+$") or path
+    local stem = filename:match("^(.+)%.dict%.ya?ml$")
+    if not stem or stem == "" then return nil end
+    local module_name = stem:gsub("[^%w_]", "_")
+    if module_name == "" then return nil end
+    return module_name .. "_pron_data"
+end
+
+local function read_dict_version(path)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    for _ = 1, 30 do
+        local line = f:read("l")
+        if not line then break end
+        local v = line:match('^version:%s*"?([^"\r\n]+)"?')
+        if v then
+            f:close()
+            return v
+        end
+    end
+    f:close()
+    return nil
+end
+
 local function load_pron_map(path)
     if not path or path == "" then return nil end
     if pron_maps[path] ~= nil then return pron_maps[path] or nil end
+
+    -- 预编译数据优先：源词典 version 一致才使用，否则回退现场解析
+    local module_name = pron_data_module_name(path)
+    if module_name then
+        local ok, data = pcall(require, module_name)
+        if ok and type(data) == "table" and type(data.map) == "table" and next(data.map) then
+            local version = read_dict_version(path)
+            if version and version == data.source_version then
+                pron_maps[path] = data.map
+                return data.map
+            end
+        end
+    end
 
     local f = io.open(path, "r")
     if not f then

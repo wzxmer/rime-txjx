@@ -1312,6 +1312,13 @@ function M.maybe_flush_after_deploy(env)
     return cleanup_appended_runtime_ops()
 end
 
+-- 方案加载时预热自造词缓存：把 pending 解析与 effective 投影构建
+-- 从部署后第一键挪到加载阶段
+function M.warm_pending_cache()
+    load_pending_cache_current()
+    return true
+end
+
 function M.reorder_words_at_code(words, code)
     if not words or not words[1] then return nil, "missing_words" end
     if not code or code == "" then return nil, "missing_code" end
