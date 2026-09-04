@@ -109,9 +109,7 @@ end
 function M.segment_has_tag(seg, tag)
     if not seg or not tag or tag == "" then return false end
     if seg.has_tag then
-        local ok, has_tag = pcall(function()
-            return seg:has_tag(tag)
-        end)
+        local ok, has_tag = pcall(seg.has_tag, seg, tag)
         if ok and has_tag then return true end
     end
     return seg.tag == tag

@@ -51,14 +51,12 @@ engine:
     - script_translator@gbk
 
   filters:
-    - lua_filter@*zzc.txjx_zzc_filter
-    - lua_filter@*txjx_completion
+    # 前段管线：zzc_filter + txjx_completion 在 Lua 内串联，减少 C++ 边界穿越
+    - lua_filter@*txjx_pipeline_front
     - reverse_lookup_filter@jderfen_lookup
     - reverse_lookup_filter@gbk_lookup
-    - lua_filter@*txjx_reverse_hint
-    - lua_filter@*txjx_filter
-    - lua_filter@*txjx_opencc_filter
-    - lua_filter@*txjx_newline
+    # 后段管线：reverse_hint + txjx_filter + opencc + newline 在 Lua 内串联
+    - lua_filter@*txjx_pipeline_back
     - uniquifier
 
 # ============ 开关 ============
