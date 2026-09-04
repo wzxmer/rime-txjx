@@ -10,7 +10,7 @@ local zzc_core = require("zzc.txjx_zzc_core")
 local type = type
 local COMPLETION_LIMIT = 30
 local COMPLETION_MAX_CODE_LEN = 5
-local DEFAULT_MAX_SCAN_CANDIDATES = 50
+local DEFAULT_MAX_SCAN_CANDIDATES = 30
 local DEFAULT_MAX_DEFERRED_CANDIDATES = 30
 local direct_symbols_cache = {}
 
@@ -311,9 +311,13 @@ return {
         local max_scan_candidates = env._max_scan_candidates
         local max_deferred_candidates = env._max_deferred_candidates
         local scanned = 0
-        for cand in input:iter() do
+        -- 手动迭代：处理完第 max_scan_candidates 个后停止拉取，
+        -- 不再多取一个候选再丢弃
+        local iter = input:iter()
+        local cand = iter()
+        while cand do
             scanned = scanned + 1
-            if max_scan_candidates > 0 and scanned > max_scan_candidates then break end
+            local cap_reached = max_scan_candidates > 0 and scanned >= max_scan_candidates
             if cand.type == "history" then
                 yield(cand)
                 goto continue
@@ -374,6 +378,8 @@ return {
                 end
             end
             ::continue::
+            if cap_reached then break end
+            cand = iter()
         end
 
         for i = 1, buffer_size do

@@ -1571,7 +1571,7 @@ function M.zzc_completion_rows_for_prefix(prefix, limit)
     if not prefix or prefix == "" then return nil end
     load_pending_cache_current()
     local hit = completion_prefix_cache[prefix]
-    if hit and hit.epoch == pending_codes_epoch then
+    if hit and hit.epoch == pending_codes_epoch and hit.limit == limit then
         return hit.rows or nil
     end
 
@@ -1613,6 +1613,13 @@ function M.zzc_completion_rows_for_prefix(prefix, limit)
         return left.word < right.word
     end)
 
+    -- limit 生效：结果截断到前 limit 条（排序后），缓存按 limit 区分
+    if limit and limit > 0 and #rows > limit then
+        for j = limit + 1, #rows do
+            rows[j] = nil
+        end
+    end
+
     if next(completion_prefix_cache) ~= nil and not completion_prefix_cache[prefix] then
         local count = 0
         for _ in pairs(completion_prefix_cache) do
@@ -1623,7 +1630,7 @@ function M.zzc_completion_rows_for_prefix(prefix, limit)
             end
         end
     end
-    completion_prefix_cache[prefix] = { epoch = pending_codes_epoch, rows = rows[1] and rows or false }
+    completion_prefix_cache[prefix] = { epoch = pending_codes_epoch, limit = limit, rows = rows[1] and rows or false }
     if not rows[1] then return nil end
     return rows
 end
