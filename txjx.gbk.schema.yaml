@@ -4,7 +4,7 @@
 schema:
   schema_id: txjx.gbk
   name: 天行键GBK字集辅助方案·勿选
-  version: "2026年5月5日"
+  version: "2026年9月7日"
   author:
     - ProudCat
     - 浮生 <wzxmer@outlook.com>
@@ -26,9 +26,20 @@ engine:
     - uniquifier
 
 speller:
-  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
-  initials: "abcdefghijklmnopqrstuvwxyz;'"
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;`'"
+  initials: "abcdefghijklmnopqrstuvwxyz;`'"
   delimiter: " '"
+  # txjx.gbk.dict.yaml 当前最长编码 50 位；过小会在 prism 构建时截断长码。
+  max_code_length: 50
+  # 生成反引号通配索引；主方案使用 table_translator 保留 oek 的 ek 前缀候选。
+  algebra:
+    - derive/^([a-z])([a-z]*)$/`$2/
+    - derive/^([a-z])([a-z])([a-z]*)$/$1`$3/
+    - derive/^([a-z])([a-z])([a-z]*)$/``$3/
+    - derive/^([a-z])([a-z])([a-z])([a-z]*)$/$1$2`$4/
+    - derive/^([a-z])([a-z])([a-z])([a-z])([a-z]*)$/$1$2$3`$5/
+    - derive/^([a-z])([a-z])([a-z])([a-z])([a-z])([a-z]*)$/$1$2$3$4$5`$6/
+    - derive/^([a-z])([a-z])([a-z])([a-z])([a-z])([a-z])$/$1$2$3$4$5`/
 
 translator:
   dictionary: txjx.gbk
