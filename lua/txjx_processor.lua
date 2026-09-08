@@ -205,7 +205,10 @@ local function init(env)
     env._space_guard_enabled = config:get_string("txjx/space_guard") ~= "off"
     env._direct_symbols_fast_leaf = _config_bool(config, "txjx/direct_symbols_fast_leaf", true)
 
-    registry.register("processor", function()
+    if env._cache_registry_processor_token then
+        registry.unregister(env._cache_registry_processor_token)
+    end
+    env._cache_registry_processor_token = registry.register("processor", function()
         direct_symbols.reset_cache()
         processor_state.reset(env)
         return true
@@ -215,6 +218,10 @@ local function init(env)
 end
 
 local function fini(env)
+    if env._cache_registry_processor_token then
+        registry.unregister(env._cache_registry_processor_token)
+        env._cache_registry_processor_token = nil
+    end
     processor_state.fini(env)
     -- 主动GC：释放资源后回收内存
     collectgarbage("step", 200)

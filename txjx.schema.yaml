@@ -1,13 +1,13 @@
 # Rime 天行键输入方案
 # encoding: utf-8
-# 版本: 2026年5月9日
+# 版本: 2026年9月7日
 # 作者: 大牛（吅吅大山）, 浮生 <wzxmer@outlook.com>
 
 schema:
   schema_id: txjx
   name: 天行键
   icon: "tian.ico"
-  version: "2026年5月9日"
+  version: "2026年9月7日"
   author:
     - 大牛（吅吅大山）
     - 浮生 <wzxmer@outlook.com>
@@ -16,7 +16,7 @@ schema:
 # ============ 引擎 ============
 engine:
   processors:
-    # Hamster(iOS) 键盘收起哨兵：0xFFFFFF 触发全量缓存释放，桌面端不会出现
+    # Hamster(iOS) 键盘收起哨兵：0xFFFFFF 触发分级缓存释放，桌面端不会出现
     - lua_processor@*txjx_mem_sentinel
     # 打字统计必须先于 ZZZC 和主输入链，确保被消费的按键也能计入。
     - lua_processor@*txjx_typing_stats_processor
@@ -50,7 +50,8 @@ engine:
     - reverse_lookup_translator
     - punct_translator
     - script_translator@jderfen
-    - script_translator@gbk
+    # GBK 是表码前缀/通配查询；table_translator 才能保留未完成编码和 ` 通配。
+    - table_translator@gbk
 
   filters:
     # 前段管线：zzc_filter + txjx_completion 在 Lua 内串联，减少 C++ 边界穿越
@@ -95,8 +96,8 @@ ascii_composer:
 speller:
   auto_select: false
   max_code_length: 32
-  alphabet: "zyxwvutsrqponmlkjihgfedcba;'"
-  initials: "abcdefghijklmnopqrstuvwxyz;'"
+  alphabet: "zyxwvutsrqponmlkjihgfedcba;`'"
+  initials: "abcdefghijklmnopqrstuvwxyz;`'"
   delimiter: " '"
   algebra:
     - derive/[0-9]$//
@@ -157,20 +158,18 @@ jderfen_lookup:
   option_name: jderfen_lookup
   overwrite_comment: true
   comment_format:
-    - xform|^\(([^)]+)\) +|($1)★|
-    - xform| +|, |
-    - xform#^\(([^)]+)\)★(.+)$#[$1 | $2]#
-    - xform|^\(([^)]+)\)(★)?$|[$1]|
-    - xform|^([^\[].*)$|[$1]|
+    __include: gbk_lookup/comment_format
 
 # GBK反查 (o)
 gbk:
   tag: gbk
   dictionary: txjx.gbk
-  enable_sentence: true
-  enable_completion: false
+  enable_sentence: false
+  # oek 需显示以 ek 开头的完整 GBK 编码；` 通配也走同一前缀查询。
+  enable_completion: true
   enable_user_dict: false
   prefix: "o"
+  tips: "〔音笔〕"
 
 gbk_lookup:
   tags: [gbk]
@@ -216,7 +215,7 @@ recognizer:
     expression: "^=[^;']+$"
     punct: "^/([0-9]0?|[a-z]+)$"
     jderfen: "^v[a-z']*'?$"
-    gbk: "^o[a-z]*?$"
+    gbk: "^o[a-z`]*$"
 
 # ============ 顶功 ============
 topup:

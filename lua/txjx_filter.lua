@@ -117,6 +117,12 @@ local function should_query_core_hint(cand)
     return cand.type == "table"
 end
 
+local function release_reverse_transient_state(env)
+    reverse.release_transient()
+    env._hint_input_cache = {}
+    collectgarbage('step', 48)
+end
+
 local function update_lazy_reverse(env, context, input_text)
     if not context then return end
     input_text = input_text or ""
@@ -141,7 +147,12 @@ local function update_lazy_reverse(env, context, input_text)
         env._reverse_refresh_key = nil
     end
 
-    if context:get_option("reverse_lookup") ~= want_reverse then
+    local was_reverse = context:get_option("reverse_lookup")
+    if was_reverse and not want_reverse then
+        release_reverse_transient_state(env)
+    end
+
+    if was_reverse ~= want_reverse then
         context:set_option("reverse_lookup", want_reverse)
         local refresh_key = input_text .. "\0" .. tostring(want_reverse)
         if env._reverse_refresh_key ~= refresh_key then
@@ -321,7 +332,10 @@ local function init(env)
         end)
     end
 
-    registry.register("filter", function()
+    if env._cache_registry_filter_token then
+        registry.unregister(env._cache_registry_filter_token)
+    end
+    env._cache_registry_filter_token = registry.register("filter", function()
         env._hint_input_cache = {}
         release_hint_state(env, 0, true)
         return true
@@ -331,6 +345,10 @@ local function init(env)
 end
 
 local function fini(env)
+    if env._cache_registry_filter_token then
+        registry.unregister(env._cache_registry_filter_token)
+        env._cache_registry_filter_token = nil
+    end
     platform.safe_disconnect(env._update_conn)
     platform.safe_disconnect(env._commit_conn)
     env._update_conn = nil

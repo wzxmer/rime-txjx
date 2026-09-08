@@ -135,12 +135,23 @@ local function release_pron_cache()
     collectgarbage("step", 48)
 end
 
+local function release_pron_map_cache()
+    pron_maps = {}
+    for name in pairs(pron_modules) do
+        if package and package.loaded then
+            package.loaded[name] = nil
+        end
+    end
+    pron_modules = {}
+end
+
 function M.func(input, env)
     local reverse_mode = is_reverse_lookup(env)
     if not reverse_mode then
         if env._reverse_hint_active then
             env._reverse_hint_active = false
             release_pron_cache()
+            release_pron_map_cache()
         end
         for cand in input:iter() do
             yield(cand)
@@ -169,7 +180,7 @@ end
 
 function M.fini(env)
     release_pron_cache()
-    pron_maps = {}
+    release_pron_map_cache()
     if env._reverse_shared_acquired then
         reverse.release()
         env._reverse_shared_acquired = nil
@@ -200,15 +211,10 @@ function M.init(env)
     env._pron_map_path = find_existing_path(dict_file)
 end
 
--- 注册进 cache_registry：=mem! 与 iOS 哨兵可释放读音表
+-- 注册进 cache_registry：=mem!、哨兵和反查会话结束都释放读音表。
+-- 反查是低频功能，不跨会话常驻大表。
 registry.register("reverse_hint", function()
-    pron_maps = {}
-    for name in pairs(pron_modules) do
-        if package and package.loaded then
-            package.loaded[name] = nil
-        end
-    end
-    pron_modules = {}
+    release_pron_map_cache()
     return true
 end)
 

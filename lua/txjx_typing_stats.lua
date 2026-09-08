@@ -218,7 +218,10 @@ function M.init_processor(env)
             pcall(M.on_commit, commit_ctx, env)
         end)
     end
-    registry.register("typing_stats", function()
+    if env._cache_registry_typing_stats_token then
+        registry.unregister(env._cache_registry_typing_stats_token)
+    end
+    env._cache_registry_typing_stats_token = registry.register("typing_stats", function()
         local all = _G.__txjx_typing_stats or {}
         for _, st in pairs(all) do release_state(st) end
         return true
@@ -226,6 +229,10 @@ function M.init_processor(env)
 end
 
 function M.fini_processor(env)
+    if env and env._cache_registry_typing_stats_token then
+        registry.unregister(env._cache_registry_typing_stats_token)
+        env._cache_registry_typing_stats_token = nil
+    end
     if env and env.commit_connection then
         pcall(function() env.commit_connection:disconnect() end)
         env.commit_connection = nil

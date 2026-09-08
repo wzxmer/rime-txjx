@@ -19,6 +19,9 @@ patch:
   txjx_completion/max_deferred_candidates: 30  # 单字优先最多暂存 30 个词候选
   reverse_hint/use_pron_map: true               # 优先读取拼音码表，减少逐候选反查
   reverse_hint/pron_map_file: txjx.cx.dict.yaml
+  # iOS 收起键盘时的内存水位线（MB）：Lua 堆达到该值才在收起时释放读音表等大表缓存，
+  # 低于水位线保持常驻（重开键盘零重载）。百万词库（如 xmjd）可调低提前释放。
+  txjx/mem_watermark_mb: 50
   txjx/direct_symbols_fast_leaf: false          # 快符使用正常补全和顶功流程
 
   # 单按 Shift 切换中英文；被 Lua 处理的 Shift 组合键不会触发模式切换

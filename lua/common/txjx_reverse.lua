@@ -233,14 +233,20 @@ end
 function M.release()
     if active_envs > 0 then active_envs = active_envs - 1 end
     if active_envs == 0 then
-        for dict_name in pairs(handles) do
-            close_entry(dict_name)
-        end
-        clear_pron_cache()
-        clear_hint_cache()
-        clear_core_hint_maps()
+        M.release_transient()
         collectgarbage("step", 64)
     end
+end
+
+-- 反查段退出时释放共享的 native handle 与 Lua 提示缓存。
+-- 这些资源按需重建，不为低频反查长期常驻。
+function M.release_transient()
+    for dict_name in pairs(handles) do
+        close_entry(dict_name)
+    end
+    clear_pron_cache()
+    clear_hint_cache()
+    clear_core_hint_maps()
 end
 
 function M.reset_failed(dict_name)
