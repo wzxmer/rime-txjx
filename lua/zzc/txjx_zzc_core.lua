@@ -16,12 +16,23 @@ local pending_by_code = {}
 local effective_projection_by_code = {}
 local effective_by_code = {}
 local pending_loaded = false
+-- 快照态只包含当前 effective projection，不包含可用于修改/撤销的历史记录。
+local effective_snapshot_loaded = false
+local effective_snapshot_token = nil
+local effective_state_check_second = nil
 local pending_version = nil
 local pending_version_check_second = nil
 local pending_codes_sorted = nil
 local pending_codes_epoch = 0
 local completion_prefix_cache = {}
 local COMPLETION_PREFIX_CACHE_LIMIT = 64
+local completion_prefix_index = {}
+local completion_prefix_index_ready = false
+local completion_prefix_index_epoch = -1
+local COMPLETION_PREFIX_MAX_LEN = 5
+local COMPLETION_LIMIT = 30
+-- 一个前段管线刷新只做一次版本检查，并在 zzc_filter/completion 之间共享查询结果。
+local refresh_context = nil
 local function touch_pending_data_epoch()
     pending_codes_epoch = pending_codes_epoch + 1
 end
@@ -31,6 +42,8 @@ local build_replace_snapshot
 local rebuild_effective_projection_index
 local update_effective_projection_for_code
 local write_effective_state_file
+local load_effective_state_snapshot
+local rebuild_completion_prefix_index
 local request_effective_state_write
 local with_effective_state_batch
 local runtime_ops_file
@@ -789,9 +802,13 @@ end
 
 local function reload_pending_cache()
     pending_loaded = false
+    effective_snapshot_loaded = false
+    effective_snapshot_token = nil
+    effective_state_check_second = nil
     pending_cache = {}
     pending_by_code = {}
     effective_projection_by_code = {}
+    effective_by_code = {}
     pending_version_check_second = nil
     touch_pending_data_epoch()
     return load_pending_cache()
@@ -809,6 +826,115 @@ local function load_pending_cache_current()
         end
     end
     return reload_pending_cache()
+end
+
+-- 读取已落盘的 effective projection。快照没有历史操作语义，不能填充 pending_*。
+load_effective_state_snapshot = function()
+    local current_token = read_pending_version()
+    if not current_token or current_token == "" then return false end
+    local f = io.open(effective_state_file(), "r")
+    if not f then return false end
+
+    local version_ok = false
+    local snapshot_token = nil
+    local parsed = {}
+    local malformed = false
+    for line in f:lines() do
+        if line == "# txjx-effective-state-v1" then
+            version_ok = true
+        else
+            local header_token = line:match("^#%s*cache_token%s+(.+)%s*$")
+            if header_token then
+                snapshot_token = header_token
+            elseif line ~= "" and line:sub(1, 1) ~= "#" then
+                local state, word, code, source = line:match("^([^\t]+)\t([^\t]*)\t([^\t]+)\t([^\t]+)$")
+                if not state or not word or word == "" or not code or code == ""
+                    or (state ~= "visible" and state ~= "hidden") then
+                    malformed = true
+                else
+                    parsed[#parsed + 1] = { state = state, word = word, code = code, source = source }
+                end
+            end
+        end
+    end
+    f:close()
+    if malformed or not version_ok or not snapshot_token or snapshot_token ~= current_token then
+        return false
+    end
+
+    local by_code = {}
+    for _, row in ipairs(parsed) do
+        local effective = by_code[row.code]
+        if not effective then
+            effective = {
+                rows = {}, append_rows = {}, keep_words = {}, hide_words = {}, restore_rows = {},
+            }
+            by_code[row.code] = effective
+        end
+        if row.state == "visible" then
+            local item = { word = row.word, code = row.code, source = row.source or "zzc" }
+            if row.source == "zzc_append" then
+                effective.append_rows[#effective.append_rows + 1] = item
+                effective.has_append = true
+            else
+                effective.rows[#effective.rows + 1] = item
+                effective.keep_words[row.word] = true
+                effective.has_exact_cover = true
+                if row.source == "zzc_order" then effective.has_order = true end
+            end
+        else
+            effective.hide_words[row.word] = true
+            effective.restore_rows[#effective.restore_rows + 1] = {
+                word = row.word, code = row.code, source = row.source or "zzc_restore",
+            }
+            effective.has_delete_cover = true
+        end
+    end
+
+    effective_by_code = {}
+    effective_projection_by_code = {}
+    for code, effective in pairs(by_code) do
+        if effective.rows[1] or effective.append_rows[1] or next(effective.hide_words) then
+            effective_by_code[code] = effective
+            effective_projection_by_code[code] = effective
+        end
+    end
+    pending_loaded = false
+    pending_cache = {}
+    pending_by_code = {}
+    pending_version = current_token
+    pending_version_check_second = os.time()
+    effective_snapshot_loaded = true
+    effective_snapshot_token = current_token
+    effective_state_check_second = os.time()
+    touch_pending_data_epoch()
+    if rebuild_completion_prefix_index then rebuild_completion_prefix_index() end
+    return true
+end
+
+-- 普通候选只需要 effective projection；历史操作入口仍调用 load_pending_cache_current。
+local function ensure_effective_cache_current()
+    if pending_loaded then
+        load_pending_cache_current()
+        return true
+    end
+    if effective_snapshot_loaded then
+        local now = os.time()
+        if effective_state_check_second ~= now then
+            effective_state_check_second = now
+            if read_pending_version() ~= effective_snapshot_token then
+                effective_snapshot_loaded = false
+                effective_snapshot_token = nil
+                effective_by_code = {}
+                effective_projection_by_code = {}
+                touch_pending_data_epoch()
+            end
+        end
+        if effective_snapshot_loaded then return true end
+    end
+    if load_effective_state_snapshot() then return true end
+    load_pending_cache_current()
+    return true
 end
 
 local function pending_records_for_code(code)
@@ -1068,6 +1194,7 @@ local function apply_reset_marker()
 end
 
 local function append_ops_record(record)
+    load_pending_cache_current()
     ensure_runtime_ops_file()
     record.runtime = true
     local f = io.open(runtime_ops_file(), "a")
@@ -1081,6 +1208,7 @@ local function append_ops_record(record)
 end
 
 local function append_ops_records(records)
+    load_pending_cache_current()
     return with_effective_state_batch(function()
         ensure_runtime_ops_file()
         local f = io.open(runtime_ops_file(), "a")
@@ -1102,7 +1230,11 @@ local function append_ops_records(records)
 end
 
 write_effective_state_file = function()
-    local lines = {}
+    local token = pending_version or read_pending_version() or ""
+    local lines = {
+        "# txjx-effective-state-v1",
+        "# cache_token\t" .. token,
+    }
     effective_by_code = {}
     for code, cover in pairs(effective_projection_by_code or {}) do
         local snapshot = store.effective_state_snapshot and store.effective_state_snapshot(code, cover) or nil
@@ -1114,8 +1246,68 @@ write_effective_state_file = function()
             effective_by_code[code] = effective
         end
     end
-    table.sort(lines)
-    return write_file_atomic(effective_state_file(), lines)
+    if rebuild_completion_prefix_index then rebuild_completion_prefix_index() end
+    local ok, err = write_file_atomic(effective_state_file(), lines)
+    if ok then
+        effective_snapshot_loaded = true
+        effective_snapshot_token = token
+        effective_state_check_second = os.time()
+    end
+    return ok, err
+end
+
+rebuild_completion_prefix_index = function()
+    local best_by_prefix = {}
+    local function better_row(left, right)
+        if #left.code ~= #right.code then return #left.code < #right.code end
+        if left.code ~= right.code then return left.code < right.code end
+        return left.word < right.word
+    end
+    local codes = {}
+    for code in pairs(effective_by_code) do
+        if code and code ~= "" and #code > 1 then codes[#codes + 1] = code end
+    end
+    table.sort(codes)
+    for _, code in ipairs(codes) do
+        local cover = effective_by_code[code]
+        local rows = {}
+        for _, row in ipairs(cover.rows or {}) do rows[#rows + 1] = row end
+        for _, row in ipairs(cover.append_rows or {}) do rows[#rows + 1] = row end
+        for _, row in ipairs(rows) do
+            if row.word and row.word ~= "" and row.code then
+                local max_len = math.min(COMPLETION_PREFIX_MAX_LEN, #row.code - 1)
+                for length = 1, max_len do
+                    local prefix = row.code:sub(1, length)
+                    local best = best_by_prefix[prefix]
+                    if not best then
+                        best = {}
+                        best_by_prefix[prefix] = best
+                    end
+                    local candidate = { word = row.word, code = row.code, source = row.source or "zzc_completion" }
+                    local current = best[row.word]
+                    if not current or better_row(candidate, current) then
+                        best[row.word] = candidate
+                    end
+                end
+            end
+        end
+    end
+    local buckets = {}
+    for prefix, best in pairs(best_by_prefix) do
+        local rows = {}
+        for _, row in pairs(best) do rows[#rows + 1] = row end
+        table.sort(rows, function(left, right)
+            return better_row(left, right)
+        end)
+        if #rows > COMPLETION_LIMIT then
+            for index = #rows, COMPLETION_LIMIT + 1, -1 do rows[index] = nil end
+        end
+        buckets[prefix] = rows
+    end
+    completion_prefix_index = buckets
+    completion_prefix_index_ready = true
+    completion_prefix_index_epoch = pending_codes_epoch
+    completion_prefix_cache = {}
 end
 
 local effective_state_write_depth = 0
@@ -1203,6 +1395,7 @@ function M.move_word_to_code(word, source_code, target_code, probe_first, replac
     if not word or word == "" then return nil, "missing_word" end
     if not source_code or source_code == "" then return nil, "missing_source_code" end
     if not target_code or target_code == "" then return nil, "missing_target_code" end
+    load_pending_cache_current()
     local snapshot, snapshot_err = build_replace_snapshot(
         word, target_code, replaced_word, probe_first, probe_words,
         "move", { source_code })
@@ -1268,6 +1461,7 @@ end
 function M.delete_words_at_code(words, code, probe_exact)
     if not words or not words[1] then return nil, "missing_words" end
     if not code or code == "" then return nil, "missing_code" end
+    load_pending_cache_current()
     local records, warning
     if type(probe_exact) == "function" then
         records, warning = chain.plan_delete(words, code, probe_exact)
@@ -1316,7 +1510,7 @@ end
 -- 方案加载时预热自造词缓存：把 pending 解析与 effective 投影构建
 -- 从部署后第一键挪到加载阶段
 function M.warm_pending_cache()
-    load_pending_cache_current()
+    ensure_effective_cache_current()
     return true
 end
 
@@ -1330,7 +1524,13 @@ function M.clear_pending_cache()
     effective_by_code = {}
     pending_codes_sorted = nil
     completion_prefix_cache = {}
+    completion_prefix_index = {}
+    completion_prefix_index_ready = false
+    completion_prefix_index_epoch = -1
     pending_loaded = false
+    effective_snapshot_loaded = false
+    effective_snapshot_token = nil
+    effective_state_check_second = nil
     touch_pending_data_epoch()
     return true
 end
@@ -1443,6 +1643,7 @@ function M.append_word_at_code(items, target_code, probe_words)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
     local word = M.word_from_items(items)
     if not word or word == "" then return nil, "missing_word" end
+    load_pending_cache_current()
     local full_code = M.code_for_items(items, 6)
     local source_codes = {}
     if full_code and full_code:sub(1, #target_code) == target_code then
@@ -1466,7 +1667,7 @@ end
 
 function M.restore_rows_for_input(input)
     if not input or input == "" then return nil end
-    load_pending_cache_current()
+    ensure_effective_cache_current()
     local effective = effective_by_code[input]
     local rows = effective and effective.restore_rows or nil
     if not (rows and rows[1]) then return nil end
@@ -1500,6 +1701,7 @@ build_replace_snapshot = function(word, code, replaced_word, probe_first, probe_
 end
 
 local function save_word_to_code(items, code, replaced_word, probe_first, probe_words)
+    load_pending_cache_current()
     local word = M.word_from_items(items)
     if not code then
         return nil, "missing_code"
@@ -1534,20 +1736,61 @@ function M.save_word_at_code(items, code, replaced_word, probe_first, probe_word
     return save_word_to_code(items, code, replaced_word, probe_first, probe_words)
 end
 
+function M.begin_refresh(input)
+    -- 版本检查仍由每次前段刷新负责；同一刷新内的后续查询直接复用结果。
+    ensure_effective_cache_current()
+    refresh_context = {
+        input = input,
+        epoch = pending_codes_epoch,
+        covers = {},
+        rows = {},
+    }
+end
+
+function M.end_refresh(input)
+    if not refresh_context or refresh_context.input == input then
+        refresh_context = nil
+    end
+end
+
+local function current_refresh_context()
+    if refresh_context and refresh_context.epoch ~= pending_codes_epoch then
+        refresh_context = nil
+    end
+    return refresh_context
+end
+
+local function refresh_cover_for_input(input)
+    local context = current_refresh_context()
+    if not context then return nil, false end
+    local cached = context.covers[input]
+    if cached ~= nil then
+        return cached ~= false and cached or nil, true
+    end
+    local cover = effective_by_code[input]
+    context.covers[input] = cover or false
+    return cover, true
+end
+
+local function refresh_rows_key(prefix, limit)
+    return (prefix or "") .. "\0" .. tostring(limit)
+end
+
 function M.zzc_cover_for_input(input, opts)
     if not input or input == "" then return nil end
     opts = opts or {}
     if opts.ignore_order then
         return build_effective_projection(input, pending_records_for_code(input), opts)
     end
-    load_pending_cache_current()
+    ensure_effective_cache_current()
+    local cover, in_refresh = refresh_cover_for_input(input)
+    if in_refresh then return cover end
     return effective_by_code[input]
 end
 
 function M.zzc_order_for_input(input)
     if not input or input == "" then return nil end
-    load_pending_cache_current()
-    local cover = effective_by_code[input]
+    local cover = M.zzc_cover_for_input(input)
     if cover and cover.has_order then return cover end
     return nil
 end
@@ -1557,7 +1800,8 @@ local function ensure_sorted_pending_codes()
         return pending_codes_sorted.codes
     end
     local codes = {}
-    for code in pairs(pending_by_code) do
+    local source = effective_snapshot_loaded and effective_by_code or pending_by_code
+    for code in pairs(source) do
         if code and code ~= "" then
             codes[#codes + 1] = code
         end
@@ -1567,9 +1811,16 @@ local function ensure_sorted_pending_codes()
     return codes
 end
 
-function M.zzc_completion_rows_for_prefix(prefix, limit)
+local function completion_rows_for_prefix_loaded(prefix, limit)
     if not prefix or prefix == "" then return nil end
-    load_pending_cache_current()
+    -- 预建索引只覆盖补全模块当前的固定 Top-N 查询。
+    -- 其它 limit 取值必须回退旧逻辑，保持“limit=nil 返回全部”等 API 语义。
+    if limit == COMPLETION_LIMIT
+        and #prefix <= COMPLETION_PREFIX_MAX_LEN
+        and completion_prefix_index_ready
+        and completion_prefix_index_epoch == pending_codes_epoch then
+        return completion_prefix_index[prefix]
+    end
     local hit = completion_prefix_cache[prefix]
     if hit and hit.epoch == pending_codes_epoch and hit.limit == limit then
         return hit.rows or nil
@@ -1635,7 +1886,39 @@ function M.zzc_completion_rows_for_prefix(prefix, limit)
     return rows
 end
 
+function M.zzc_completion_rows_for_prefix(prefix, limit)
+    if not current_refresh_context() then ensure_effective_cache_current() end
+    return completion_rows_for_prefix_loaded(prefix, limit)
+end
+
+-- 一次输入同时取得 cover 与 completion rows，避免调用方重复检查缓存版本。
+-- include_completion=false 时只返回 cover，不执行补全查询。
+function M.prepare_completion_context(input, limit, include_completion)
+    if not input or input == "" then return nil, nil end
+    local context = current_refresh_context()
+    if not context then ensure_effective_cache_current() end
+    local cover = M.zzc_cover_for_input(input)
+    local rows = nil
+    if include_completion then
+        context = current_refresh_context()
+        if context then
+            local key = refresh_rows_key(input, limit)
+            local cached = context.rows[key]
+            if cached ~= nil then
+                rows = cached ~= false and cached or nil
+            else
+                rows = completion_rows_for_prefix_loaded(input, limit)
+                context.rows[key] = rows or false
+            end
+        else
+            rows = completion_rows_for_prefix_loaded(input, limit)
+        end
+    end
+    return cover, rows
+end
+
 function M.cover_for_probe(input, opts)
+    load_pending_cache_current()
     return M.zzc_cover_for_input(input, opts)
 end
 

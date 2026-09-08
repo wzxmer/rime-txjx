@@ -33,6 +33,11 @@ local function is_reverse_lookup_context(ctx, env)
     return config_util.is_reverse_context(ctx, env and env._reverse_tags, env and env._reverse_prefixes)
 end
 
+local function is_gbk_lookup_context(ctx)
+    local seg = ctx and ctx.composition and ctx.composition:back()
+    return config_util.segment_has_tag(seg, "gbk")
+end
+
 local function trim_trailing_sep(path)
     return (path or ""):gsub("[/\\]+$", "")
 end
@@ -269,38 +274,45 @@ return {
         local direct_symbols_input = input_text:sub(1, 1) == ";"
         local enabled = ctx and ctx:get_option("completion") or false
         local allow_native_completion = enabled and not direct_symbols_input and input_len <= COMPLETION_MAX_CODE_LEN
-        local allow_zzc_completion = allow_native_completion
         local danzi = env._danzi_first
-        local reverse_lookup = nil
+        local gbk_lookup = is_gbk_lookup_context(ctx)
+        local allow_zzc_completion = allow_native_completion and not gbk_lookup
+        local reverse_lookup = is_reverse_lookup_context(ctx, env) and not gbk_lookup
         local buffer = {}
         local buffer_size = 0
         local zzc_append_buffer = {}
         local zzc_append_size = 0
         local completion_buffer = {}
         local comp_count = 0
-        local zzc_cover = input_text ~= "" and zzc_core.zzc_cover_for_input(input_text) or nil
         local zzc_stage = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_stage") or "") or ""
         local zzc_mode = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_mode") or "") or ""
         local zzc_target = ctx and ctx.get_property and (ctx:get_property("_txjx_zzc_target") or "") or ""
+        local zzc_active = zzc_stage ~= "" or zzc_mode ~= "" or zzc_target ~= ""
+        local zzc_cover, zzc_completion_rows = nil, nil
+        if input_text ~= "" and (enabled or zzc_active) then
+            zzc_cover, zzc_completion_rows = zzc_core.prepare_completion_context(
+                input_text,
+                COMPLETION_LIMIT,
+                allow_zzc_completion
+            )
+        end
         if not zzc_cover and zzc_stage == "collect" and zzc_target ~= "" and (zzc_mode == "append" or zzc_mode == "replace") then
             zzc_cover = zzc_core.zzc_cover_for_input(zzc_target)
-        end
-        local zzc_completion_rows = nil
-        if allow_zzc_completion then
-            zzc_completion_rows = zzc_core.zzc_completion_rows_for_prefix(input_text, COMPLETION_LIMIT)
         end
         local zzc_completion_seen = {}
         if enabled and direct_symbols_input then
             push_direct_symbols_completion_rows(env, input_text, completion_buffer, zzc_completion_seen, COMPLETION_LIMIT)
         end
-        push_zzc_completion_rows(
-            zzc_completion_rows,
-            input_text,
-            completion_buffer,
-            zzc_completion_seen,
-            COMPLETION_LIMIT
-        )
-        local remaining_completion_limit = COMPLETION_LIMIT - zzc_completion_count(completion_buffer)
+        if allow_zzc_completion then
+            push_zzc_completion_rows(
+                zzc_completion_rows,
+                input_text,
+                completion_buffer,
+                zzc_completion_seen,
+                COMPLETION_LIMIT
+            )
+        end
+        local remaining_completion_limit = gbk_lookup and 0 or (COMPLETION_LIMIT - zzc_completion_count(completion_buffer))
         if remaining_completion_limit < 0 then remaining_completion_limit = 0 end
         local zzc_append_seen = {}
         if zzc_cover and zzc_cover.append_rows then
@@ -308,8 +320,9 @@ return {
             zzc_append_size = #zzc_append_buffer
         end
 
-        local max_scan_candidates = env._max_scan_candidates
-        local max_deferred_candidates = env._max_deferred_candidates
+        -- GBK 反查是用户主动输入的筛选查询，不截断扫描、completion 或多字暂存结果。
+        local max_scan_candidates = gbk_lookup and 0 or env._max_scan_candidates
+        local max_deferred_candidates = gbk_lookup and 0 or (reverse_lookup and 0 or env._max_deferred_candidates)
         local scanned = 0
         -- 手动迭代：处理完第 max_scan_candidates 个后停止拉取，
         -- 不再多取一个候选再丢弃
@@ -342,6 +355,11 @@ return {
                 yield(cand)
                 goto continue
             end
+            if gbk_lookup then
+                -- GBK 结果流式输出，避免无限前缀结果进入 Lua 缓冲区。
+                yield(cand)
+                goto continue
+            end
             if cand.type == "completion" then
                 if zzc_completion_seen[cand.text] then
                     goto continue
@@ -349,14 +367,9 @@ return {
                 if not zzc_completion_visible(zzc_cover, cand.text) then
                     goto continue
                 end
-                if reverse_lookup == nil then
-                    reverse_lookup = is_reverse_lookup_context(ctx, env)
-                end
-                if reverse_lookup then
-                    break
-                end
-                if not allow_native_completion then break end
-                if comp_count >= remaining_completion_limit then break end
+                if reverse_lookup then break end
+                if not allow_native_completion and not gbk_lookup then break end
+                if remaining_completion_limit > 0 and comp_count >= remaining_completion_limit then break end
                 comp_count = comp_count + 1
                 push_completion(completion_buffer, cand, input_text, 2, comp_count)
                 goto continue
@@ -388,9 +401,11 @@ return {
         for i = 1, zzc_append_size do
             yield(zzc_append_buffer[i])
         end
-        sort_completion_buffer(completion_buffer)
-        for i = 1, #completion_buffer do
-            yield(completion_buffer[i].cand)
+        if enabled and not gbk_lookup then
+            sort_completion_buffer(completion_buffer)
+            for i = 1, #completion_buffer do
+                yield(completion_buffer[i].cand)
+            end
         end
     end,
 

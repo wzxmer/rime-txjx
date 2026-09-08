@@ -393,13 +393,8 @@ local function filter(input, env)
         cover = yield_zzc_cover_candidates(code, cover, collect_preedit, env)
         if cover then
             local yielded = cover.rows and cover.rows[1] ~= nil
-            if not yielded then
-                yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
-            end
             yielded = yield_append_candidates(code, cover, env) or yielded
-            if cover.rows and cover.rows[1] then
-                yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
-            end
+            yielded = yield_filtered_input_candidates(input, cover, collect_preedit) or yielded
             return
         end
         cover = core.zzc_cover_for_input and core.zzc_cover_for_input(lookup_code) or nil

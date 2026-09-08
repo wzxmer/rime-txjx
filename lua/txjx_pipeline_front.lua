@@ -4,6 +4,7 @@
 -- 更新：2026-09-05
 
 local pipeline = require("common.txjx_pipeline")
+local zzc_core = require("zzc.txjx_zzc_core")
 local zzc_filter = require("zzc.txjx_zzc_filter")
 local completion = require("txjx_completion")
 
@@ -23,7 +24,9 @@ function M.init(env)
 end
 
 function M.func(input, env)
+    zzc_core.begin_refresh(input)
     pipeline.run(env._stages, input)
+    zzc_core.end_refresh(input)
 end
 
 function M.fini(env)
