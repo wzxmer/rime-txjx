@@ -397,14 +397,6 @@ local function begin_undo_command(ctx)
     return begin_command_wait(ctx, "undo", "", "-", {}, true)
 end
 
-local function begin_restore_wait(ctx, target_code)
-    local candidates = {}
-    for _, row in ipairs(core.restore_rows_for_input(target_code) or {}) do
-        candidates[#candidates + 1] = row.word or ""
-    end
-    return begin_command_wait(ctx, "restore", target_code, "", candidates, true)
-end
-
 local function switch_command_wait(ctx, mode, display_word)
     state.stage = "command_wait"
     state.mode = mode
@@ -1058,8 +1050,7 @@ local function begin_append_collect(ctx, target_code)
     refresh_context(ctx)
 end
 
-local function handle_target_command_key(ctx, target_code, key, ch, shifted, keycode, opts)
-    opts = opts or {}
+local function handle_target_command_key(ctx, target_code, key, ch, shifted, keycode)
     local idx = resolve_index_key(key, ch)
     if idx and idx >= 1 and idx <= 9 then
         return begin_command_wait(ctx, "promote", target_code, tostring(idx), command_candidate_snapshot(ctx, target_code), true)
@@ -1074,9 +1065,6 @@ local function handle_target_command_key(ctx, target_code, key, ch, shifted, key
         return begin_command_wait(ctx, "undo", target_code, "!", command_candidate_snapshot(ctx, target_code), true)
     end
     if is_plus_key(key, ch, shifted, keycode) then
-        if opts.plus_restores then
-            return begin_restore_wait(ctx, target_code)
-        end
         begin_append_collect(ctx, target_code)
         return kAccepted
     end
@@ -1096,9 +1084,6 @@ local function handle_replace_wait(ctx, current_input, key, ch, shifted, keycode
         return switch_command_wait(ctx, "delete", "")
     end
     if is_plus_key(key, ch, shifted, keycode) then
-        if state.mode == "append" and state.target_code ~= "" and #state.items == 0 then
-            return begin_restore_wait(ctx, state.target_code)
-        end
         begin_append_collect(ctx, state.target_code)
         return kAccepted
     end
@@ -1437,19 +1422,20 @@ local function processor(key_event, env)
     end
 
     if state.stage == "collect"
-        and state.mode == "append"
-        and state.target_code ~= ""
-        and (ctx.input or "") == "\\"
-        and is_plus_key(key, ch, shifted, keycode) then
-        return begin_restore_wait(ctx, state.target_code)
-    end
-
-    if state.stage == "collect"
         and state.mode == "replace"
         and state.target_code ~= ""
         and (ctx.input or "") == "\\" then
         local command_result = handle_target_command_key(ctx, state.target_code, key, ch, shifted, keycode)
         if command_result then return command_result end
+    end
+
+    -- append 指令只有一个 `+`；重复 press 直接吞掉，保留后续造词入口 `\`。
+    if state.stage == "collect"
+        and state.mode == "append"
+        and state.target_code ~= ""
+        and (ctx.input or "") == "\\"
+        and is_plus_key(key, ch, shifted, keycode) then
+        return kAccepted
     end
 
     if state.stage == "collect" then
