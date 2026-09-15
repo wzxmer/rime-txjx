@@ -114,7 +114,21 @@ local function commit_hint(cand, hint_text)
 end
 
 local function should_query_core_hint(cand)
-    return cand.type == "table"
+    return cand.type == "table" or cand.type == "zzc_cover"
+end
+
+local function process_native_hint(cand, env, input_text)
+    local fallback = cand.type == "zzc_cover" and cand.comment or nil
+    local using_fallback = fallback and fallback ~= ""
+    if using_fallback then
+        candidate_util.set_comment(cand, "")
+    end
+
+    local before = cand.comment or ""
+    process_hint(cand, env, input_text)
+    if using_fallback and (cand.comment or "") == before then
+        candidate_util.set_comment(cand, fallback)
+    end
 end
 
 local function release_reverse_transient_state(env)
@@ -250,7 +264,7 @@ local function filter(input, env)
             hint_count = hint_count + 1
             if input_len >= 4 and input_len <= 6 then
                 if not candidate_util.has_reading(cand.comment) then
-                    process_hint(cand, env, input_text)
+                    process_native_hint(cand, env, input_text)
                 end
             end
         end
