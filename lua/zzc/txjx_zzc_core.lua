@@ -533,6 +533,12 @@ function M.code_choices_for_text(text, len, limit)
     return choices
 end
 
+-- 自造词查重需要覆盖该词在指定码长下的全部合法编码路径。
+-- 普通候选解析仍使用默认上限；这里只由内部操作链调用无上限版本。
+function M.all_code_choices_for_text(text, len)
+    return M.code_choices_for_text(text, len, math.huge)
+end
+
 function M.code_for_items(items, len)
     return codec.code_for_items(items, len)
 end
@@ -1639,18 +1645,43 @@ local function append_next_code(word, code)
     return code .. p
 end
 
+local function duplicate_source_codes(items, target_code)
+    local word = M.word_from_items(items)
+    local source_codes, seen = {}, {}
+    local chars = utf8_chars(word or "")
+    local count = 0
+    for _, ch in ipairs(chars) do
+        if not M.is_literal_punctuation(ch) then count = count + 1 end
+    end
+    local min_len = count == 3 and 3 or 4
+    for len = min_len, 6 do
+        local choices = M.all_code_choices_for_text(word, len) or {}
+        for _, choice in ipairs(choices) do
+            local code = choice and choice.code
+            if code and code ~= "" and code ~= target_code and not seen[code] then
+                seen[code] = true
+                source_codes[#source_codes + 1] = code
+            end
+        end
+    end
+    -- 保留当前选定 parts 生成的完整码，兼容临时词条尚未进入 char_parts 的情况。
+    local full_code = M.code_for_items(items, 6)
+    if full_code and full_code ~= "" and full_code ~= target_code and not seen[full_code] then
+        source_codes[#source_codes + 1] = full_code
+    end
+    table.sort(source_codes, function(left, right)
+        if #left ~= #right then return #left < #right end
+        return left < right
+    end)
+    return source_codes
+end
+
 function M.append_word_at_code(items, target_code, probe_words)
     if not target_code or target_code == "" then return nil, "missing_target_code" end
     local word = M.word_from_items(items)
     if not word or word == "" then return nil, "missing_word" end
     load_pending_cache_current()
-    local full_code = M.code_for_items(items, 6)
-    local source_codes = {}
-    if full_code and full_code:sub(1, #target_code) == target_code then
-        for length = #target_code + 1, #full_code do
-            source_codes[#source_codes + 1] = full_code:sub(1, length)
-        end
-    end
+    local source_codes = duplicate_source_codes(items, target_code)
     local snapshot, snapshot_err = chain.plan_append({
         word = word,
         code = target_code,
@@ -1706,13 +1737,7 @@ local function save_word_to_code(items, code, replaced_word, probe_first, probe_
     if not code then
         return nil, "missing_code"
     end
-    local full_code = M.code_for_items(items, 6)
-    local source_codes = {}
-    if full_code and full_code:sub(1, #code) == code then
-        for length = #code + 1, #full_code do
-            source_codes[#source_codes + 1] = full_code:sub(1, length)
-        end
-    end
+    local source_codes = duplicate_source_codes(items, code)
     local op = replaced_word and replaced_word ~= "" and "replace" or "make"
     local snapshot, snapshot_err = build_replace_snapshot(
         word, code, replaced_word, probe_first, probe_words, op, source_codes)

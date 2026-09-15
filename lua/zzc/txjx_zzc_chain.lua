@@ -182,6 +182,16 @@ local function remove_source_duplicates(
     return true
 end
 
+local function remove_duplicate_at_code(records, word, code, probe_words, removed, added)
+    local source_words, probe_err = visible_words(probe_words, code, removed, added)
+    if probe_words and not source_words then return nil, probe_err end
+    if words_contain(source_words, word) then
+        append_delete_once(records, word, code)
+        mark_removed(removed, code, word)
+    end
+    return true
+end
+
 function M.plan_append(opts)
     opts = opts or {}
     local word = opts.word
@@ -191,12 +201,16 @@ function M.plan_append(opts)
     if (opts.source_codes or {})[1]
         and type(opts.probe_words) ~= "function" then return nil, "missing_probe" end
 
-    local records = {
-        { op = "append", mark = "+", append = true, word = word, code = code },
-    }
     local removed, added = {}, {}
+    local records = {}
+    local ok, err = remove_duplicate_at_code(
+        records, word, code, opts.probe_words, removed, added)
+    if not ok then return nil, err end
+    records[#records + 1] = {
+        op = "append", mark = "+", append = true, word = word, code = code,
+    }
     mark_added(added, code, word)
-    local ok, err = remove_source_duplicates(
+    ok, err = remove_source_duplicates(
         records, word, opts.source_codes, opts.probe_words, removed, added)
     if not ok then return nil, err end
     return records
@@ -210,10 +224,15 @@ function M.plan_replace(opts)
     if not code or code == "" then return nil, "missing_code" end
     if type(opts.next_code) ~= "function" then return nil, "missing_next_code" end
 
-    local records = {
-        { op = opts.op or "make", mark = "+", word = word, code = code },
-    }
     local removed, added = {}, {}
+    local records = {}
+    local ok, err = remove_duplicate_at_code(
+        records, word, code, opts.probe_words, removed, added)
+    if not ok then return nil, err end
+    records[#records + 1] = {
+        op = opts.op or "make", mark = "+", word = word, code = code,
+    }
+    mark_added(added, code, word)
     local replaced_word = opts.replaced_word
     if (not replaced_word or replaced_word == "") and opts.probe_first then
         local ok, probed = pcall(function() return opts.probe_first(code) end)
@@ -252,8 +271,7 @@ function M.plan_replace(opts)
         displaced_code = next_code
     end
 
-    mark_added(added, code, word)
-    local ok, err = remove_source_duplicates(
+    ok, err = remove_source_duplicates(
         records, word, opts.source_codes, opts.probe_words, removed, added)
     if not ok then return nil, err end
     return records
