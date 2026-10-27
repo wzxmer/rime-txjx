@@ -4,6 +4,7 @@
 
 local string_byte = string.byte
 local string_find = string.find
+local string_match = string.match
 local string_sub = string.sub
 local type = type
 local config_util = require("common.txjx_config")
@@ -125,6 +126,11 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
         and not key_event_util.is_space(keycode, clean_key, repr) then
         local char = calc_char(key_name, shift, keycode, clean_key, repr)
         if char then
+            -- 数字运算中，数字后的无 Shift 等号作为加号；入口和文字命令保持原样。
+            if char == "=" and not shift and string_match(ctx.input, "%d$")
+                and string_match(ctx.input, "^=[%d%.%+%-%*/%%%^%(%)]+$") then
+                char = "+"
+            end
             ctx:push_input(char)
             return kAccepted
         end
