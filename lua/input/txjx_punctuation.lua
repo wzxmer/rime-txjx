@@ -105,6 +105,13 @@ function M.process(key_event, env, key_name, shift, clean_key, opts)
     local keycode = key_event.keycode
     local repr = key_event:repr()
     local calc_context = is_calc_context(ctx, opts)
+    -- 计算器数字键用于续写表达式，Tab 必须在 key_binder 的 Tab -> 2 之前直接选次选。
+    if calc_context and key_name == "tab" and not shift and not key_event:release() then
+        if ctx:has_menu() then
+            commit_guard.commit_menu_index(ctx, env.engine, 1)
+        end
+        return kAccepted
+    end
     if key_name == "equal" then
         if not key_event:release() and opts and opts.jisuanqi
             and ((ctx.input or "") == "" or calc_context) then
