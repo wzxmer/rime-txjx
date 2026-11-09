@@ -500,14 +500,23 @@ def create_rollback_log(ops_count: int, keep_count: int) -> Path:
     return log_dir
 
 
+def word_reading_key(word: str, code: str) -> tuple[str, str]:
+    # 与 Lua 的音码边界一致；标点保留在词文本中，但不计入词长。
+    length = sum(ch not in "，。" for ch in word)
+    sound_length = 3 if length == 3 else 4
+    return word, code[:sound_length]
+
+
 def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, str]], order_map: dict[str, list[str]]) -> None:
     latest = latest_state_by_word_code(ops)
-    words_to_remove = {
-        row["word"]
+    readings_to_remove = {
+        word_reading_key(row["word"], row["code"])
         for row in latest.values()
         if row["mark"] in {"+", "-"} and not row.get("append") and not row.get("restore")
     }
     exact_to_remove = {(word, code) for (word, code), row in latest.items() if row["mark"] == "!"}
+    # 待写回位置先精确移除，避免 append/restore 与正式码表生成重复行。
+    exact_to_remove.update(keep_rows)
     code_locations = build_code_locations(TARGET_DICTS)
     dict_lines: dict[Path, list[str]] = {}
 
@@ -520,7 +529,7 @@ def merge_into_real_dicts(ops: list[dict[str, str]], keep_rows: list[tuple[str, 
             row = parse_dict_row(line)
             if row:
                 word, code = row
-                if word in words_to_remove or (word, code) in exact_to_remove:
+                if word_reading_key(word, code) in readings_to_remove or (word, code) in exact_to_remove:
                     removed += 1
                     continue
             kept.append(line)

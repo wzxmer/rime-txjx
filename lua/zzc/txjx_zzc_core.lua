@@ -1654,11 +1654,16 @@ local function duplicate_source_codes(items, target_code)
         if not M.is_literal_punctuation(ch) then count = count + 1 end
     end
     local min_len = count == 3 and 3 or 4
+    -- 音码前缀相同才属于同一读音链；另一读音允许独立保存。
+    local sound_prefix = target_code:sub(1, min_len)
+    local function same_reading(code)
+        return code and code:sub(1, min_len) == sound_prefix
+    end
     for len = min_len, 6 do
         local choices = M.all_code_choices_for_text(word, len) or {}
         for _, choice in ipairs(choices) do
             local code = choice and choice.code
-            if code and code ~= "" and code ~= target_code and not seen[code] then
+            if same_reading(code) and code ~= target_code and not seen[code] then
                 seen[code] = true
                 source_codes[#source_codes + 1] = code
             end
@@ -1666,7 +1671,7 @@ local function duplicate_source_codes(items, target_code)
     end
     -- 保留当前选定 parts 生成的完整码，兼容临时词条尚未进入 char_parts 的情况。
     local full_code = M.code_for_items(items, 6)
-    if full_code and full_code ~= "" and full_code ~= target_code and not seen[full_code] then
+    if same_reading(full_code) and full_code ~= target_code and not seen[full_code] then
         source_codes[#source_codes + 1] = full_code
     end
     table.sort(source_codes, function(left, right)
